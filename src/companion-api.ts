@@ -12,7 +12,7 @@ function json(response: ServerResponse, status: number, body: unknown): void {
 }
 
 function authorized(request: IncomingMessage): boolean {
-  if (!config.COMPANION_UPLOAD_TOKEN) return config.NODE_ENV !== "production";
+  if (!config.COMPANION_UPLOAD_TOKEN) return false;
   const supplied = request.headers.authorization?.replace(/^Bearer\s+/i, "") ?? "";
   const expected = Buffer.from(config.COMPANION_UPLOAD_TOKEN);
   const actual = Buffer.from(supplied);

@@ -21,7 +21,8 @@ export const epgpCommand = new SlashCommandBuilder()
   .addSubcommand((sub) => sub.setName("award-gp").setDescription("Award GP for an item.")
     .addUserOption((o) => o.setName("player").setDescription("Guild member").setRequired(true))
     .addIntegerOption((o) => o.setName("amount").setDescription("GP amount").setMinValue(1).setRequired(true))
-    .addStringOption((o) => o.setName("reason").setDescription("Reason").setMinLength(3).setRequired(true)));
+    .addStringOption((o) => o.setName("reason").setDescription("Reason").setMinLength(3).setRequired(true)))
+  .addSubcommand((sub) => sub.setName("decay").setDescription("Apply the configured EPGP decay to all active members."));
 
 function officer(interaction: ChatInputCommandInteraction): boolean {
   return !!interaction.member && hasPermission(interaction.member as Parameters<typeof hasPermission>[0], "dkpOfficer");
@@ -55,7 +56,23 @@ export async function executeEpgp(interaction: ChatInputCommandInteraction): Pro
     return;
   }
   if (!officer(interaction)) {
-    await interaction.reply({ content: "Only EPGP officers, Guild Masters, or administrators can change EPGP.", ephemeral: true });
+    await interaction.reply({ content: "Only EPGP officers, Officers, Guild Masters, or administrators can change EPGP.", ephemeral: true });
+    return;
+  }
+  if (subcommand === "decay") {
+    const settings = await guildService.getSettings(context.guildId);
+    if (!settings) throw new Error("Guild settings have not been initialized.");
+    const transactions = await epgpService.applyDecay(context.guildId, settings.epgpDecayPercent, interaction.user.id);
+    await auditService.record({
+      guildId: context.guildId,
+      actorId: interaction.user.id,
+      action: "EPGP_TRANSACTION_CREATED",
+      metadata: { type: "DECAY", memberCount: transactions.length, percent: settings.epgpDecayPercent }
+    });
+    await interaction.reply({
+      content: `Applied ${(settings.epgpDecayPercent * 100).toFixed(0)}% EPGP decay to ${transactions.length} member(s).`,
+      ephemeral: true
+    });
     return;
   }
   const target = interaction.options.getUser("player", true);

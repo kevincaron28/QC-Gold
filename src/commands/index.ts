@@ -11,6 +11,7 @@ import { applicationCommand, applyCommand } from "./application.js";
 import { importApplyCommand } from "./import-apply.js";
 import { epgpCommand } from "./epgp.js";
 import { readinessCommand } from "./readiness.js";
+import { attunementCommand } from "./attunement.js";
 
 export const commands = [
   healthCommand,
@@ -27,6 +28,7 @@ export const commands = [
   importApplyCommand
   , epgpCommand
   , readinessCommand
+  , attunementCommand
 ];
 
 const commandNames = commands.map((command) => command.name);

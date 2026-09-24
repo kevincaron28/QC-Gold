@@ -1,8 +1,9 @@
 ## Interface: 11200
 ## Title: Quebec Gold
-## Notes: Manual-first raid attendance and DKP ledger for WoW Classic/Vanilla
+## Notes: Manual-first raid attendance, DKP/EPGP ledger, and casino minigames for WoW Classic/Vanilla
 ## Author: Quebec Gold
-## Version: 1.0.0
-## SavedVariables: QuebecGoldDB
+## Version: 1.1.0
+## SavedVariables: QuebecGoldDB, QuebecGoldCasinoDB
 
-QuebecGold.lua
+Core.lua
+Modules\Casino.lua

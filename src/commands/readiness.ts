@@ -36,7 +36,7 @@ export async function executeReadiness(interaction: ChatInputCommandInteraction)
   if (!context) return;
   const subcommand = interaction.options.getSubcommand();
   if (subcommand !== "me" && !canReview(interaction)) {
-    await interaction.reply({ content: "Only Guild Masters, Raid Leaders, Loot Leaders, and Class Leaders can review other members.", ephemeral: true });
+    await interaction.reply({ content: "Only Guild Masters, Officers, Raid Leaders, Loot Leaders, and Class Leaders can review other members.", ephemeral: true });
     return;
   }
   if (subcommand === "me") {

@@ -1,0 +1,92 @@
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { readAddonExport } from "../companion/lua-export.mjs";
+import { parseAddonSnapshot, normalizeAddonSnapshot } from "../src/integrations/addon.js";
+
+// WoW's SavedVariables writer always serializes array-like Lua tables with
+// explicit bracketed keys (`{ [1] = a, [2] = b }`), never the compact
+// `{ a, b }` form — this is what a real client actually writes to disk, not
+// just a stylistic choice, so the fixture below intentionally uses that
+// syntax throughout instead of the shorthand.
+const FIXTURE = `
+QuebecGoldDB = {
+  version = 3,
+  epgp = {
+    ["Kevin"] = {
+      ep = 10, gp = 0,
+      ledger = {
+        [1] = { epAmount = 10, gpAmount = 0, type = "EP_AWARD", reason = "Raid attendance", at = "2026-09-24T00:00:00Z", by = "Kevin" },
+      },
+    },
+  },
+  readiness = {
+    ["Kevin"] = {
+      character = "Kevin", inspectedAt = "2026-09-24T00:00:00Z",
+      items = { [1] = { slot = "Head", itemName = "Lionheart Helm", itemId = "16795" } },
+      consumables = {},
+      professions = { [1] = { name = "Blacksmithing", skillLevel = 225 } },
+      findings = { [1] = { code = "GEAR_PRESENT", severity = "INFO", message = "Required gear slots are populated." } },
+      status = "READY",
+    },
+  },
+  attunements = {
+    ["Kevin"] = {
+      ["Onyxia Key"] = { completed = true, at = "2026-09-24T00:00:00Z", by = "Kevin" },
+    },
+  },
+  peerRoster = {
+    ["Bob"] = {
+      status = "NOT_READY", missing = 1, minDurability = 42,
+      professions = "Mining:150,Engineering:120",
+      updatedAt = "2026-09-24T00:05:00Z", reportedBy = "Bob",
+    },
+  },
+  loot = {},
+  events = {},
+  exports = {},
+}
+`;
+
+describe("readAddonExport (real WoW SavedVariables array syntax)", () => {
+  let dir: string;
+  let file: string;
+
+  beforeEach(async () => {
+    dir = await mkdtemp(join(tmpdir(), "qg-lua-export-"));
+    file = join(dir, "QuebecGold.lua");
+    await writeFile(file, FIXTURE, "utf8");
+  });
+
+  afterEach(async () => {
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it("decodes bracketed-key Lua arrays as real arrays, not numeric-keyed objects", async () => {
+    const result = await readAddonExport(file, "WoW Forever");
+    const selfEntry = result.readiness.find((entry: { character: string }) => entry.character === "Kevin");
+    expect(Array.isArray(selfEntry?.items)).toBe(true);
+    expect(Array.isArray(selfEntry?.findings)).toBe(true);
+    expect(Array.isArray(selfEntry?.professions)).toBe(true);
+    expect(Array.isArray(selfEntry?.consumables)).toBe(true);
+  });
+
+  it("folds peer roster digests into synthesized readiness entries", async () => {
+    const result = await readAddonExport(file, "WoW Forever");
+    const peerEntry = result.readiness.find((entry: { character: string }) => entry.character === "Bob");
+    expect(peerEntry?.professions).toEqual([{ name: "Mining", skillLevel: 150 }, { name: "Engineering", skillLevel: 120 }]);
+    expect(peerEntry?.findings).toEqual(expect.arrayContaining([
+      expect.objectContaining({ code: "PEER_MISSING_GEAR" }),
+      expect.objectContaining({ code: "PEER_LOW_DURABILITY" })
+    ]));
+  });
+
+  it("produces output that validates against the bot's addon import schema end to end", async () => {
+    const result = await readAddonExport(file, "WoW Forever");
+    const snapshot = normalizeAddonSnapshot(parseAddonSnapshot(result));
+    expect(snapshot.readiness.map((entry) => entry.character).sort()).toEqual(["Bob", "Kevin"]);
+    expect(snapshot.epgpTransactions).toHaveLength(1);
+    expect(snapshot.attunements).toHaveLength(1);
+  });
+});

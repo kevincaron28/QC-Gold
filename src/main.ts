@@ -22,10 +22,15 @@ import { executeApply, executeApplication } from "./commands/application.js";
 import { executeImportApply } from "./commands/import-apply.js";
 import { executeEpgp } from "./commands/epgp.js";
 import { executeReadiness } from "./commands/readiness.js";
+import { executeAttunement } from "./commands/attunement.js";
 import { config } from "./config.js";
 import { startCompanionApi } from "./companion-api.js";
+import { handleMemberJoin, handleMemberLeave } from "./services/housekeeping.js";
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+// GuildMembers is a privileged intent: it must also be enabled for this bot
+// application under "Server Members Intent" in the Discord Developer Portal,
+// or login will fail with "Used disallowed intents".
+const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers] });
 startCompanionApi();
 const handlers = new Collection<string, (interaction: ChatInputCommandInteraction) => Promise<void>>();
 handlers.set("health", executeHealth);
@@ -42,9 +47,26 @@ handlers.set("application", executeApplication);
 handlers.set("import-apply", executeImportApply);
 handlers.set("epgp", executeEpgp);
 handlers.set("readiness", executeReadiness);
+handlers.set("attunement", executeAttunement);
 
 client.once(Events.ClientReady, (readyClient) => {
   console.info(`Logged in as ${readyClient.user.tag}`);
+});
+
+client.on(Events.GuildMemberAdd, async (member) => {
+  try {
+    await handleMemberJoin(member.guild, member);
+  } catch (error) {
+    console.error("GuildMemberAdd handling failed", error);
+  }
+});
+
+client.on(Events.GuildMemberRemove, async (member) => {
+  try {
+    await handleMemberLeave(member.guild, member);
+  } catch (error) {
+    console.error("GuildMemberRemove handling failed", error);
+  }
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {

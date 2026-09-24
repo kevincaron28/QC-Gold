@@ -40,8 +40,6 @@ export function createLootService(database: PrismaClient) {
         const highest = auction.bids.reduce((max, bid) => Math.max(max, bid.amount), 0);
         const minimum = Math.max(auction.minimumBid, highest ? highest + auction.bidIncrement : auction.minimumBid);
         if (input.amount < minimum) throw new Error(`Bid must be at least ${minimum} GP`);
-        const balance = await tx.epgpTransaction.aggregate({ where: { memberId: input.memberId }, _sum: { gpAmount: true } });
-        if ((balance._sum.gpAmount ?? 0) < input.amount) throw new Error("You do not have enough GP for that bid");
         return tx.auctionBid.upsert({
           where: { auctionId_memberId: { auctionId: input.auctionId, memberId: input.memberId } },
           create: { auctionId: input.auctionId, memberId: input.memberId, amount: input.amount },
@@ -58,10 +56,6 @@ export function createLootService(database: PrismaClient) {
         });
         if (!auction || auction.status !== AuctionStatus.ACTIVE) throw new Error("Auction is not active");
         const winner = auction.bids[0];
-        if (winner) {
-          const balance = await tx.epgpTransaction.aggregate({ where: { memberId: winner.memberId }, _sum: { gpAmount: true } });
-          if ((balance._sum.gpAmount ?? 0) < winner.amount) throw new Error("Winning bidder no longer has enough GP");
-        }
         const updated = await tx.auction.updateMany({
           where: { id: auctionId, status: AuctionStatus.ACTIVE },
           data: { status: AuctionStatus.CLOSED, closedAt: new Date() }

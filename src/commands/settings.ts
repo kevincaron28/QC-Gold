@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, type ChatInputCommandInteraction } from "discord.js";
+import { ChannelType, SlashCommandBuilder, type ChatInputCommandInteraction } from "discord.js";
 import { permissionRoles, hasPermission } from "../permissions.js";
 import { guildService, requireGuildContext } from "./context.js";
 
@@ -21,9 +21,27 @@ export const configCommand = new SlashCommandBuilder()
         { name: "Boss kill DKP", value: "bossKillDkp" },
         { name: "Minimum bid", value: "minimumBid" },
         { name: "Bid increment", value: "bidIncrement" },
-        { name: "Auction duration (seconds)", value: "auctionDurationSec" }
+        { name: "Auction duration (seconds)", value: "auctionDurationSec" },
+        { name: "EPGP decay percent (0-100)", value: "epgpDecayPercent" }
       ))
-    .addIntegerOption((option) => option.setName("value").setDescription("New non-negative value").setMinValue(0).setRequired(true)));
+    .addIntegerOption((option) => option.setName("value").setDescription("New non-negative value").setMinValue(0).setRequired(true)))
+  .addSubcommand((sub) => sub.setName("welcome").setDescription("Configure the welcome message for new members.")
+    .addChannelOption((o) => o.setName("channel").setDescription("Channel to post welcome messages in")
+      .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
+    .addStringOption((o) => o.setName("message").setDescription("Template. Variables: {mention} {username} {guild} {membercount}").setMaxLength(1000))
+    .addBooleanOption((o) => o.setName("disable").setDescription("Turn off welcome messages")))
+  .addSubcommand((sub) => sub.setName("farewell").setDescription("Configure the farewell message for departing members.")
+    .addChannelOption((o) => o.setName("channel").setDescription("Channel to post farewell messages in")
+      .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
+    .addStringOption((o) => o.setName("message").setDescription("Template. Variables: {username} {guild} {membercount}").setMaxLength(1000))
+    .addBooleanOption((o) => o.setName("disable").setDescription("Turn off farewell messages")))
+  .addSubcommand((sub) => sub.setName("roles").setDescription("Configure automatic role assignment.")
+    .addRoleOption((o) => o.setName("applicant").setDescription("Role auto-assigned when someone joins the Discord server"))
+    .addRoleOption((o) => o.setName("member").setDescription("Role assigned automatically when an application is approved")))
+  .addSubcommand((sub) => sub.setName("raid-channel").setDescription("Set the channel raid signup embeds are posted and updated in.")
+    .addChannelOption((o) => o.setName("channel").setDescription("Raid signup channel")
+      .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
+    .addBooleanOption((o) => o.setName("disable").setDescription("Stop posting raid signup embeds")));
 
 export async function executeConfig(interaction: ChatInputCommandInteraction): Promise<void> {
   const context = await requireGuildContext(interaction);
@@ -39,7 +57,13 @@ export async function executeConfig(interaction: ChatInputCommandInteraction): P
         `Boss kill: ${settings.bossKillDkp} DKP`,
         `Minimum bid: ${settings.minimumBid} DKP`,
         `Bid increment: ${settings.bidIncrement} DKP`,
-        `Auction duration: ${settings.auctionDurationSec}s`
+        `Auction duration: ${settings.auctionDurationSec}s`,
+        `EPGP decay: ${(settings.epgpDecayPercent * 100).toFixed(0)}% (run \`/epgp decay\` to apply)`,
+        `Welcome messages: ${settings.welcomeChannelId ? `<#${settings.welcomeChannelId}>` : "disabled"}`,
+        `Farewell messages: ${settings.farewellChannelId ? `<#${settings.farewellChannelId}>` : "disabled"}`,
+        `Applicant role: ${settings.applicantRoleId ? `<@&${settings.applicantRoleId}>` : "not set"}`,
+        `Member role: ${settings.memberRoleId ? `<@&${settings.memberRoleId}>` : "not set"}`,
+        `Raid signup channel: ${settings.raidSignupChannelId ? `<#${settings.raidSignupChannelId}>` : "disabled"}`
       ].join("\n"),
       ephemeral: true
     });
@@ -54,10 +78,67 @@ export async function executeConfig(interaction: ChatInputCommandInteraction): P
     return;
   }
 
+  if (subcommand === "welcome" || subcommand === "farewell") {
+    const disable = interaction.options.getBoolean("disable");
+    if (disable) {
+      await guildService.updateSettings(context.guildId, subcommand === "welcome"
+        ? { welcomeChannelId: null, welcomeMessageTemplate: null }
+        : { farewellChannelId: null, farewellMessageTemplate: null });
+      await interaction.reply({ content: `${subcommand === "welcome" ? "Welcome" : "Farewell"} messages disabled.`, ephemeral: true });
+      return;
+    }
+    const channel = interaction.options.getChannel("channel");
+    const message = interaction.options.getString("message");
+    if (!channel) throw new Error("Provide a channel, or use disable:true to turn messages off.");
+    await guildService.updateSettings(context.guildId, subcommand === "welcome"
+      ? { welcomeChannelId: channel.id, ...(message === null ? {} : { welcomeMessageTemplate: message }) }
+      : { farewellChannelId: channel.id, ...(message === null ? {} : { farewellMessageTemplate: message }) });
+    await interaction.reply({ content: `${subcommand === "welcome" ? "Welcome" : "Farewell"} messages will post in <#${channel.id}>.`, ephemeral: true });
+    return;
+  }
+
+  if (subcommand === "raid-channel") {
+    const disable = interaction.options.getBoolean("disable");
+    if (disable) {
+      await guildService.updateSettings(context.guildId, { raidSignupChannelId: null });
+      await interaction.reply({ content: "Raid signup embeds disabled.", ephemeral: true });
+      return;
+    }
+    const channel = interaction.options.getChannel("channel");
+    if (!channel) throw new Error("Provide a channel, or use disable:true to turn raid signup embeds off.");
+    await guildService.updateSettings(context.guildId, { raidSignupChannelId: channel.id });
+    await interaction.reply({ content: `Raid signup embeds will post in <#${channel.id}>.`, ephemeral: true });
+    return;
+  }
+
+  if (subcommand === "roles") {
+    const applicantRole = interaction.options.getRole("applicant");
+    const memberRole = interaction.options.getRole("member");
+    if (!applicantRole && !memberRole) throw new Error("Provide at least one role to update.");
+    await guildService.updateSettings(context.guildId, {
+      ...(applicantRole ? { applicantRoleId: applicantRole.id } : {}),
+      ...(memberRole ? { memberRoleId: memberRole.id } : {})
+    });
+    await interaction.reply({
+      content: [
+        applicantRole ? `Applicant role set to <@&${applicantRole.id}>.` : null,
+        memberRole ? `Member role set to <@&${memberRole.id}>.` : null
+      ].filter(Boolean).join("\n"),
+      ephemeral: true
+    });
+    return;
+  }
+
   const setting = interaction.options.getString("setting", true) as keyof typeof settings;
   const value = interaction.options.getInteger("value", true);
   if (setting === "id" || setting === "guildId" || setting === "createdAt" || setting === "updatedAt") {
     throw new Error("That setting cannot be changed.");
+  }
+  if (setting === "epgpDecayPercent") {
+    if (value > 100) throw new Error("EPGP decay percent must be between 0 and 100.");
+    await guildService.updateSettings(context.guildId, { epgpDecayPercent: value / 100 });
+    await interaction.reply({ content: `Updated EPGP decay to ${value}%.`, ephemeral: true });
+    return;
   }
   await guildService.updateSettings(context.guildId, { [setting]: value });
   await interaction.reply({ content: `Updated ${setting} to ${value}.`, ephemeral: true });

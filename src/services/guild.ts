@@ -77,6 +77,14 @@ export function createGuildService(database: PrismaClient) {
       minimumBid?: number;
       bidIncrement?: number;
       auctionDurationSec?: number;
+      epgpDecayPercent?: number;
+      welcomeChannelId?: string | null;
+      welcomeMessageTemplate?: string | null;
+      farewellChannelId?: string | null;
+      farewellMessageTemplate?: string | null;
+      applicantRoleId?: string | null;
+      memberRoleId?: string | null;
+      raidSignupChannelId?: string | null;
     }) {
       return database.guildSettings.update({
         where: { guildId },

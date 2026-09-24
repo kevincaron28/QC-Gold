@@ -4,10 +4,17 @@ import type {
   RaidSignupStatus,
   RaidAttendanceStatus,
   RaidBossStatus,
-  RaidStatus
+  RaidStatus,
+  RaidRole
 } from "@prisma/client";
 
 const activeSignupStatuses: RaidSignupStatus[] = ["SIGNED_UP"];
+
+const roleCapField: Record<RaidRole, "tankLimit" | "healerLimit" | "dpsLimit"> = {
+  TANK: "tankLimit",
+  HEALER: "healerLimit",
+  DPS: "dpsLimit"
+};
 
 export interface CreateRaidInput {
   guildId: string;
@@ -16,6 +23,9 @@ export interface CreateRaidInput {
   createdBy: string;
   description?: string;
   bosses?: string[];
+  tankLimit?: number;
+  healerLimit?: number;
+  dpsLimit?: number;
 }
 
 export function createRaidService(database: PrismaClient) {
@@ -29,6 +39,11 @@ export function createRaidService(database: PrismaClient) {
     async create(input: CreateRaidInput) {
       if (input.title.trim().length < 3) throw new Error("Raid title must be at least 3 characters.");
       if (input.scheduledAt.getTime() <= Date.now()) throw new Error("Raid time must be in the future.");
+      for (const [label, limit] of [["Tank", input.tankLimit], ["Healer", input.healerLimit], ["DPS", input.dpsLimit]] as const) {
+        if (limit !== undefined && (!Number.isInteger(limit) || limit < 0)) {
+          throw new Error(`${label} limit must be a non-negative integer.`);
+        }
+      }
       const bosses = input.bosses?.map((name) => name.trim()).filter(Boolean) ?? [];
       return database.raid.create({
         data: {
@@ -37,6 +52,9 @@ export function createRaidService(database: PrismaClient) {
           scheduledAt: input.scheduledAt,
           createdBy: input.createdBy,
           description: input.description?.trim() || null,
+          tankLimit: input.tankLimit ?? null,
+          healerLimit: input.healerLimit ?? null,
+          dpsLimit: input.dpsLimit ?? null,
           ...(bosses.length > 0 ? {
             bosses: { create: bosses.map((name, sortOrder) => ({ name, sortOrder })) }
           } : {})
@@ -45,10 +63,20 @@ export function createRaidService(database: PrismaClient) {
       });
     },
 
+    setSignupMessage(raidId: string, guildId: string, channelId: string, messageId: string) {
+      return database.raid.updateMany({
+        where: { id: raidId, guildId },
+        data: { signupChannelId: channelId, signupMessageId: messageId }
+      });
+    },
+
     async edit(raidId: string, guildId: string, input: {
       title?: string;
       description?: string | null;
       scheduledAt?: Date;
+      tankLimit?: number | null;
+      healerLimit?: number | null;
+      dpsLimit?: number | null;
     }) {
       const raid = await getRaid(raidId, guildId);
       if (raid.status !== "PLANNED") throw new Error("Only planned raids can be edited.");
@@ -58,12 +86,20 @@ export function createRaidService(database: PrismaClient) {
       if (input.scheduledAt !== undefined && input.scheduledAt.getTime() <= Date.now()) {
         throw new Error("Raid time must be in the future.");
       }
+      for (const limit of [input.tankLimit, input.healerLimit, input.dpsLimit]) {
+        if (limit != null && (!Number.isInteger(limit) || limit < 0)) {
+          throw new Error("Role limits must be non-negative integers.");
+        }
+      }
       return database.raid.update({
         where: { id: raid.id },
         data: {
           ...(input.title === undefined ? {} : { title: input.title.trim() }),
           ...(input.description === undefined ? {} : { description: input.description?.trim() || null }),
-          ...(input.scheduledAt === undefined ? {} : { scheduledAt: input.scheduledAt })
+          ...(input.scheduledAt === undefined ? {} : { scheduledAt: input.scheduledAt }),
+          ...(input.tankLimit === undefined ? {} : { tankLimit: input.tankLimit }),
+          ...(input.healerLimit === undefined ? {} : { healerLimit: input.healerLimit }),
+          ...(input.dpsLimit === undefined ? {} : { dpsLimit: input.dpsLimit })
         }
       });
     },
@@ -75,13 +111,20 @@ export function createRaidService(database: PrismaClient) {
       return database.raid.update({ where: { id: raid.id }, data: { status: "CANCELLED" } });
     },
 
-    async signup(raidId: string, guildId: string, memberId: string) {
+    async signup(raidId: string, guildId: string, memberId: string, role: RaidRole) {
       const raid = await getRaid(raidId, guildId);
       if (raid.status !== "PLANNED") throw new Error("Signups are closed for this raid.");
+      const cap = raid[roleCapField[role]];
+      if (cap !== null) {
+        const count = await database.raidSignup.count({
+          where: { raidId, role, status: "SIGNED_UP", memberId: { not: memberId } }
+        });
+        if (count >= cap) throw new Error(`${role} slots are full (${count}/${cap}).`);
+      }
       return database.raidSignup.upsert({
         where: { raidId_memberId: { raidId, memberId } },
-        create: { raidId, memberId },
-        update: { status: "SIGNED_UP", signedUpAt: new Date(), cancelledAt: null }
+        create: { raidId, memberId, role },
+        update: { status: "SIGNED_UP", role, signedUpAt: new Date(), cancelledAt: null }
       });
     },
 

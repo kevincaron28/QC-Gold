@@ -1,10 +1,10 @@
 -- Quebec Gold is intentionally manual-first. Combat and loot events are hints, not proof.
-local ADDON, QG = ...
-QG = QG or {}
-QuebecGold = QG
+local addonName, ns = ...
+ns = ns or {}
+QuebecGold = ns
 
 local PREFIX = "QuebecGold"
-local DB_VERSION = 2
+local DB_VERSION = 3
 local db
 local activeRaid
 
@@ -51,6 +51,11 @@ local function ensureDb()
     db.dkp = nil
   end
   db.readiness = db.readiness or {}
+  db.attunements = db.attunements or {}
+  -- Roster digests broadcast by other guildmates' clients (gear/profession
+  -- summary only, not full detail) so one officer's export can carry the
+  -- whole online guild's readiness picture, not just their own.
+  db.peerRoster = db.peerRoster or {}
   db.loot = db.loot or {}
   db.events = db.events or {}
   db.exports = db.exports or {}
@@ -162,25 +167,56 @@ local function changeEpgp(name, amount, reason, kind, epAmount, gpAmount)
     db.epgp[name].gp > 0 and db.epgp[name].ep / db.epgp[name].gp or 0))
 end
 
-local function inspectReadiness()
-  local snapshot = { character = playerName(), inspectedAt = now(), items = {}, consumables = {}, findings = {} }
+local function collectProfessions()
+  -- GetProfessions() returns up to 6 slot indices (some may be nil), so index
+  -- by count rather than ipairs, which would stop at the first hole.
+  local result = {}
+  if not GetProfessions or not GetProfessionInfo then return result end
+  local indices = { GetProfessions() }
+  local count = select("#", GetProfessions())
+  for i = 1, count do
+    local index = indices[i]
+    if index then
+      local name, _, skillLevel = GetProfessionInfo(index)
+      if name then table.insert(result, { name = name, skillLevel = skillLevel or 0 }) end
+    end
+  end
+  return result
+end
+
+local function inspectReadiness(silent, target)
+  local professions = collectProfessions()
+  local snapshot = { character = playerName(), inspectedAt = now(), items = {}, consumables = {}, professions = professions, findings = {} }
   local slots = {
     { 1, "Head" }, { 3, "Shoulder" }, { 5, "Chest" }, { 6, "Waist" },
     { 7, "Legs" }, { 8, "Feet" }, { 9, "Wrist" }, { 10, "Hands" },
     { 16, "MainHand" }, { 17, "OffHand" }
   }
   local missing = 0
+  local minDurability = 100
   for _, slot in ipairs(slots) do
     local link = GetInventoryItemLink("player", slot[1])
-    local row = { slot = slot[2], itemName = link or "", itemId = link }
     if link then
+      -- Item links look like |cAARRGGBB|Hitem:ID:...|h[Name]|h|r; pull the
+      -- readable name and numeric id out instead of exporting the raw link.
+      local itemName = string.match(link, "%[(.-)%]") or link
+      local itemId = string.match(link, "item:(%d+)")
+      local row = { slot = slot[2], itemName = itemName, itemId = itemId }
       local current, maximum = GetInventoryItemDurability and GetInventoryItemDurability(slot[1])
-      if current and maximum and maximum > 0 then row.durability = math.floor(current / maximum * 100) end
+      if current and maximum and maximum > 0 then
+        row.durability = math.floor(current / maximum * 100)
+        if row.durability < minDurability then minDurability = row.durability end
+      end
+      table.insert(snapshot.items, row)
+    elseif slot[2] == "OffHand" then
+      -- Two-handed weapons (and some specs) legitimately leave OffHand empty;
+      -- that can't be told apart from "forgot to equip" without deeper
+      -- tooltip parsing, so treat it as a soft warning, not a hard failure.
+      table.insert(snapshot.findings, { code = "MISSING_OFFHAND", severity = "WARNING", message = "No off-hand item equipped (expected when using a two-handed weapon)." })
     else
       missing = missing + 1
       table.insert(snapshot.findings, { code = "MISSING_" .. string.upper(slot[2]), severity = "ERROR", message = "Missing " .. slot[2] .. " equipment." })
     end
-    table.insert(snapshot.items, row)
   end
   if missing == 0 then
     table.insert(snapshot.findings, { code = "GEAR_PRESENT", severity = "INFO", message = "Required gear slots are populated." })
@@ -188,8 +224,61 @@ local function inspectReadiness()
   snapshot.status = #snapshot.findings == 0 and "READY" or missing > 0 and "NOT_READY" or "PARTIAL"
   db.readiness[playerName()] = snapshot
   logEvent("READINESS", snapshot)
-  send("READINESS|" .. playerName() .. "|" .. snapshot.status)
-  message("Readiness captured: " .. snapshot.status .. ".")
+
+  local profParts = {}
+  for _, profession in ipairs(professions) do
+    table.insert(profParts, profession.name .. ":" .. profession.skillLevel)
+  end
+  -- Compact digest only (no item list/enchants/consumables) so this fits in
+  -- a single addon message with no chunking. Broadcast to GUILD by default
+  -- so it reaches everyone online, not just the current raid group.
+  send(string.format("READINESS|%s|%s|%d|%d|%s", playerName(), snapshot.status, missing, minDurability, table.concat(profParts, ",")), target or "GUILD")
+  if not silent then
+    message("Readiness captured: " .. snapshot.status .. ".")
+  end
+end
+
+local function setAttunement(name, key, completed)
+  if not key then message("Usage: /qg attune <key> | /qg attune <player> <key> [clear]"); return end
+  db.attunements[name] = db.attunements[name] or {}
+  db.attunements[name][key] = { completed = completed, at = now(), by = playerName() }
+  logEvent("ATTUNEMENT", { name = name, key = key, completed = completed })
+  send("ATTUNEMENT|" .. name .. "|" .. key .. "|" .. tostring(completed))
+  message(name .. " attunement " .. (completed and "completed" or "cleared") .. ": " .. key .. ".")
+end
+
+-- Automatic sync: re-run inspectReadiness (silently, broadcasting to GUILD)
+-- on login, on gear changes, and periodically while raiding, instead of
+-- requiring everyone to run /qg inspect manually. Debounced through a
+-- frame-based accumulator rather than C_Timer, which doesn't reliably exist
+-- on every client this addon targets.
+local pendingAutoSync = false
+local lastAutoSyncAt = 0
+local AUTO_SYNC_DEBOUNCE_SECONDS = 5
+local AUTO_SYNC_RAID_INTERVAL_SECONDS = 600
+
+local function requestAutoSync()
+  pendingAutoSync = true
+end
+
+local function inRaidGroup()
+  if IsInRaid then return IsInRaid() end
+  if GetNumRaidMembers then return GetNumRaidMembers() > 0 end
+  return false
+end
+
+local function performPendingAutoSync()
+  local nowTime = time()
+  if pendingAutoSync and (nowTime - lastAutoSyncAt) >= AUTO_SYNC_DEBOUNCE_SECONDS then
+    pendingAutoSync = false
+    lastAutoSyncAt = nowTime
+    inspectReadiness(true, "GUILD")
+    return
+  end
+  if inRaidGroup() and (nowTime - lastAutoSyncAt) >= AUTO_SYNC_RAID_INTERVAL_SECONDS then
+    lastAutoSyncAt = nowTime
+    inspectReadiness(true, "GUILD")
+  end
 end
 
 local function recordLoot(name, item, cost)
@@ -207,7 +296,9 @@ local function exportData()
   db.exports[key] = {
     source = "QuebecGold", exportedAt = key, version = db.version,
     roster = db.roster, raids = db.raids, attendance = db.attendance,
-    bosses = db.bosses, epgp = db.epgp, readiness = db.readiness, loot = db.loot, events = db.events
+    bosses = db.bosses, epgp = db.epgp, readiness = db.readiness,
+    attunements = db.attunements, peerRoster = db.peerRoster,
+    loot = db.loot, events = db.events
   }
   message("Export saved in QuebecGoldDB.exports[" .. key .. "]. Copy it from SavedVariables.")
 end
@@ -216,7 +307,18 @@ local function showHelp()
   message("/qg start [title] | end | attendance <name> [status] | boss <name>")
   message("/qg award <name> <amount> [reason] | gp <name> <amount> [reason] | deduct <name> <amount> [reason]")
   message("/qg loot <name> <item> [cost] | inspect | export | status | roster")
+  message("/qg attune <key> [clear] | attune <player> <key> [clear]")
+  message("Readiness (gear/profession summary) auto-syncs to the guild on login, gear changes, and every 10 min while raiding.")
+  if next(ns.commandHelp or {}) then
+    for _, line in pairs(ns.commandHelp) do message(line) end
+  end
 end
+
+-- Extension point for modules loaded after Core.lua (see Modules/Casino.lua):
+-- ns.commandHandlers["casino"] = function(args) ... end registers /qg casino ...
+-- ns.commandHelp["casino"] = "/qg casino ..." adds a line to /qg help.
+ns.commandHandlers = ns.commandHandlers or {}
+ns.commandHelp = ns.commandHelp or {}
 
 local function command(text)
   local args = split(text)
@@ -238,9 +340,39 @@ local function command(text)
   elseif action == "gp" then if requireOfficer() then changeEpgp(args[2], args[3], table.concat(args, " ", 4), "GP_AWARD", 0, math.abs(tonumber(args[3]) or 0)) end
   elseif action == "deduct" then if requireOfficer() then changeEpgp(args[2], args[3], table.concat(args, " ", 4), "ADJUSTMENT", -(math.abs(tonumber(args[3]) or 0)), 0) end
   elseif action == "loot" then if requireOfficer() then recordLoot(args[2], args[3], args[4]) end
+  elseif action == "attune" then
+    local completed = true
+    local last = string.lower(args[#args] or "")
+    if last == "false" or last == "clear" or last == "no" then
+      completed = false
+      table.remove(args, #args)
+    end
+    if args[3] then
+      if requireOfficer() then setAttunement(args[2], args[3], completed) end
+    else
+      setAttunement(playerName(), args[2], completed)
+    end
   elseif action == "inspect" then inspectReadiness()
   elseif action == "export" then if requireOfficer() then exportData() end
+  elseif ns.commandHandlers[action] then
+    -- args[1] is the action itself; hand the module the remaining tokens.
+    table.remove(args, 1)
+    ns.commandHandlers[action](args)
   else showHelp() end
+end
+
+local function handlePeerReadiness(text, sender)
+  local parts = {}
+  for part in string.gmatch(text, "[^|]+") do table.insert(parts, part) end
+  if parts[1] ~= "READINESS" or not parts[2] then return end
+  db.peerRoster[parts[2]] = {
+    status = parts[3] or "UNKNOWN",
+    missing = tonumber(parts[4]) or 0,
+    minDurability = tonumber(parts[5]) or 100,
+    professions = parts[6] or "",
+    updatedAt = now(),
+    reportedBy = sender
+  }
 end
 
 local function onEvent(_, event, ...)
@@ -254,6 +386,11 @@ local function onEvent(_, event, ...)
     end
   elseif not db then
     ensureDb()
+  elseif event == "PLAYER_ENTERING_WORLD" then
+    requestAutoSync()
+  elseif event == "UNIT_INVENTORY_CHANGED" then
+    local unit = ...
+    if unit == "player" then requestAutoSync() end
   elseif event == "GUILD_ROSTER_UPDATE" then
     local count = GetNumGuildMembers and GetNumGuildMembers() or 0
     db.lastRosterUpdate = now()
@@ -272,17 +409,36 @@ local function onEvent(_, event, ...)
     local prefix, text, channel, sender = ...
     if prefix == PREFIX and sender ~= playerName() then
       logEvent("ADDON_MESSAGE", { text = text, channel = channel, sender = sender })
+      handlePeerReadiness(text, sender)
     end
   end
 end
 
 local frame = CreateFrame("Frame")
 frame:RegisterEvent("PLAYER_LOGIN")
+frame:RegisterEvent("PLAYER_ENTERING_WORLD")
+frame:RegisterEvent("UNIT_INVENTORY_CHANGED")
 frame:RegisterEvent("GUILD_ROSTER_UPDATE")
 frame:RegisterEvent("CHAT_MSG_LOOT")
 frame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
 frame:RegisterEvent("CHAT_MSG_ADDON")
 frame:SetScript("OnEvent", onEvent)
 
-SLASH_QUEBECCOLD1 = "/qg"
-SlashCmdList["QUEBECCOLD"] = command
+local autoSyncElapsed = 0
+frame:SetScript("OnUpdate", function(_, elapsed)
+  if not db then return end
+  autoSyncElapsed = autoSyncElapsed + elapsed
+  if autoSyncElapsed < 1 then return end
+  autoSyncElapsed = 0
+  performPendingAutoSync()
+end)
+
+SLASH_QUEBECGOLD1 = "/qg"
+SlashCmdList["QUEBECGOLD"] = command
+
+-- Shared namespace API for modules (see Modules/Casino.lua).
+ns.playerName = playerName
+ns.now = now
+ns.message = message
+ns.send = send
+ns.isOfficer = isOfficer

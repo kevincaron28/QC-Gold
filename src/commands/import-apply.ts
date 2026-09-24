@@ -27,10 +27,17 @@ export async function executeImportApply(interaction: ChatInputCommandInteractio
     actorId: interaction.user.id,
     action: "IMPORT_APPLIED",
     entityId: importId,
-    metadata: { transactionCount: result.transactions.length }
+    metadata: {
+      transactionCount: result.transactions.length,
+      epgpTransactionCount: result.epgpTransactions.length,
+      readinessSnapshotCount: result.readinessSnapshots.length,
+      attunementCount: result.attunements.length
+    }
   });
   await interaction.reply({
-    content: `Applied import \`${importId}\`: ${result.transactions.length} DKP transactions recorded.`,
+    content: `Applied import \`${importId}\`: ${result.transactions.length} DKP transaction(s), `
+      + `${result.epgpTransactions.length} EPGP transaction(s), ${result.readinessSnapshots.length} `
+      + `readiness snapshot(s), and ${result.attunements.length} attunement update(s) recorded.`,
     ephemeral: true
   });
 }

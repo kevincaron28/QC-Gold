@@ -6,3 +6,4 @@ dist/
 coverage/
 *.log
 .neon
+companion/companion.config.json

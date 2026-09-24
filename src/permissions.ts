@@ -13,10 +13,9 @@ export type Permission = keyof typeof permissionRoles;
 
 const inheritedPermissions: Record<Permission, readonly Permission[]> = {
   guildMaster: ["guildMaster"],
-  officer: ["officer"],
-  raidLeader: ["raidLeader"],
-  dkpOfficer: ["dkpOfficer", "guildMaster"]
-  ,
+  officer: ["officer", "guildMaster"],
+  raidLeader: ["raidLeader", "officer", "guildMaster"],
+  dkpOfficer: ["dkpOfficer", "officer", "guildMaster"],
   lootLeader: ["lootLeader", "officer", "guildMaster"],
   classLeader: ["classLeader", "officer", "guildMaster"]
 };

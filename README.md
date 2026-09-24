@@ -65,12 +65,30 @@ Phase 7 adds:
 - Readiness findings with `READY`, `PARTIAL`, `NOT_READY`, and `UNKNOWN` states
 - Addon export support for EPGP and readiness payloads
 
+Phase 8 adds:
+
+- Welcome and farewell messages on member join/leave (`/config welcome`, `/config farewell`), with a templated message supporting `{mention}`, `{username}`, `{guild}`, and `{membercount}`
+- Automatic role assignment: an "applicant" role on join, and a "member" role auto-assigned (with the applicant role removed) when an officer runs `/application approve` (`/config roles`)
+
+Phase 9 adds:
+
+- Tank/Healer/DPS role caps on `/raid create` and `/raid edit`; `/raid signup` now requires a role and is rejected once that role's cap is reached
+- A live-updating raid signup embed posted to a configured channel (`/config raid-channel`), showing status, start time, and role fill counts — refreshed automatically on create/signup/cancel-signup/start/end/cancel
+
+Phase 10 adds:
+
+- `/attunement set` and `/attunement list` for self-service attunement tracking per character
+- The addon's `/qg inspect` now also captures known professions and skill levels; `/qg attune` records attunement completion in-game (self or officer-for-other)
+- The addon import pipeline now applies profession and attunement data from an addon export into the same `/profession` and `/attunement` records the Discord commands use — no separate view is needed for addon-synced data
+
 ## Requirements
 
 - Node.js 22+
 - npm 10+
 - PostgreSQL 16+
 - A Discord application with a bot token and `applications.commands` scope
+- **Server Members Intent** enabled for the bot application in the [Discord Developer Portal](https://discord.com/developers/applications) (Bot → Privileged Gateway Intents). The bot requests the `GuildMembers` intent for welcome/farewell messages and auto-roles; without this enabled in the portal, `client.login` will fail with "Used disallowed intents".
+- The bot's own Discord role must sit above both the applicant and member roles in the server's role list, or role assignment will silently fail (Discord permission rules, not something the bot can override).
 
 ## Setup
 
@@ -124,22 +142,31 @@ Commands are registered against `DISCORD_GUILD_ID` in development. A production 
 /profession list
 /config view
 /config set setting:attendanceDkp value:10
-/raid create title:"Molten Core" time:"2026-10-01T19:00:00Z" bosses:"Lucifron,Magmadar"
-/raid signup raid:<raid-id>
+/raid create title:"Molten Core" time:"2026-10-01T19:00:00Z" bosses:"Lucifron,Magmadar" tanks:2 healers:6 dps:32
+/raid signup raid:<raid-id> role:DPS
 /raid roster raid:<raid-id>
 /raid attendance raid:<raid-id> player:@Kevin status:PRESENT
+/raid boss raid:<raid-id> name:"Lucifron" status:KILLED
+/config raid-channel channel:#raid-signups
+/attunement set character:Kevin name:"Onyxia Key" completed:true
+/attunement list character:Kevin
 /epgp balance
 /epgp leaderboard
 /epgp award-ep player:@Kevin amount:10 reason:"Raid attendance"
+/epgp decay
+/config set setting:"EPGP decay percent (0-100)" value:10
+/config welcome channel:#welcome message:"Welcome {mention} to {guild}! Run /apply to get started."
+/config farewell channel:#member-log
+/config roles applicant:@Applicant member:@Member
 /loot history
 /apply character:Kevin class:Priest spec:Shadow experience:"MC and BWL" availability:"Saturday evenings"
 /application list status:PENDING
 /import file:<addon-export.json>
 ```
 
-`/config set` requires the `Officer`, `Guild Master`, or Discord Administrator permission.
+`/config set` requires the `Officer`, `Guild Master`, or Discord Administrator permission. Guild Master and Officer roles inherit every specialized role's permissions (Raid Leader, DKP Officer, Loot Leader, Class Leader), so a Guild Master never needs to also hold those specific Discord roles.
 
-`/import` validates and records an addon export for officer review; it intentionally does not apply EPGP transactions or readiness snapshots automatically. The addon export format must match the normalized JSON contract in `src/integrations/addon.ts`.
+`/import` validates and records an addon export for officer review; it intentionally does not apply anything automatically. A separate officer-only `/import-apply <id>` records the DKP transactions, EPGP transactions, and readiness snapshots in the reviewed export — nothing is applied until that command runs. The addon export format must match the normalized JSON contract in `src/integrations/addon.ts`.
 
 ## EPGP and raid readiness
 
@@ -163,9 +190,9 @@ Then copy `companion/companion.config.example.json` to `companion/companion.conf
 node companion/watcher.mjs
 ```
 
-The API binds to `127.0.0.1` only. It records validated imports but does not apply EPGP or readiness data without officer review.
+The API binds to `127.0.0.1` only. It records validated imports but does not apply DKP, EPGP, or readiness data without officer review via `/import-apply`. If `COMPANION_UPLOAD_TOKEN` is not set, the companion API rejects every request rather than allowing them through — always set a real token before running the watcher.
 
-Never commit `.env`; use `.env.example` as the documented configuration surface.
+Never commit `.env`, `.env.local`, or `companion/companion.config.json`; use `.env.example` as the documented configuration surface. All three are already gitignored.
 
 ## Local hosting with Neon
 

@@ -2,6 +2,7 @@ import { ApplicationStatus } from "@prisma/client";
 import { SlashCommandBuilder, type ChatInputCommandInteraction } from "discord.js";
 import { prisma } from "../database.js";
 import { createApplicationService } from "../services/application.js";
+import { syncApprovedMemberRoles } from "../services/housekeeping.js";
 import { hasPermission } from "../permissions.js";
 import { requireGuildContext } from "./context.js";
 
@@ -73,7 +74,12 @@ export async function executeApplication(interaction: ChatInputCommandInteractio
     await interaction.reply(`\`${app.id}\` **${app.character}** — ${app.status}\nClass/spec: ${app.className} / ${app.spec}\nExperience: ${app.experience}\nAvailability: ${app.availability}${app.notes ? `\nNotes: ${app.notes}` : ""}`);
     return;
   }
+  const application = await applicationService.get(context.guildId, id);
+  if (!application) throw new Error("Application not found");
   const status = ({ approve: ApplicationStatus.APPROVED, reject: ApplicationStatus.REJECTED, trial: ApplicationStatus.TRIAL } as const)[subcommand as "approve" | "reject" | "trial"];
   const updated = await applicationService.transition(context.guildId, id, status, interaction.user.id);
+  if (status === ApplicationStatus.APPROVED && interaction.guild) {
+    await syncApprovedMemberRoles(interaction.guild, context.guildId, application.member.discordUserId);
+  }
   await interaction.reply(`Application \`${updated.id}\` is now **${updated.status}**.`);
 }

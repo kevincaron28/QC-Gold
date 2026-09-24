@@ -11,7 +11,7 @@ const auditService = createAuditService(prisma);
 
 export const dkpCommand = new SlashCommandBuilder()
   .setName("dkp")
-  .setDescription("View and manage DKP.")
+  .setDescription("View and manage legacy DKP (superseded by /epgp for new activity).")
   .addSubcommand((subcommand) => subcommand.setName("balance").setDescription("View your DKP balance."))
   .addSubcommand((subcommand) => subcommand.setName("history").setDescription("View your recent DKP history."))
   .addSubcommand((subcommand) => subcommand.setName("leaderboard").setDescription("View the DKP leaderboard."))
@@ -57,7 +57,7 @@ export async function executeDkp(interaction: ChatInputCommandInteraction): Prom
   }
 
   if (!interaction.member || !hasPermission(interaction.member as Parameters<typeof hasPermission>[0], "dkpOfficer")) {
-    await interaction.reply({ content: "Only DKP Officers, Guild Masters, or Administrators can change DKP.", ephemeral: true });
+    await interaction.reply({ content: "Only DKP Officers, Officers, Guild Masters, or Administrators can change DKP.", ephemeral: true });
     return;
   }
   const target = interaction.options.getUser("player", true);
