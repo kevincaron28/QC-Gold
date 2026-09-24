@@ -1,0 +1,38 @@
+{
+  "name": "quebec-gold-bot",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Guild management and addon integration bot for Quebec Gold",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "dev": "tsx src/main.ts",
+    "start:local": "tsx src/main.ts",
+    "companion:watch": "node companion/watcher.mjs",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev"
+  },
+  "dependencies": {
+    "@neon/config": "^1.7.3",
+    "@neon/env": "^1.4.4",
+    "@prisma/client": "^6.16.2",
+    "discord.js": "^14.22.1",
+    "dotenv": "^17.2.2",
+    "luaparse": "^0.3.1",
+    "zod": "^4.1.8"
+  },
+  "devDependencies": {
+    "@types/node": "^24.5.2",
+    "eslint": "^9.36.0",
+    "prisma": "^6.16.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.44.0",
+    "vitest": "^3.2.4"
+  }
+}

@@ -1,0 +1,87 @@
+import type { PrismaClient } from "@prisma/client";
+
+export function createGuildService(database: PrismaClient) {
+  return {
+    ensureGuild(discordId: string, name: string) {
+      return database.guild.upsert({
+        where: { discordId },
+        create: {
+          discordId,
+          name,
+          settings: { create: {} }
+        },
+        update: { name }
+      });
+    },
+
+    async ensureMember(guildId: string, discordUserId: string, displayName: string) {
+      return database.member.upsert({
+        where: { guildId_discordUserId: { guildId, discordUserId } },
+        create: { guildId, discordUserId, displayName },
+        update: { displayName }
+      });
+    },
+
+    listCharacters(memberId: string) {
+      return database.character.findMany({
+        where: { memberId },
+        include: { professions: true },
+        orderBy: [{ isMain: "desc" }, { name: "asc" }]
+      });
+    },
+
+    async addCharacter(input: {
+      memberId: string;
+      name: string;
+      realm: string;
+      className: string;
+      spec?: string;
+      level?: number;
+      isMain: boolean;
+    }) {
+      if (input.isMain) {
+        await database.character.updateMany({
+          where: { memberId: input.memberId },
+          data: { isMain: false }
+        });
+      }
+      return database.character.create({
+        data: {
+          memberId: input.memberId,
+          name: input.name,
+          realm: input.realm,
+          className: input.className,
+          spec: input.spec ?? null,
+          level: input.level ?? null,
+          isMain: input.isMain
+        }
+      });
+    },
+
+    setProfession(characterId: string, profession: string, skillLevel: number) {
+      return database.professionSkill.upsert({
+        where: { characterId_profession: { characterId, profession } },
+        create: { characterId, profession, skillLevel },
+        update: { skillLevel }
+      });
+    },
+
+    getSettings(guildId: string) {
+      return database.guildSettings.findUnique({ where: { guildId } });
+    },
+
+    updateSettings(guildId: string, data: {
+      attendanceDkp?: number;
+      lateAttendanceDkp?: number;
+      bossKillDkp?: number;
+      minimumBid?: number;
+      bidIncrement?: number;
+      auctionDurationSec?: number;
+    }) {
+      return database.guildSettings.update({
+        where: { guildId },
+        data
+      });
+    }
+  };
+}

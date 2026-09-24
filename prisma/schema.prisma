@@ -1,0 +1,454 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum MembershipStatus {
+  ACTIVE
+  INACTIVE
+  TRIAL
+  LEFT
+}
+
+enum DkpTransactionType {
+  AWARD
+  DEDUCTION
+  ADJUSTMENT
+  REFUND
+  DECAY
+  IMPORT
+}
+
+enum EpgpTransactionType {
+  EP_AWARD
+  GP_AWARD
+  ITEM_AWARD
+  DEDUCTION
+  ADJUSTMENT
+  DECAY
+  IMPORT
+  REVERSAL
+}
+
+enum ReadinessStatus {
+  READY
+  PARTIAL
+  NOT_READY
+  UNKNOWN
+}
+
+enum ReadinessFindingSeverity {
+  INFO
+  WARNING
+  ERROR
+}
+
+enum AuditAction {
+  MEMBER_CREATED
+  MEMBER_UPDATED
+  DKP_TRANSACTION_CREATED
+  DKP_TRANSACTION_REVERSED
+  EPGP_TRANSACTION_CREATED
+  READINESS_SNAPSHOT_RECORDED
+  IMPORT_PREVIEWED
+  IMPORT_APPLIED
+  CONFIG_UPDATED
+}
+
+enum RaidStatus {
+  PLANNED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum RaidSignupStatus {
+  SIGNED_UP
+  CANCELLED
+}
+
+enum RaidAttendanceStatus {
+  PRESENT
+  LATE
+  ABSENT
+}
+
+enum RaidBossStatus {
+  PENDING
+  KILLED
+}
+
+enum AuctionStatus {
+  ACTIVE
+  CLOSED
+  CANCELLED
+}
+
+enum ApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  TRIAL
+}
+
+model Guild {
+  id               String            @id @default(cuid())
+  discordId        String            @unique
+  name             String
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  members          Member[]
+  transactions     DkpTransaction[]
+  epgpTransactions EpgpTransaction[]
+  auditLogs        AuditLog[]
+  imports          AddonImport[]
+  settings         GuildSettings?
+  raids            Raid[]
+  auctions         Auction[]
+  applications     Application[]
+  lootAwards       LootAward[]
+}
+
+model Member {
+  id                 String                       @id @default(cuid())
+  guildId            String
+  discordUserId      String
+  displayName        String
+  status             MembershipStatus             @default(ACTIVE)
+  createdAt          DateTime                     @default(now())
+  updatedAt          DateTime                     @updatedAt
+  guild              Guild                        @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  characters         Character[]
+  transactions       DkpTransaction[]
+  epgpTransactions   EpgpTransaction[]
+  readinessSnapshots InspectedCharacterSnapshot[]
+  raidSignups        RaidSignup[]
+  raidAttendance     RaidAttendance[]
+  bids               AuctionBid[]
+  lootAwards         LootAward[]
+  applications       Application[]
+
+  @@unique([guildId, discordUserId])
+  @@index([guildId, status])
+}
+
+model Character {
+  id                 String                       @id @default(cuid())
+  memberId           String
+  name               String
+  realm              String
+  className          String
+  spec               String?
+  level              Int?
+  isMain             Boolean                      @default(false)
+  createdAt          DateTime                     @default(now())
+  updatedAt          DateTime                     @updatedAt
+  member             Member                       @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  professions        ProfessionSkill[]
+  readinessSnapshots InspectedCharacterSnapshot[]
+
+  @@unique([realm, name])
+  @@index([memberId, isMain])
+}
+
+model ProfessionSkill {
+  id          String    @id @default(cuid())
+  characterId String
+  profession  String
+  skillLevel  Int
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@unique([characterId, profession])
+  @@index([profession, skillLevel])
+}
+
+model DkpTransaction {
+  id        String             @id @default(cuid())
+  guildId   String
+  memberId  String
+  amount    Int
+  type      DkpTransactionType
+  reason    String
+  sourceRef String?
+  createdBy String
+  createdAt DateTime           @default(now())
+  guild     Guild              @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  member    Member             @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([memberId, createdAt])
+  @@index([guildId, createdAt])
+}
+
+/// Append-only EPGP ledger. Corrections are represented by REVERSAL entries.
+model EpgpTransaction {
+  id        String              @id @default(cuid())
+  guildId   String
+  memberId  String
+  epAmount  Int                 @default(0)
+  gpAmount  Int                 @default(0)
+  type      EpgpTransactionType
+  reason    String
+  sourceRef String?
+  createdBy String
+  createdAt DateTime            @default(now())
+  guild     Guild               @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  member    Member              @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([memberId, createdAt])
+  @@index([guildId, createdAt])
+  @@index([guildId, sourceRef])
+}
+
+model Auction {
+  id           String        @id @default(cuid())
+  guildId      String
+  itemName     String
+  minimumBid   Int
+  bidIncrement Int
+  status       AuctionStatus @default(ACTIVE)
+  closesAt     DateTime
+  createdBy    String
+  closedAt     DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  guild        Guild         @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  bids         AuctionBid[]
+  lootAward    LootAward?
+
+  @@index([guildId, status])
+  @@index([guildId, closesAt])
+}
+
+model AuctionBid {
+  id        String   @id @default(cuid())
+  auctionId String
+  memberId  String
+  amount    Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  auction   Auction  @relation(fields: [auctionId], references: [id], onDelete: Cascade)
+  member    Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([auctionId, memberId])
+  @@index([auctionId, amount])
+}
+
+model LootAward {
+  id        String   @id @default(cuid())
+  guildId   String
+  auctionId String   @unique
+  memberId  String
+  itemName  String
+  amount    Int
+  awardedAt DateTime @default(now())
+  guild     Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  auction   Auction  @relation(fields: [auctionId], references: [id], onDelete: Cascade)
+  member    Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([guildId, awardedAt])
+  @@index([memberId, awardedAt])
+}
+
+model Application {
+  id           String            @id @default(cuid())
+  guildId      String
+  memberId     String
+  status       ApplicationStatus @default(PENDING)
+  character    String
+  className    String
+  spec         String
+  experience   String
+  availability String
+  notes        String?
+  reviewedBy   String?
+  reviewedAt   DateTime?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  guild        Guild             @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  member       Member            @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([guildId, status, createdAt])
+  @@index([memberId, createdAt])
+}
+
+model AuditLog {
+  id        String      @id @default(cuid())
+  guildId   String
+  actorId   String
+  action    AuditAction
+  entityId  String?
+  metadata  Json
+  createdAt DateTime    @default(now())
+  guild     Guild       @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@index([guildId, createdAt])
+}
+
+model AddonImport {
+  id        String   @id @default(cuid())
+  guildId   String
+  source    String
+  checksum  String
+  status    String
+  payload   Json
+  createdBy String
+  createdAt DateTime @default(now())
+  guild     Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@index([guildId, createdAt])
+}
+
+model GuildSettings {
+  id                     String   @id @default(cuid())
+  guildId                String   @unique
+  attendanceDkp          Int      @default(10)
+  lateAttendanceDkp      Int      @default(5)
+  bossKillDkp            Int      @default(5)
+  minimumBid             Int      @default(10)
+  bidIncrement           Int      @default(5)
+  auctionDurationSec     Int      @default(60)
+  epgpDecayPercent       Float    @default(0.1)
+  epgpDecayIntervalHours Int      @default(168)
+  epgpEnabled            Boolean  @default(true)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+  guild                  Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+}
+
+model InspectedCharacterSnapshot {
+  id          String                @id @default(cuid())
+  characterId String
+  memberId    String
+  inspectedAt DateTime              @default(now())
+  source      String
+  status      ReadinessStatus       @default(UNKNOWN)
+  itemLevel   Float?
+  rawPayload  Json?
+  character   Character             @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  member      Member                @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  items       CharacterItem[]
+  consumables CharacterConsumable[]
+  findings    ReadinessFinding[]
+
+  @@index([characterId, inspectedAt])
+  @@index([memberId, inspectedAt])
+}
+
+model CharacterItem {
+  id         String                     @id @default(cuid())
+  snapshotId String
+  slot       String
+  itemId     String?
+  itemName   String
+  itemLevel  Int?
+  durability Int?
+  snapshot   InspectedCharacterSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+  enchants   CharacterEnchant[]
+
+  @@unique([snapshotId, slot])
+  @@index([itemName])
+}
+
+model CharacterEnchant {
+  id        String        @id @default(cuid())
+  itemId    String
+  slot      String
+  enchantId String?
+  name      String
+  item      CharacterItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([itemId, slot])
+}
+
+model CharacterConsumable {
+  id         String                     @id @default(cuid())
+  snapshotId String
+  name       String
+  quantity   Int
+  category   String?
+  snapshot   InspectedCharacterSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+
+  @@unique([snapshotId, name])
+}
+
+model ReadinessFinding {
+  id         String                     @id @default(cuid())
+  snapshotId String
+  code       String
+  severity   ReadinessFindingSeverity
+  message    String
+  resolved   Boolean                    @default(false)
+  snapshot   InspectedCharacterSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+
+  @@index([snapshotId, severity])
+}
+
+model Raid {
+  id          String           @id @default(cuid())
+  guildId     String
+  title       String
+  description String?
+  scheduledAt DateTime
+  status      RaidStatus       @default(PLANNED)
+  createdBy   String
+  startedAt   DateTime?
+  endedAt     DateTime?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  guild       Guild            @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  signups     RaidSignup[]
+  attendance  RaidAttendance[]
+  bosses      RaidBoss[]
+
+  @@index([guildId, scheduledAt])
+  @@index([guildId, status])
+}
+
+model RaidSignup {
+  id          String           @id @default(cuid())
+  raidId      String
+  memberId    String
+  status      RaidSignupStatus @default(SIGNED_UP)
+  signedUpAt  DateTime         @default(now())
+  cancelledAt DateTime?
+  raid        Raid             @relation(fields: [raidId], references: [id], onDelete: Cascade)
+  member      Member           @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([raidId, memberId])
+  @@index([raidId, status])
+}
+
+model RaidAttendance {
+  id         String               @id @default(cuid())
+  raidId     String
+  memberId   String
+  status     RaidAttendanceStatus
+  recordedBy String
+  notes      String?
+  recordedAt DateTime             @default(now())
+  updatedAt  DateTime             @updatedAt
+  raid       Raid                 @relation(fields: [raidId], references: [id], onDelete: Cascade)
+  member     Member               @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([raidId, memberId])
+  @@index([raidId, status])
+}
+
+model RaidBoss {
+  id        String         @id @default(cuid())
+  raidId    String
+  name      String
+  sortOrder Int            @default(0)
+  status    RaidBossStatus @default(PENDING)
+  killedAt  DateTime?
+  raid      Raid           @relation(fields: [raidId], references: [id], onDelete: Cascade)
+
+  @@unique([raidId, name])
+  @@index([raidId, sortOrder])
+}
