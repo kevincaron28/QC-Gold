@@ -12,6 +12,10 @@ import { importApplyCommand } from "./import-apply.js";
 import { epgpCommand } from "./epgp.js";
 import { readinessCommand } from "./readiness.js";
 import { attunementCommand } from "./attunement.js";
+import { moderationCommand } from "./moderation.js";
+import { tagCommand } from "./tag.js";
+import { wishlistCommand } from "./wishlist.js";
+import { selfRolesCommand } from "./selfroles.js";
 
 export const commands = [
   healthCommand,
@@ -29,6 +33,10 @@ export const commands = [
   , epgpCommand
   , readinessCommand
   , attunementCommand
+  , moderationCommand
+  , tagCommand
+  , wishlistCommand
+  , selfRolesCommand
 ];
 
 const commandNames = commands.map((command) => command.name);

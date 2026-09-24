@@ -41,7 +41,19 @@ export const configCommand = new SlashCommandBuilder()
   .addSubcommand((sub) => sub.setName("raid-channel").setDescription("Set the channel raid signup embeds are posted and updated in.")
     .addChannelOption((o) => o.setName("channel").setDescription("Raid signup channel")
       .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
-    .addBooleanOption((o) => o.setName("disable").setDescription("Stop posting raid signup embeds")));
+    .addBooleanOption((o) => o.setName("disable").setDescription("Stop posting raid signup embeds")))
+  .addSubcommand((sub) => sub.setName("log-channel").setDescription("Set the channel that receives member join/leave and moderation logs.")
+    .addChannelOption((o) => o.setName("channel").setDescription("Log channel")
+      .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
+    .addBooleanOption((o) => o.setName("disable").setDescription("Stop logging")))
+  .addSubcommand((sub) => sub.setName("merit").setDescription("Rank /epgp leaderboard by PR x 30-day attendance instead of raw PR.")
+    .addBooleanOption((o) => o.setName("enabled").setDescription("Use merit ranking").setRequired(true)))
+  .addSubcommand((sub) => sub.setName("recruitment").setDescription("Schedule a recurring recruitment post.")
+    .addChannelOption((o) => o.setName("channel").setDescription("Channel to post in")
+      .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
+    .addStringOption((o) => o.setName("message").setDescription("What to post").setMaxLength(1500))
+    .addIntegerOption((o) => o.setName("interval_hours").setDescription("Hours between posts (1-720)").setMinValue(1).setMaxValue(720))
+    .addBooleanOption((o) => o.setName("disable").setDescription("Stop recruitment posts")));
 
 export async function executeConfig(interaction: ChatInputCommandInteraction): Promise<void> {
   const context = await requireGuildContext(interaction);
@@ -63,7 +75,11 @@ export async function executeConfig(interaction: ChatInputCommandInteraction): P
         `Farewell messages: ${settings.farewellChannelId ? `<#${settings.farewellChannelId}>` : "disabled"}`,
         `Applicant role: ${settings.applicantRoleId ? `<@&${settings.applicantRoleId}>` : "not set"}`,
         `Member role: ${settings.memberRoleId ? `<@&${settings.memberRoleId}>` : "not set"}`,
-        `Raid signup channel: ${settings.raidSignupChannelId ? `<#${settings.raidSignupChannelId}>` : "disabled"}`
+        `Raid signup channel: ${settings.raidSignupChannelId ? `<#${settings.raidSignupChannelId}>` : "disabled"}`,
+        `Log channel: ${settings.logChannelId ? `<#${settings.logChannelId}>` : "disabled"}`,
+        `Merit ranking: ${settings.meritEnabled ? "on" : "off"}`,
+        `Recruitment posts: ${settings.recruitmentChannelId && settings.recruitmentMessage && settings.recruitmentIntervalHours
+          ? `<#${settings.recruitmentChannelId}> every ${settings.recruitmentIntervalHours}h` : "disabled"}`
       ].join("\n"),
       ephemeral: true
     });
@@ -94,6 +110,46 @@ export async function executeConfig(interaction: ChatInputCommandInteraction): P
       ? { welcomeChannelId: channel.id, ...(message === null ? {} : { welcomeMessageTemplate: message }) }
       : { farewellChannelId: channel.id, ...(message === null ? {} : { farewellMessageTemplate: message }) });
     await interaction.reply({ content: `${subcommand === "welcome" ? "Welcome" : "Farewell"} messages will post in <#${channel.id}>.`, ephemeral: true });
+    return;
+  }
+
+  if (subcommand === "log-channel") {
+    if (interaction.options.getBoolean("disable")) {
+      await guildService.updateSettings(context.guildId, { logChannelId: null });
+      await interaction.reply({ content: "Logging disabled.", ephemeral: true });
+      return;
+    }
+    const channel = interaction.options.getChannel("channel");
+    if (!channel) throw new Error("Provide a channel, or use disable:true to turn logging off.");
+    await guildService.updateSettings(context.guildId, { logChannelId: channel.id });
+    await interaction.reply({ content: `Logs will post in <#${channel.id}>.`, ephemeral: true });
+    return;
+  }
+
+  if (subcommand === "merit") {
+    const enabled = interaction.options.getBoolean("enabled", true);
+    await guildService.updateSettings(context.guildId, { meritEnabled: enabled });
+    await interaction.reply({ content: `Merit ranking ${enabled ? "enabled" : "disabled"}. This only changes how /epgp leaderboard is ordered; the EPGP ledger is never touched.`, ephemeral: true });
+    return;
+  }
+
+  if (subcommand === "recruitment") {
+    if (interaction.options.getBoolean("disable")) {
+      await guildService.updateSettings(context.guildId, { recruitmentChannelId: null, recruitmentMessage: null, recruitmentIntervalHours: null, recruitmentLastPostedAt: null });
+      await interaction.reply({ content: "Recruitment posts disabled.", ephemeral: true });
+      return;
+    }
+    const channel = interaction.options.getChannel("channel");
+    const message = interaction.options.getString("message");
+    const hours = interaction.options.getInteger("interval_hours");
+    if (!channel || !message || !hours) throw new Error("Provide channel, message, and interval_hours together (or disable:true).");
+    await guildService.updateSettings(context.guildId, {
+      recruitmentChannelId: channel.id,
+      recruitmentMessage: message,
+      recruitmentIntervalHours: hours,
+      recruitmentLastPostedAt: null
+    });
+    await interaction.reply({ content: `Will post in <#${channel.id}> every ${hours}h while the bot is running (first post within ~10 minutes).`, ephemeral: true });
     return;
   }
 

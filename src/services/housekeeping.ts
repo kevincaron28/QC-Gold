@@ -24,10 +24,27 @@ export function renderTemplate(template: string, vars: TemplateVars): string {
     .replace(/\{membercount\}/g, String(vars.memberCount));
 }
 
+// Posts a plain-text line to the configured log channel, if any. Never pings
+// anyone and never throws: logging must not be able to break the action that
+// triggered it.
+export async function postToLogChannel(discordGuild: DiscordGuild, content: string): Promise<void> {
+  try {
+    const guild = await guildService.ensureGuild(discordGuild.id, discordGuild.name);
+    const settings = await guildService.getSettings(guild.id);
+    if (!settings?.logChannelId) return;
+    const channel = await discordGuild.channels.fetch(settings.logChannelId).catch(() => null);
+    if (!channel?.isTextBased()) return;
+    await channel.send({ content, allowedMentions: { parse: [] } });
+  } catch (error) {
+    console.error("Failed to post to log channel", error);
+  }
+}
+
 export async function handleMemberJoin(discordGuild: DiscordGuild, member: GuildMember): Promise<void> {
   const guild = await guildService.ensureGuild(discordGuild.id, discordGuild.name);
   const settings = await guildService.getSettings(guild.id);
   if (!settings) return;
+  await postToLogChannel(discordGuild, `Member joined: ${member.user.tag} (${member.id})`);
 
   if (settings.applicantRoleId) {
     await member.roles.add(settings.applicantRoleId).catch((error: unknown) => {
@@ -52,12 +69,13 @@ export async function handleMemberJoin(discordGuild: DiscordGuild, member: Guild
 export async function handleMemberLeave(discordGuild: DiscordGuild, member: GuildMember | PartialGuildMember): Promise<void> {
   const guild = await guildService.ensureGuild(discordGuild.id, discordGuild.name);
   const settings = await guildService.getSettings(guild.id);
+  const username = member.user?.username ?? "A member";
+  await postToLogChannel(discordGuild, `Member left: ${member.user?.tag ?? username} (${member.id})`);
   if (!settings?.farewellChannelId) return;
 
   const channel = await discordGuild.channels.fetch(settings.farewellChannelId).catch(() => null);
   if (!channel?.isTextBased()) return;
 
-  const username = member.user?.username ?? "A member";
   const text = renderTemplate(settings.farewellMessageTemplate ?? DEFAULT_FAREWELL_TEMPLATE, {
     mention: username,
     username,

@@ -85,6 +85,12 @@ export function createGuildService(database: PrismaClient) {
       applicantRoleId?: string | null;
       memberRoleId?: string | null;
       raidSignupChannelId?: string | null;
+      logChannelId?: string | null;
+      meritEnabled?: boolean;
+      recruitmentChannelId?: string | null;
+      recruitmentMessage?: string | null;
+      recruitmentIntervalHours?: number | null;
+      recruitmentLastPostedAt?: Date | null;
     }) {
       return database.guildSettings.update({
         where: { guildId },

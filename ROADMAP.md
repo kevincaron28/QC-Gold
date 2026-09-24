@@ -11,6 +11,53 @@ priority (P0 = do first) · **S/M/L** = rough size
 
 ---
 
+## ⏸ Paused here — resume next session (2026-09-24)
+
+Live-testing the bot + addon for the first time today. Session paused
+mid-troubleshoot to be picked up again later. **Read this before doing
+anything else:**
+
+- **Bot is confirmed working**: online in Discord, `/health` replies,
+  Server Members Intent enabled, companion API running. Nothing to redo
+  here.
+- **Addon is confirmed loading** (`[QuebecGold] Loaded.` on login, `/qg
+  help` works), but has an **unresolved live bug**: a "QuebecGold has been
+  blocked from an action only available to the Blizzard UI" popup occurs,
+  cause not yet identified.
+  - First fix attempt: removed the `OnUpdate`-based auto-sync ticker
+    (suspected taint source), moved the same logic into real event
+    handlers. **Did not resolve it** — popup still occurs.
+  - Built diagnostics into the addon itself to pin this down precisely:
+    hooks `ADDON_ACTION_BLOCKED`/`ADDON_ACTION_FORBIDDEN` (fire with the
+    exact addon + function name WoW blocked) and the global Lua error
+    handler, logged to `/qg diag`. **First version of this caught nothing**
+    on a confirmed reproduction — widened it (unfiltered Lua error capture,
+    added a `UI_ERROR_MESSAGE` fallback listener) since the narrow version
+    may have missed the actual signal.
+  - **Not yet confirmed**: whether the widened diagnostics build (latest
+    `Core.lua`, zip rebuilt via `npm run addon:zip` but not yet re-uploaded
+    to the GitHub release) catches anything on the next reproduction.
+  - **Still needed regardless of `/qg diag` results**: the exact moment the
+    popup occurs (login? moving? a specific command?) — not pinned down
+    yet, would narrow this dramatically.
+  - **Fallback if `/qg diag` stays empty again**: WoW's own
+    `/console scriptErrors 1` shows a full Lua stack-trace popup for any
+    script error, independent of whatever this addon's own hooks catch —
+    reach for this next if the custom diagnostics don't produce a lead.
+- **Live test script is otherwise un-started past this point** — see
+  `LUNCH_TEST_CHECKLIST.md` for the exact checklist and current checkbox
+  state (raid signups, housekeeping, casino are all still untested).
+- **Not committed**: the widened-diagnostics change to `Core.lua` and the
+  rebuilt `dist/QuebecGold-v1.1.0.zip` are sitting uncommitted locally.
+  Nobody has asked for a commit since the last one (`576eff4`).
+- **Added while the WoW servers were down (2026-09-24):** all the bot-side
+  roadmap items — see Phase 11 in the phase list below. New migration
+  `20260924211657_bot_tools_tags_wishlist_moderation_merit_recruitment`
+  already applied to the live Neon database (additive only). 58 tests,
+  `tsc` and `eslint` clean. None of it has run against live Discord yet.
+
+---
+
 ## Status snapshot (2026-09-24)
 
 - Part 1 (correctness audit): **all 12 items fixed and verified.** `tsc`
@@ -91,8 +138,45 @@ this is the condensed version now that everything's fixed.
 - [x] `npx tsc --noEmit` clean · `npx vitest run` 22/22 passing (added
   regression tests for the loot-bid deadlock and the new EPGP/readiness
   schemas) · `npx eslint .` clean. (2026-09-24)
-- [ ] **Still outstanding:** manual end-to-end run on a real Discord test
-  server + WoW client. Nothing above substitutes for this. Suggested script:
+- [~] **Live end-to-end test — in progress 2026-09-24 (first real run).**
+  Findings so far, in case a session gets interrupted mid-test:
+  - **Bot login required Server Members Intent to be manually enabled** in
+    the Discord Developer Portal (Bot tab → Privileged Gateway Intents) —
+    expected per the Phase 8 writeup, confirmed as a real hard blocker: the
+    bot could not log in at all without it (`Error: Used disallowed
+    intents`). Fixed by enabling it; bot now logs in successfully.
+  - **Discord "Application Name" vs. bot "Username" are two independent
+    fields.** Renaming the application in Developer Portal → General
+    Information does not rename the bot's actual Discord username — that's
+    a separate field on the Bot tab. Caused confusion when the bot logged
+    in showing its old name after the app was renamed to "Thrall."
+  - **Found a real WoW addon bug on first live run:** "QuebecGold has been
+    blocked from an action only available to the Blizzard UI" popup on
+    login. Leading suspect was the `OnUpdate`-based auto-sync ticker added
+    in Phase 10 (per-frame polling is a common WoW "taint" source) — removed
+    it entirely and moved the same debounced sync logic directly into real
+    event handlers (`PLAYER_ENTERING_WORLD`, `UNIT_INVENTORY_CHANGED`,
+    `GROUP_ROSTER_UPDATE`) instead. **Still occurred after that fix**,
+    meaning the `OnUpdate` ticker either wasn't the (sole) cause or there's
+    a second issue — not yet confirmed which, since the popup itself never
+    names the actual blocked function.
+  - **Built a diagnostics tool specifically to stop guessing at this
+    class of bug** (`Core.lua`): hooks `ADDON_ACTION_BLOCKED`/
+    `ADDON_ACTION_FORBIDDEN` (the events WoW fires with the *exact* addon
+    and function name it refused to call — normally invisible unless
+    something listens for them) and the global Lua error handler (filtered
+    to errors mentioning this addon), logs both into
+    `QuebecGoldDB.diagnostics` and prints immediately to chat, and exposes
+    `/qg diag` to review the last 25 entries. **Next step once retested:**
+    reproduce the popup with this build installed, read what `/qg diag` (or
+    the immediate chat line) actually names as the blocked function, and
+    fix that specifically instead of guessing again.
+  - Not yet reached: the rest of the test script below (raid/EPGP/loot/
+    companion-import flow) — blocked on getting the addon fully stable
+    first.
+
+Original suggested script, still the plan once the addon issue above is
+resolved:
   - Two test Discord accounts, one with only "Officer", one with only
     "Raid Leader" — confirm the new permission inheritance behaves as
     intended in real Discord, not just in unit tests.
@@ -194,10 +278,16 @@ in the existing one.
   `inspectReadiness()` now also broadcasts a compact digest (status,
   missing-gear count, lowest durability, professions) to the `GUILD` channel
   automatically on `PLAYER_ENTERING_WORLD`, on `UNIT_INVENTORY_CHANGED`
-  (debounced 5s), and every 10 minutes while in a raid — see the new
-  auto-sync scaffolding (`requestAutoSync`/`performPendingAutoSync`, a
-  1-second `OnUpdate` accumulator instead of `C_Timer`, which isn't
-  guaranteed on this client) in `QuebecGold.lua`. Every other online
+  (debounced 5s), and on `GROUP_ROSTER_UPDATE` while in a raid (throttled to
+  once per 10 min) — see `maybeAutoSync()` in `Core.lua`. **Revised
+  2026-09-24 during live testing:** this originally used a per-frame
+  `OnUpdate` accumulator instead of these events directly; removed it after
+  hitting a real "blocked from an action only available to the Blizzard UI"
+  popup on first live run, since `OnUpdate` polling is a common source of
+  WoW's taint bugs. Moved the exact same debounce logic into the real event
+  handlers instead — see the live-test findings in Part 1's Verification
+  section for the ongoing diagnosis (the popup recurred even after this
+  fix, so it isn't confirmed as the sole cause yet). Every other online
   client's addon receives these and stores them in `db.peerRoster`, keyed by
   character; `/qg export` now includes `peerRoster`, and
   `companion/lua-export.mjs` folds it into synthesized readiness entries
@@ -229,10 +319,37 @@ in the existing one.
   "signed up but didn't show" vs. "showed but didn't sign up" — the officer
   `/qg attendance` command stays as a manual override on top, not a
   replacement.
-- [ ] **P2 / S — Wishlist / soft-reserve.** Let members flag interest in
-  specific upcoming items (`/qg wishlist add <item>`) so the `/loot
-  auction` UI can show "X people want this" context, Gargul-style. Purely
-  informational — doesn't change how loot is awarded.
+- [x] **P0 / S — Built-in diagnostics for the addon itself.** *(Added
+  2026-09-24, unplanned — came out of live-testing the addon for the first
+  time and hitting an unexplained blocked-action popup with no way to see
+  which function caused it.)* `Core.lua` now hooks
+  `ADDON_ACTION_BLOCKED`/`ADDON_ACTION_FORBIDDEN` (fire with the exact addon
+  and function name WoW refused to call — otherwise invisible unless
+  something listens for them) and the global Lua error handler (filtered to
+  errors mentioning this addon), logs both to `QuebecGoldDB.diagnostics`
+  (last 25, also included in `/qg export`), and prints immediately to chat.
+  New `/qg diag` command reviews recent entries. This is a permanent
+  addition, not a one-off debugging hack — it's the addon's only way to
+  surface this class of bug without installing a separate error-display
+  addon like BugSack.
+- [ ] **P2 / M — Minimap button with a quick-access menu.** Requested
+  2026-09-24 ("we need an addon button in wow to quickly access the
+  interface and use all the tools"). A small draggable minimap icon with a
+  right-click dropdown covering the main `/qg` actions (inspect, attune,
+  casino games, raid status, diag) so members don't need to remember slash
+  command syntax. No external library needed (a hand-rolled draggable
+  button is straightforward); deliberately not built yet — held off adding
+  more addon UI/frame code while a live frame-related bug was still being
+  chased in the same session. Pick this up once the addon is confirmed
+  stable in real play.
+- [~] **P2 / S — Wishlist / soft-reserve.** *(Bot side done 2026-09-24;
+  in-game addon side not built.)* `/wishlist add|remove|list|item` on the
+  bot (new `WishlistEntry` table, case/space-insensitive item matching,
+  priority 1-3), and `/loot auction` now notes how many raiders wishlisted
+  the item. Purely informational — doesn't change how loot is awarded.
+  Remaining: an in-game `/qg wishlist` command and syncing addon wishlists
+  through the import pipeline — addon work, untestable while the servers
+  are down and the addon has an open bug.
 - [ ] **P2 / M — Buff/cooldown coverage check.** Extend `/qg inspect`-style
   reporting to a raid-wide view: which raid buffs/consumable categories are
   covered vs. missing across the current roster. Officer-only, informational.
@@ -257,14 +374,21 @@ in the existing one.
   `tankLimit`/`healerLimit`/`dpsLimit`/`signupChannelId`/`signupMessageId`
   to `Raid`, `role` to `RaidSignup` defaulting to `DPS` for existing rows,
   `raidSignupChannelId` to `GuildSettings` — all additive, applied live).
-- [ ] **P1 / M — Merit-style transparent priority score.** Optional
-  guild-level toggle to blend attendance% and readiness/audit pass rate into
-  the EPGP priority display (not the underlying EP/GP ledger, just the
-  displayed ranking) — same goal as RCLootCouncil-Merit: reduce perceived
-  bias/drama around loot order.
-- [ ] **P2 / S — Scheduled recruitment auto-post.** Officer-configured
-  interval + channel + message, posted automatically (Guild OS's
-  auto-recruit-popup, Discord-side equivalent).
+- [x] **P1 / M — Merit-style transparent priority score.** *(Done
+  2026-09-24.)* `/epgp leaderboard` now shows 30-day attendance (Present =
+  1, Late = 0.5, from `/raid attendance` records on COMPLETED raids), and
+  `/config merit enabled:true` orders it by PR x attendance instead of raw
+  PR. Display only — the ledger is never touched. Deliberately simple and
+  fully visible (formula is in the embed footer) rather than a hidden
+  score. Readiness pass rate was *not* blended in: it would make the score
+  depend on addon data that isn't reliably flowing yet. Caveat: attendance
+  only counts what officers recorded, so members with no records show 0%.
+- [x] **P2 / S — Scheduled recruitment auto-post.** *(Done 2026-09-24.)*
+  `/config recruitment channel message interval_hours`, checked every 10
+  minutes from `main.ts` while the bot is running (`runRecruitmentPosts` in
+  `src/services/recruitment.ts`). Because the bot runs from a PC that isn't
+  always on, a missed window posts on the next check — it never queues
+  catch-up posts. Posts never ping anyone.
 
 ### C. Discord housekeeping (Carl-bot parity)
 
@@ -295,24 +419,34 @@ Ordered so each item either stands alone or builds on the previous one.
   `farewellMessageTemplate`, `applicantRoleId`, `memberRoleId` to
   `GuildSettings`, all nullable — additive, already applied to the live
   Neon database).
-- [ ] **P1 / M — Moderation basics + unified audit log.** `/warn`, `/mute`,
-  `/kick`, `/ban` with reason logging. Extend the *existing* `AuditLog`
-  Prisma model and `AuditAction` enum (already used for DKP/EPGP/config/
-  import actions) with Discord-moderation actions instead of building a
-  parallel logging system — gives Quebec Gold a single unified audit trail
-  spanning guild-management AND Discord moderation, which is a genuine edge
-  over Carl-bot (whose logs live only in Discord).
-- [ ] **P1 / M — Reaction roles.** Class/spec self-select, raid-day
-  availability, notification opt-in roles. Standard Carl-bot-equivalent
-  feature; needed for people to consider dropping Carl-bot entirely rather
-  than running both.
-- [ ] **P2 / S — Message edit/delete + join/leave logging channel.**
-  Passive logging feed, Carl-bot-equivalent. Straightforward once the
-  audit-log extension above exists — same sink, different event source.
-- [ ] **P2 / S — Custom commands/tags.** Officer-defined text snippets
-  (e.g. `!raidrules`, `!consumables`). Low complexity, low priority.
+- [x] **P1 / M — Moderation basics + unified audit log.** *(Done
+  2026-09-24.)* `/mod warn|timeout|kick|ban|history` (officers). Extended the
+  existing `AuditAction` enum with `MODERATION_*` values, so moderation
+  lands in the same `AuditLog` as EPGP/config/import actions; `history`
+  reads it back per member. Refuses up front per Discord's role hierarchy
+  (`hierarchyError`, unit-tested) and requires a reason. Bans work on users
+  who already left. Uses slash commands rather than `/warn` etc. as
+  top-level names, to keep the command list tidy.
+- [x] **P1 / M — Reaction roles.** *(Done 2026-09-24, as buttons.)*
+  `/selfroles` posts a panel of buttons that toggle roles. Chose buttons over
+  emoji reactions: they need no extra gateway intents or partials, and the
+  button's custom id carries the role so no database table is needed. Roles
+  with moderation/management permissions, managed roles, and @everyone are
+  refused (`selfRoleProblem`), re-checked on every press in case the role
+  changed after the panel was posted.
+- [~] **P2 / S — Message edit/delete + join/leave logging channel.**
+  *(Partly done 2026-09-24.)* `/config log-channel` receives member
+  joins/leaves and every `/mod` action. **Not built: message edit/delete
+  logs** — Discord only includes message content for those events with the
+  privileged Message Content intent, which would need another Developer
+  Portal toggle and an intent request. Worth it only if the guild asks.
+- [x] **P2 / S — Custom commands/tags.** *(Done 2026-09-24, as slash
+  commands.)* `/tag show|list|set|delete`; officers write, everyone reads.
+  Tag text is posted with mentions disabled. A `!prefix` command style would
+  need the Message Content intent, so slash commands it is.
 - [ ] **P3 / S — Starboard.** Fun/engagement feature, not core to guild
-  management. Backlog — do last, if at all.
+  management. Would need message-reaction intents. Backlog — do last, if at
+  all.
 
 ### Open questions to resolve before implementation starts
 
@@ -386,9 +520,17 @@ guild before picking up Part 2 work:
   `SendAddonMessage` behavior under real raid load) has not been run in the
   actual game, only reasoned through and, for the companion-watcher half,
   verified against a realistic fixture.
-- [ ] **Phase 11:** Remaining P1/P2 items (Merit-style transparent priority
-  score on top of the existing GP-auction EPGP ledger, moderation/audit log
-  unification, reaction roles, recruitment auto-post, wishlist, buff
-  coverage) in whatever order matches guild demand at the time. No loot
-  council work — that's fully out of scope now, not just deprioritized.
-- [ ] **Backlog:** Custom commands, starboard.
+- [~] **Phase 11:** Remaining P1/P2 items. **All bot-side items done
+  2026-09-24** while the WoW servers were down (Merit-style score,
+  moderation + unified audit log, self-role buttons, log channel, tags,
+  wishlist bot-side, recruitment auto-post) — unit-tested but **not yet run
+  against live Discord**, so the first real test still needs doing: `/mod`
+  against a real member, a `/selfroles` panel press, a `/config recruitment`
+  post, and `/tag`. **Still open, all addon-side and deliberately not
+  started** (can't be exercised without a live client, and the addon has an
+  unresolved live bug): attendance from raid presence, buff/cooldown
+  coverage, the in-game half of the wishlist, and the minimap button. No
+  loot council work — that's fully out of scope, not just deprioritized.
+- [ ] **Backlog:** Starboard; message edit/delete logging (both need extra
+  privileged/reaction intents); anything from the Warcraft Logs/dashboard
+  discussion (held until it's confirmed WoW Forever logs upload to WCL).

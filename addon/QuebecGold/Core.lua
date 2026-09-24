@@ -52,6 +52,10 @@ local function ensureDb()
   end
   db.readiness = db.readiness or {}
   db.attunements = db.attunements or {}
+  -- Diagnostics: blocked-action reports (ADDON_ACTION_BLOCKED/FORBIDDEN,
+  -- which name the exact function WoW refused to let an addon call) and
+  -- captured Lua errors that mention this addon. See /qg diag.
+  db.diagnostics = db.diagnostics or {}
   -- Roster digests broadcast by other guildmates' clients (gear/profession
   -- summary only, not full detail) so one officer's export can carry the
   -- whole online guild's readiness picture, not just their own.
@@ -65,6 +69,34 @@ local function logEvent(kind, payload)
   table.insert(db.events, {
     at = now(), kind = kind, player = playerName(), data = payload
   })
+end
+
+-- Records a diagnostic entry (blocked action or captured Lua error) so it
+-- survives past the moment it happened -- the in-game popup for a blocked
+-- action disappears without saying which function was blocked, and a
+-- regular Lua error can scroll off before anyone reads it. /qg diag prints
+-- the last few of these.
+local function logDiagnostic(kind, detail)
+  if not db then return end
+  db.diagnostics = db.diagnostics or {}
+  table.insert(db.diagnostics, { at = now(), kind = kind, detail = detail })
+  while #db.diagnostics > 25 do table.remove(db.diagnostics, 1) end
+  message("|cffff5555[Diagnostic]|r " .. kind .. ": " .. detail .. " (see /qg diag)")
+end
+
+-- Captures every Lua error while this diagnostic build is installed --
+-- intentionally unfiltered for now (not just errors mentioning this addon),
+-- since the ADDON_ACTION_BLOCKED/FORBIDDEN hook below caught nothing on a
+-- reproduction that definitely happened, meaning either this isn't a taint
+-- error at all or the real error text doesn't name this addon. Chains to
+-- whatever error handler was already set so this never suppresses another
+-- addon's own error reporting.
+local previousErrorHandler = geterrorhandler and geterrorhandler()
+if seterrorhandler then
+  seterrorhandler(function(err)
+    logDiagnostic("LUA_ERROR", tostring(err))
+    if previousErrorHandler then return previousErrorHandler(err) end
+  end)
 end
 
 local function isOfficer()
@@ -248,18 +280,16 @@ local function setAttunement(name, key, completed)
 end
 
 -- Automatic sync: re-run inspectReadiness (silently, broadcasting to GUILD)
--- on login, on gear changes, and periodically while raiding, instead of
--- requiring everyone to run /qg inspect manually. Debounced through a
--- frame-based accumulator rather than C_Timer, which doesn't reliably exist
--- on every client this addon targets.
-local pendingAutoSync = false
+-- on login, on gear changes, and when the raid roster changes, instead of
+-- requiring everyone to run /qg inspect manually. Deliberately event-driven
+-- only (no OnUpdate ticker): a per-frame polling script is one of the most
+-- common sources of WoW's "taint" bugs, where code running outside a normal
+-- event handler contaminates whatever the game engine runs immediately
+-- after it, and an unrelated Blizzard UI action gets blocked and blamed on
+-- this addon. Every trigger below fires from a real Blizzard event instead.
 local lastAutoSyncAt = 0
 local AUTO_SYNC_DEBOUNCE_SECONDS = 5
 local AUTO_SYNC_RAID_INTERVAL_SECONDS = 600
-
-local function requestAutoSync()
-  pendingAutoSync = true
-end
 
 local function inRaidGroup()
   if IsInRaid then return IsInRaid() end
@@ -267,18 +297,11 @@ local function inRaidGroup()
   return false
 end
 
-local function performPendingAutoSync()
+local function maybeAutoSync(minInterval)
   local nowTime = time()
-  if pendingAutoSync and (nowTime - lastAutoSyncAt) >= AUTO_SYNC_DEBOUNCE_SECONDS then
-    pendingAutoSync = false
-    lastAutoSyncAt = nowTime
-    inspectReadiness(true, "GUILD")
-    return
-  end
-  if inRaidGroup() and (nowTime - lastAutoSyncAt) >= AUTO_SYNC_RAID_INTERVAL_SECONDS then
-    lastAutoSyncAt = nowTime
-    inspectReadiness(true, "GUILD")
-  end
+  if (nowTime - lastAutoSyncAt) < minInterval then return end
+  lastAutoSyncAt = nowTime
+  inspectReadiness(true, "GUILD")
 end
 
 local function recordLoot(name, item, cost)
@@ -298,7 +321,7 @@ local function exportData()
     roster = db.roster, raids = db.raids, attendance = db.attendance,
     bosses = db.bosses, epgp = db.epgp, readiness = db.readiness,
     attunements = db.attunements, peerRoster = db.peerRoster,
-    loot = db.loot, events = db.events
+    diagnostics = db.diagnostics, loot = db.loot, events = db.events
   }
   message("Export saved in QuebecGoldDB.exports[" .. key .. "]. Copy it from SavedVariables.")
 end
@@ -308,6 +331,7 @@ local function showHelp()
   message("/qg award <name> <amount> [reason] | gp <name> <amount> [reason] | deduct <name> <amount> [reason]")
   message("/qg loot <name> <item> [cost] | inspect | export | status | roster")
   message("/qg attune <key> [clear] | attune <player> <key> [clear]")
+  message("/qg diag - show recent blocked-action reports and captured Lua errors")
   message("Readiness (gear/profession summary) auto-syncs to the guild on login, gear changes, and every 10 min while raiding.")
   if next(ns.commandHelp or {}) then
     for _, line in pairs(ns.commandHelp) do message(line) end
@@ -354,6 +378,17 @@ local function command(text)
     end
   elseif action == "inspect" then inspectReadiness()
   elseif action == "export" then if requireOfficer() then exportData() end
+  elseif action == "diag" then
+    local entries = db.diagnostics or {}
+    if #entries == 0 then
+      message("No diagnostics recorded this session.")
+    else
+      message(string.format("Last %d diagnostic(s):", math.min(5, #entries)))
+      for i = math.max(1, #entries - 4), #entries do
+        local entry = entries[i]
+        message(entry.at .. " [" .. entry.kind .. "] " .. entry.detail)
+      end
+    end
   elseif ns.commandHandlers[action] then
     -- args[1] is the action itself; hand the module the remaining tokens.
     table.remove(args, 1)
@@ -387,10 +422,12 @@ local function onEvent(_, event, ...)
   elseif not db then
     ensureDb()
   elseif event == "PLAYER_ENTERING_WORLD" then
-    requestAutoSync()
+    maybeAutoSync(AUTO_SYNC_DEBOUNCE_SECONDS)
   elseif event == "UNIT_INVENTORY_CHANGED" then
     local unit = ...
-    if unit == "player" then requestAutoSync() end
+    if unit == "player" then maybeAutoSync(AUTO_SYNC_DEBOUNCE_SECONDS) end
+  elseif event == "GROUP_ROSTER_UPDATE" then
+    if inRaidGroup() then maybeAutoSync(AUTO_SYNC_RAID_INTERVAL_SECONDS) end
   elseif event == "GUILD_ROSTER_UPDATE" then
     local count = GetNumGuildMembers and GetNumGuildMembers() or 0
     db.lastRosterUpdate = now()
@@ -411,6 +448,22 @@ local function onEvent(_, event, ...)
       logEvent("ADDON_MESSAGE", { text = text, channel = channel, sender = sender })
       handlePeerReadiness(text, sender)
     end
+  elseif event == "ADDON_ACTION_BLOCKED" or event == "ADDON_ACTION_FORBIDDEN" then
+    -- Fires with the exact addon and function name WoW refused to let run --
+    -- this is the precise diagnostic the "blocked from an action only
+    -- available to the Blizzard UI" popup itself doesn't show you.
+    local blockedAddon, blockedFunction = ...
+    logDiagnostic(event, string.format("%s tried to call %s", tostring(blockedAddon), tostring(blockedFunction)))
+  elseif event == "UI_ERROR_MESSAGE" then
+    -- Fallback net in case the blocked-action popup surfaces as a generic UI
+    -- error toast instead of ADDON_ACTION_BLOCKED/FORBIDDEN -- log it only
+    -- when it looks relevant, since this event also fires constantly for
+    -- ordinary gameplay ("not enough mana", etc.).
+    local errorType, errorText = ...
+    local text = tostring(errorText or errorType or "")
+    if string.find(string.lower(text), "block") or string.find(string.lower(text), "forbidden") or string.find(string.lower(text), "addon") then
+      logDiagnostic("UI_ERROR_MESSAGE", text)
+    end
   end
 end
 
@@ -418,20 +471,15 @@ local frame = CreateFrame("Frame")
 frame:RegisterEvent("PLAYER_LOGIN")
 frame:RegisterEvent("PLAYER_ENTERING_WORLD")
 frame:RegisterEvent("UNIT_INVENTORY_CHANGED")
+frame:RegisterEvent("GROUP_ROSTER_UPDATE")
 frame:RegisterEvent("GUILD_ROSTER_UPDATE")
 frame:RegisterEvent("CHAT_MSG_LOOT")
 frame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
 frame:RegisterEvent("CHAT_MSG_ADDON")
+frame:RegisterEvent("ADDON_ACTION_BLOCKED")
+frame:RegisterEvent("ADDON_ACTION_FORBIDDEN")
+frame:RegisterEvent("UI_ERROR_MESSAGE")
 frame:SetScript("OnEvent", onEvent)
-
-local autoSyncElapsed = 0
-frame:SetScript("OnUpdate", function(_, elapsed)
-  if not db then return end
-  autoSyncElapsed = autoSyncElapsed + elapsed
-  if autoSyncElapsed < 1 then return end
-  autoSyncElapsed = 0
-  performPendingAutoSync()
-end)
 
 SLASH_QUEBECGOLD1 = "/qg"
 SlashCmdList["QUEBECGOLD"] = command

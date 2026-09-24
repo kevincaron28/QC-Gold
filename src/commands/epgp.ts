@@ -2,10 +2,12 @@ import { EmbedBuilder, SlashCommandBuilder, type ChatInputCommandInteraction } f
 import { prisma } from "../database.js";
 import { createAuditService } from "../services/audit.js";
 import { createEpgpService } from "../services/epgp.js";
+import { createMeritService, meritScore } from "../services/merit.js";
 import { hasPermission } from "../permissions.js";
 import { guildService, requireGuildContext } from "./context.js";
 
 const epgpService = createEpgpService(prisma);
+const meritService = createMeritService(prisma);
 const auditService = createAuditService(prisma);
 
 export const epgpCommand = new SlashCommandBuilder()
@@ -49,10 +51,19 @@ export async function executeEpgp(interaction: ChatInputCommandInteraction): Pro
   if (subcommand === "leaderboard") {
     const members = await prisma.member.findMany({ where: { guildId: context.guildId, status: "ACTIVE" }, orderBy: { displayName: "asc" } });
     const rows = await Promise.all(members.map(async (member) => ({ member, standing: await epgpService.getStanding(member.id) })));
-    rows.sort((a, b) => b.standing.pr - a.standing.pr);
+    const settings = await guildService.getSettings(context.guildId);
+    const merit = settings?.meritEnabled === true;
+    const rates = await meritService.getAttendanceRates(context.guildId);
+    const scored = rows.map((row) => {
+      const rate = rates.get(row.member.id) ?? 0;
+      return { ...row, rate, score: merit ? meritScore(row.standing.pr, rate) : row.standing.pr };
+    });
+    scored.sort((a, b) => b.score - a.score);
     await interaction.reply({ embeds: [new EmbedBuilder().setTitle("⚜️ Quebec Gold EPGP").setDescription(
-      rows.length ? rows.map((row, i) => `${i + 1}. ${row.member.displayName} — EP ${row.standing.ep} | GP ${row.standing.gp} | PR ${row.standing.pr.toFixed(3)}`).join("\n") : "No EPGP recorded."
-    )] });
+      scored.length
+        ? scored.map((row, i) => `${i + 1}. ${row.member.displayName} - EP ${row.standing.ep} | GP ${row.standing.gp} | PR ${row.standing.pr.toFixed(3)} | Att ${Math.round(row.rate * 100)}%${merit ? ` | Merit ${row.score.toFixed(3)}` : ""}`).join("\n")
+        : "No EPGP recorded."
+    ).setFooter({ text: merit ? "Ranked by merit = PR x attendance over the last 30 days. Ledger is unaffected." : "Att = attendance over the last 30 days (Present = 1, Late = 0.5)." })] });
     return;
   }
   if (!officer(interaction)) {

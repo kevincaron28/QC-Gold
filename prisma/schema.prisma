@@ -57,6 +57,10 @@ enum AuditAction {
   IMPORT_PREVIEWED
   IMPORT_APPLIED
   CONFIG_UPDATED
+  MODERATION_WARN
+  MODERATION_TIMEOUT
+  MODERATION_KICK
+  MODERATION_BAN
 }
 
 enum RaidStatus {
@@ -117,6 +121,7 @@ model Guild {
   auctions         Auction[]
   applications     Application[]
   lootAwards       LootAward[]
+  tags             Tag[]
 }
 
 model Member {
@@ -156,6 +161,7 @@ model Character {
   member             Member                       @relation(fields: [memberId], references: [id], onDelete: Cascade)
   professions        ProfessionSkill[]
   attunements        CharacterAttunement[]
+  wishlist           WishlistEntry[]
   readinessSnapshots InspectedCharacterSnapshot[]
 
   @@unique([realm, name])
@@ -345,6 +351,12 @@ model GuildSettings {
   applicantRoleId        String?
   memberRoleId           String?
   raidSignupChannelId    String?
+  logChannelId           String?
+  meritEnabled           Boolean  @default(false)
+  recruitmentChannelId   String?
+  recruitmentMessage     String?
+  recruitmentIntervalHours Int?
+  recruitmentLastPostedAt DateTime?
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
   guild                  Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
@@ -486,4 +498,30 @@ model RaidBoss {
 
   @@unique([raidId, name])
   @@index([raidId, sortOrder])
+}
+
+model Tag {
+  id        String   @id @default(cuid())
+  guildId   String
+  name      String
+  content   String
+  createdBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  guild     Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@unique([guildId, name])
+}
+
+model WishlistEntry {
+  id          String    @id @default(cuid())
+  characterId String
+  itemKey     String
+  itemName    String
+  priority    Int       @default(2)
+  createdAt   DateTime  @default(now())
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@unique([characterId, itemKey])
+  @@index([itemKey])
 }

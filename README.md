@@ -80,6 +80,22 @@ Phase 10 adds:
 - `/attunement set` and `/attunement list` for self-service attunement tracking per character
 - The addon's `/qg inspect` now also captures known professions and skill levels; `/qg attune` records attunement completion in-game (self or officer-for-other)
 - The addon import pipeline now applies profession and attunement data from an addon export into the same `/profession` and `/attunement` records the Discord commands use — no separate view is needed for addon-synced data
+- The addon now auto-broadcasts a compact readiness/profession digest to the whole online guild (login, gear changes, every 10 min while raiding), which every other online client accumulates into its own `peerRoster` table — one officer's `/qg export` can carry a readiness picture for the whole online guild, not just themselves. See `addon/QuebecGold/README.md` for details.
+- Fixed a critical bug in `companion/lua-export.mjs`'s Lua decoder that would have broken every real addon import: it read WoW's actual array serialization (`{ [1] = a, [2] = b }`) as an object instead of an array, and empty tables as `{}` instead of `[]`
+
+Not part of the roadmap, but added the same day: the WoW addon was restructured from a single `QuebecGold.lua` file into `Core.lua` + `Modules/`, and a `Modules/Casino.lua` module was added with six `/roll`-driven gambling minigames and their own gold ledger (`/qg casino ...`) — entirely separate from the EPGP/DKP system by design. See `addon/QuebecGold/Modules/README.md`.
+
+Phase 11 adds (bot-side only, no addon changes):
+
+- `/mod warn|timeout|kick|ban|history` (officers): enforces Discord's role hierarchy up front, requires a reason, and writes every action to the same audit log as EPGP/config changes so there's one unified trail
+- `/config log-channel`: member join/leave and every moderation action are posted to a log channel (no pings)
+- `/selfroles`: officers post a panel of buttons members press to toggle roles. Roles with moderation/management permissions are refused, and re-checked on every press
+- `/tag show|list|set|delete`: saved text snippets (raid rules, consumable lists); tag text never pings anyone
+- `/wishlist add|remove|list|item`: per-character item wishlists with priority; `/wishlist item` shows who wants something, and `/loot auction` notes how many raiders wishlisted the item
+- `/epgp leaderboard` now shows 30-day attendance (Present = 1, Late = 0.5); `/config merit enabled:true` orders it by PR x attendance instead of raw PR (display only, the ledger is never touched)
+- `/config recruitment`: a recurring recruitment post on an interval. It only fires while the bot process is running (checked every 10 minutes), so a missed window posts on the next check
+
+Deliberately not built: message edit/delete logging (needs the privileged Message Content intent) and a starboard (needs message-reaction intents). Reaction roles were implemented as buttons instead, which need no extra intents. `/mod` needs the bot to have Kick Members, Ban Members, and Moderate Members (the current Administrator invite already covers this).
 
 ## Requirements
 
@@ -158,6 +174,16 @@ Commands are registered against `DISCORD_GUILD_ID` in development. A production 
 /config welcome channel:#welcome message:"Welcome {mention} to {guild}! Run /apply to get started."
 /config farewell channel:#member-log
 /config roles applicant:@Applicant member:@Member
+/config log-channel channel:#mod-log
+/config merit enabled:true
+/config recruitment channel:#recruitment message:"Quebec Gold is recruiting! Apply with /apply" interval_hours:72
+/mod timeout player:@Someone duration:30m reason:"Spamming"
+/mod history player:@Someone
+/selfroles title:"Pick your roles" role1:@Tank role2:@Healer role3:@DPS
+/tag set name:consumables content:"Flask, food buff, and potions for every boss."
+/tag show name:consumables
+/wishlist add character:Kevin item:"Thunderfury, Blessed Blade of the Windseeker" priority:1
+/wishlist item item:"Thunderfury, Blessed Blade of the Windseeker"
 /loot history
 /apply character:Kevin class:Priest spec:Shadow experience:"MC and BWL" availability:"Saturday evenings"
 /application list status:PENDING
@@ -227,3 +253,33 @@ npm.cmd run companion:watch
 The local API listens only on `127.0.0.1:8787`, so it is not exposed to the
 internet and does not require port forwarding. Keep the PC awake while the bot
 is needed. The Neon database remains online even when the bot is stopped.
+
+## Releasing the addon to guild members
+
+Guild members install the WoW addon from a zip attached to a
+[GitHub release](https://github.com/kevincaron28/QC-Gold/releases), linked
+from a shareable install/update page (published as a Claude artifact —
+check your artifacts gallery for "Quebec Gold Add-on", or ask to have it
+republished). The release and the page are **not** updated automatically by
+committing or pushing — do this by hand.
+
+**End-of-session checklist, whenever a session touched anything under
+`addon/QuebecGold/`:**
+
+1. Bump `## Version:` in `addon/QuebecGold/QuebecGold.toc` if this is a
+   version worth shipping to guildies (not every internal commit needs a
+   new release).
+2. Run `npm run addon:zip` — builds `dist/QuebecGold-v<version>.zip` from
+   the current addon source (already excludes the dev-only
+   `validate-addon.mjs`; regenerates the version number from the `.toc`
+   automatically, so it can't drift out of sync).
+3. Commit and push as usual.
+4. Publish a new [GitHub release](https://github.com/kevincaron28/QC-Gold/releases/new)
+   tagged `v<version>` with `dist/QuebecGold-v<version>.zip` attached.
+5. Update the install page artifact: new version number, new download URL
+   (`https://github.com/kevincaron28/QC-Gold/releases/download/v<version>/QuebecGold-v<version>.zip`),
+   republish to the same artifact URL so guildies' existing link keeps
+   working.
+
+`dist/` is gitignored — the zip itself never goes into the repo, only the
+release asset.

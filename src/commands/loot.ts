@@ -1,10 +1,12 @@
 import { SlashCommandBuilder, type ChatInputCommandInteraction } from "discord.js";
 import { createLootService } from "../services/loot.js";
+import { createWishlistService } from "../services/wishlist.js";
 import { prisma } from "../database.js";
 import { hasPermission } from "../permissions.js";
 import { requireGuildContext } from "./context.js";
 
 const lootService = createLootService(prisma);
+const wishlistService = createWishlistService(prisma);
 
 export const lootCommand = new SlashCommandBuilder()
   .setName("loot").setDescription("Auction and track raid loot.")
@@ -41,7 +43,8 @@ export async function executeLoot(interaction: ChatInputCommandInteraction): Pro
       durationSeconds: interaction.options.getInteger("duration", true),
       createdBy: interaction.user.id
     });
-    await interaction.reply(`Auction **${auction.itemName}** started. ID: \`${auction.id}\`; closes <t:${Math.floor(auction.closesAt.getTime() / 1000)}:R>.`);
+    const wanting = await wishlistService.countWanting(context.guildId, auction.itemName);
+    await interaction.reply(`Auction **${auction.itemName}** started. ID: \`${auction.id}\`; closes <t:${Math.floor(auction.closesAt.getTime() / 1000)}:R>.${wanting > 0 ? ` Wishlisted by ${wanting} raider(s).` : ""}`);
     return;
   }
   if (subcommand === "bid") {
