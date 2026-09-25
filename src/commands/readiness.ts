@@ -9,7 +9,8 @@ export const readinessCommand = new SlashCommandBuilder()
   .addSubcommand((sub) => sub.setName("me").setDescription("Show your latest readiness."))
   .addSubcommand((sub) => sub.setName("member").setDescription("Show a member's readiness.")
     .addUserOption((o) => o.setName("player").setDescription("Guild member").setRequired(true)))
-  .addSubcommand((sub) => sub.setName("raid").setDescription("Show latest readiness for the guild."));
+  .addSubcommand((sub) => sub.setName("raid").setDescription("Show latest readiness for the guild, most actionable first.")
+    .addStringOption((o) => o.setName("attunement").setDescription("Target raid: also flag anyone without this attunement (e.g. Onyxia Key)")));
 
 function canReview(interaction: ChatInputCommandInteraction): boolean {
   return !!interaction.member && (
@@ -54,11 +55,12 @@ export async function executeReadiness(interaction: ChatInputCommandInteraction)
   }
   // The whole-guild board goes to the private readiness channel when there is one,
   // so gear problems aren't shown to everyone; otherwise back to you only.
-  if (await postReadinessBoard(interaction.guild, context.guildId, `requested by ${interaction.user.username}`)) {
+  const attunement = interaction.options.getString("attunement") ?? undefined;
+  if (await postReadinessBoard(interaction.guild, context.guildId, `requested by ${interaction.user.username}`, { attunement })) {
     await interaction.reply({ content: "Posted the raid readiness in the readiness channel.", ephemeral: true });
     return;
   }
-  const chunks = chunkLines([...await buildReadinessLines(prisma, context.guildId), ...await buildConsumableLines(prisma, context.guildId)], 1900);
+  const chunks = chunkLines([...await buildReadinessLines(prisma, context.guildId, { attunement }), ...await buildConsumableLines(prisma, context.guildId)], 1900);
   await interaction.reply({ content: chunks[0] ?? "No guild members found.", ephemeral: true });
   for (const chunk of chunks.slice(1)) await interaction.followUp({ content: chunk, ephemeral: true });
 }

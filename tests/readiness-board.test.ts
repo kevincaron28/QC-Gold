@@ -12,11 +12,29 @@ describe("readiness board", () => {
       inspectedCharacterSnapshot: { findFirst: async ({ where }: { where: { memberId: string } }) => snapshots[where.memberId] ?? null }
     };
     const lines = await buildReadinessLines(database as never, "g1");
-    expect(lines[0]).toBe("✅ **Bob** — READY · ilvl 62");
+    // A summary first, then most actionable first: not ready, no data, ready.
+    expect(lines[0]).toBe("**1 ready · 0 with issues · 1 not ready · 1 no data**");
     expect(lines[1]).toContain("❌ **Amy** — NOT_READY");
     expect(lines[1]).toContain("Missing Head equipment.");
     expect(lines[2]).toContain("Cy");
     expect(lines[2]).toContain("no gear check");
+    expect(lines[3]).toBe("✅ **Bob** — READY · ilvl 62");
+  });
+
+  it("with a target attunement, flags members without it as not ready", async () => {
+    const database = {
+      member: { findMany: async () => [{ id: "m1", displayName: "Bob" }, { id: "m2", displayName: "Amy" }] },
+      inspectedCharacterSnapshot: {
+        findFirst: async ({ where }: { where: { memberId: string } }) => ({ status: "READY", itemLevel: 60, characterId: where.memberId === "m1" ? "c1" : "c2", character: { name: where.memberId === "m1" ? "Bob" : "Amy" }, findings: [] })
+      },
+      characterAttunement: { findFirst: async ({ where }: { where: { characterId: string } }) => (where.characterId === "c1" ? { id: "a" } : null) }
+    };
+    const lines = await buildReadinessLines(database as never, "g1", { attunement: "Onyxia Key" });
+    expect(lines[0]).toContain("1 ready · 0 with issues · 1 not ready");
+    expect(lines[0]).toContain("target: Onyxia Key");
+    expect(lines[1]).toContain("❌ **Amy** — NOT_READY");
+    expect(lines[1]).toContain("Not attuned: Onyxia Key.");
+    expect(lines[2]).toContain("✅ **Bob**");
   });
 
   it("splits long boards under Discord's message limit", () => {

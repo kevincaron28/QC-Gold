@@ -5,28 +5,53 @@ import { createGuildService } from "./guild.js";
 
 const guildService = createGuildService(prisma);
 
-type Db = Pick<PrismaClient, "member" | "inspectedCharacterSnapshot"> & Partial<Pick<PrismaClient, "consumableCheck">>;
+type Db = Pick<PrismaClient, "member" | "inspectedCharacterSnapshot"> & Partial<Pick<PrismaClient, "consumableCheck" | "characterAttunement">>;
 
 // A scan older than this is stale (flasks last about two hours).
 export const CONSUMABLE_MAX_AGE_MS = 3 * 60 * 60 * 1000;
 
 const ICON: Record<string, string> = { READY: "✅", PARTIAL: "⚠️", NOT_READY: "❌" };
+// Most actionable first: not ready, then issues, then no data, then ready.
+const RANK: Record<string, number> = { NOT_READY: 0, PARTIAL: 1, NODATA: 2, READY: 3 };
+const NO_DATA_RANK = 2;
 
-// One block per active member: their latest gear check from the addon.
-// Ready players get a single line; anyone else lists what's wrong.
-export async function buildReadinessLines(database: Db, guildId: string): Promise<string[]> {
+export interface BoardOptions {
+  // Only for a target raid: flag members whose character lacks this attunement ("Onyxia Key").
+  attunement?: string | undefined;
+}
+
+// One block per active member: their latest gear check from the addon,
+// sorted most actionable first, under a one-line summary. Ready players get
+// a single line; anyone else lists what's wrong. With an attunement target,
+// a member without it is flagged (and counts as not ready).
+export async function buildReadinessLines(database: Db, guildId: string, options: BoardOptions = {}): Promise<string[]> {
   const members = await database.member.findMany({ where: { guildId, status: "ACTIVE", isTest: false }, orderBy: { displayName: "asc" } });
-  const lines: string[] = [];
+  const rows: { rank: number; name: string; status: string; text: string }[] = [];
   for (const member of members) {
     const snapshot = await database.inspectedCharacterSnapshot.findFirst({
       where: { memberId: member.id }, orderBy: { inspectedAt: "desc" }, include: { findings: true, character: true }
     });
-    if (!snapshot) { lines.push(`❔ **${member.displayName}** — no gear check uploaded`); continue; }
-    const problems = snapshot.findings.filter((finding) => finding.severity !== "INFO");
-    const head = `${ICON[snapshot.status] ?? "❔"} **${snapshot.character.name}** — ${snapshot.status}${snapshot.itemLevel ? ` · ilvl ${snapshot.itemLevel}` : ""}`;
-    lines.push(problems.length ? `${head}\n${problems.map((finding) => `   • ${finding.message}`).join("\n")}` : head);
+    if (!snapshot) {
+      rows.push({ rank: NO_DATA_RANK, name: member.displayName, status: "NODATA", text: `❔ **${member.displayName}** — no gear check uploaded` });
+      continue;
+    }
+    const messages = snapshot.findings.filter((finding) => finding.severity !== "INFO").map((finding) => finding.message);
+    let status: string = snapshot.status;
+    if (options.attunement && database.characterAttunement) {
+      const attuned = await database.characterAttunement.findFirst({
+        where: { characterId: snapshot.characterId, completed: true, name: { equals: options.attunement, mode: "insensitive" } }
+      });
+      if (!attuned) { messages.unshift(`Not attuned: ${options.attunement}.`); status = "NOT_READY"; }
+    }
+    const head = `${ICON[status] ?? "❔"} **${snapshot.character.name}** — ${status}${snapshot.itemLevel ? ` · ilvl ${snapshot.itemLevel}` : ""}`;
+    rows.push({ rank: RANK[status] ?? NO_DATA_RANK, name: snapshot.character.name, status, text: messages.length ? `${head}\n${messages.map((message) => `   • ${message}`).join("\n")}` : head });
   }
-  return lines;
+  rows.sort((a, b) => a.rank - b.rank || a.name.localeCompare(b.name));
+  if (rows.length === 0) return [];
+  const count = (status: string) => rows.filter((row) => row.status === status).length;
+  const target = options.attunement ? ` (target: ${options.attunement})` : "";
+  const summary = `**${count("READY")} ready · ${count("PARTIAL")} with issues · ${count("NOT_READY")} not ready · ${count("NODATA")} no data**${target}`;
+  return [summary, ...rows.map((row) => row.text)];
 }
 
 // "Consumables (scanned 12 min ago)": who lacks a flask/elixir or food in the
@@ -63,14 +88,14 @@ export function chunkLines(lines: string[], limit = 1900): string[] {
 
 // Posts the board in the readiness channel. False when none is set. Never
 // throws: a failed post must not undo the import or command that triggered it.
-export async function postReadinessBoard(discordGuild: DiscordGuild | null, guildId: string, reason: string): Promise<boolean> {
+export async function postReadinessBoard(discordGuild: DiscordGuild | null, guildId: string, reason: string, options: BoardOptions = {}): Promise<boolean> {
   if (!discordGuild) return false;
   try {
     const settings = await guildService.getSettings(guildId);
     if (!settings?.readinessChannelId) return false;
     const channel = await discordGuild.channels.fetch(settings.readinessChannelId).catch(() => null);
     if (!channel?.isTextBased()) return false;
-    const lines = [...await buildReadinessLines(prisma, guildId), ...await buildConsumableLines(prisma, guildId)];
+    const lines = [...await buildReadinessLines(prisma, guildId, options), ...await buildConsumableLines(prisma, guildId)];
     const chunks = chunkLines(lines.length ? lines : ["No guild members found."], 1800);
     for (const [index, chunk] of chunks.entries()) {
       await channel.send({ content: index === 0 ? `**Raid readiness** — ${reason}\n${chunk}` : chunk, allowedMentions: { parse: [] } });
