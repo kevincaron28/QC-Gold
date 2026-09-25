@@ -15,7 +15,7 @@ import { executeProfession } from "./commands/profession.js";
 import { executeConfig } from "./commands/settings.js";
 import { replyWithCommandError } from "./commands/context.js";
 import { executeDkp } from "./commands/dkp.js";
-import { executeRaid } from "./commands/raid.js";
+import { executeRaid, handleRaidSignupButton, RAID_SIGNUP_PREFIX } from "./commands/raid.js";
 import { executeImport } from "./commands/import.js";
 import { executeLoot } from "./commands/loot.js";
 import { executeApply, executeApplication } from "./commands/application.js";
@@ -137,6 +137,15 @@ client.on(Events.GuildMemberRemove, async (member) => {
 client.on(Events.InteractionCreate, async (interaction) => {
   if (interaction.isAutocomplete()) {
     await handleAutocomplete(interaction);
+    return;
+  }
+  if (interaction.isButton() && interaction.customId.startsWith(RAID_SIGNUP_PREFIX)) {
+    try {
+      await handleRaidSignupButton(interaction);
+    } catch (error) {
+      const content = error instanceof Error ? error.message : "Could not update your signup.";
+      if (!interaction.replied) await interaction.reply({ content, ephemeral: true }).catch(() => undefined);
+    }
     return;
   }
   if (interaction.isButton() && interaction.customId.startsWith(EP_AWARD_PREFIX)) {

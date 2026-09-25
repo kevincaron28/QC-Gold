@@ -1,4 +1,7 @@
-import { EmbedBuilder, SlashCommandBuilder, type ChatInputCommandInteraction, type Guild as DiscordGuild } from "discord.js";
+import {
+  ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, SlashCommandBuilder,
+  type ButtonInteraction, type ChatInputCommandInteraction, type Guild as DiscordGuild, type GuildMember
+} from "discord.js";
 import { RaidAttendanceStatus, RaidBossStatus, RaidRole } from "@prisma/client";
 import { prisma } from "../database.js";
 import { notifications, notify } from "../services/notify.js";
@@ -99,6 +102,22 @@ async function readRaidTime(guildId: string, value: string): Promise<Date> {
   return parseRaidTime(value, settings?.timezone ?? "America/Toronto");
 }
 
+// Buttons on the live signup post, so signing up needs no command. Only
+// shown while the raid is still planned.
+export const RAID_SIGNUP_PREFIX = "raidsignup:";
+function signupButtons(raidId: string, status: string) {
+  if (status !== "PLANNED") return [];
+  const b = (action: string, label: string, style: ButtonStyle) =>
+    new ButtonBuilder().setCustomId(`${RAID_SIGNUP_PREFIX}${raidId}:${action}`).setLabel(label).setStyle(style);
+  return [new ActionRowBuilder<ButtonBuilder>().addComponents(
+    b("TANK", "🛡️ Tank", ButtonStyle.Primary),
+    b("HEALER", "💚 Healer", ButtonStyle.Success),
+    b("DPS", "⚔️ DPS", ButtonStyle.Danger),
+    b("MAYBE", "❔ Maybe", ButtonStyle.Secondary),
+    b("CANCEL", "✖ Can't come", ButtonStyle.Secondary)
+  )];
+}
+
 export async function syncSignupEmbed(discordGuild: DiscordGuild, guildId: string, raidId: string): Promise<void> {
   try {
     const raid = await raidService.getStatus(raidId, guildId);
@@ -123,7 +142,7 @@ export async function syncSignupEmbed(discordGuild: DiscordGuild, guildId: strin
         { name: "Total signed up", value: String(roster.length), inline: true },
         { name: "Roles", value: roleLines.join("\n"), inline: false }
       )
-      .setFooter({ text: `Raid ID: ${raid.id} — /raid signup raid:${raid.id} role:<Tank|Healer|DPS> [availability:Maybe]` });
+      .setFooter({ text: raid.status === "PLANNED" ? "Click a button below to sign up, or use /raid signup." : `Raid ID: ${raid.id}` });
     if (maybe) embed.addFields({ name: "Maybe", value: maybe.slice(0, 1000), inline: false });
     if (waitlist) embed.addFields({ name: "Waitlist (in order)", value: waitlist.slice(0, 1000), inline: false });
     if (raid.description) embed.setDescription(raid.description);
@@ -133,7 +152,7 @@ export async function syncSignupEmbed(discordGuild: DiscordGuild, guildId: strin
       if (channel?.isTextBased()) {
         const message = await channel.messages.fetch(raid.signupMessageId).catch(() => null);
         if (message) {
-          await message.edit({ embeds: [embed] });
+          await message.edit({ embeds: [embed], components: signupButtons(raid.id, raid.status) });
           return;
         }
       }
@@ -143,7 +162,7 @@ export async function syncSignupEmbed(discordGuild: DiscordGuild, guildId: strin
     if (!raid.signupChannelId && settings?.raidSignupChannelId) {
       const channel = await discordGuild.channels.fetch(settings.raidSignupChannelId).catch(() => null);
       if (channel?.isTextBased()) {
-        const message = await channel.send({ embeds: [embed] });
+        const message = await channel.send({ embeds: [embed], components: signupButtons(raid.id, raid.status) });
         await raidService.setSignupMessage(raidId, guildId, channel.id, message.id);
       }
     }
@@ -155,7 +174,7 @@ export async function syncSignupEmbed(discordGuild: DiscordGuild, guildId: strin
 // DMs players moved off the waitlist. Best effort: closed DMs are ignored,
 // and the updated signup embed shows the change anyway.
 async function tellPromoted(
-  interaction: ChatInputCommandInteraction,
+  interaction: { client: ChatInputCommandInteraction["client"] },
   promoted: Array<{ raidId: string; role: RaidRole; member: { discordUserId: string } }>
 ): Promise<void> {
   for (const signup of promoted) {
@@ -333,4 +352,37 @@ export async function executeRaid(interaction: ChatInputCommandInteraction): Pro
     ...(interaction.options.getString("notes") === null ? {} : { notes: interaction.options.getString("notes", true) })
   });
   await interaction.reply({ content: `Recorded **${attendance.status}** attendance for ${player.username}.`, ephemeral: true });
+}
+
+// Clicks on the signup post's buttons. Maybe keeps your current role (DPS if
+// you had none); Can't come cancels, which can move a waitlisted player up.
+export async function handleRaidSignupButton(interaction: ButtonInteraction): Promise<void> {
+  const [raidId, action] = interaction.customId.slice(RAID_SIGNUP_PREFIX.length).split(":");
+  if (!interaction.guild || !raidId || !action) return;
+  const guild = await guildService.ensureGuild(interaction.guild.id, interaction.guild.name);
+  const member = await guildService.ensureMember(guild.id, interaction.user.id,
+    (interaction.member as GuildMember | null)?.displayName ?? interaction.user.username);
+  let content: string;
+  if (action === "CANCEL") {
+    const existing = await prisma.raidSignup.findUnique({ where: { raidId_memberId: { raidId, memberId: member.id } } });
+    if (!existing || existing.status === "CANCELLED") {
+      content = "You weren't signed up, so there's nothing to cancel.";
+    } else {
+      const { promoted } = await raidService.cancelSignup(raidId, guild.id, member.id);
+      await tellPromoted(interaction, promoted);
+      content = "Got it, you're marked as not coming.";
+    }
+  } else {
+    const existing = await prisma.raidSignup.findUnique({ where: { raidId_memberId: { raidId, memberId: member.id } } });
+    const role = (action === "MAYBE" ? existing?.role ?? "DPS" : action) as RaidRole;
+    const signup = await raidService.signup(raidId, guild.id, member.id, role, action === "MAYBE" ? "MAYBE" : "AVAILABLE");
+    const replies: Record<string, string> = {
+      SIGNED_UP: `You're signed up as **${roleLabel[role]}**. Click another role to switch, or Can't come to drop out.`,
+      MAYBE: `You're marked as **maybe** (${roleLabel[role]}). Click a role when you're sure.`,
+      WAITLISTED: `${roleLabel[role]} is full, so you're on the **waitlist**. You'll get a DM if a spot opens.`
+    };
+    content = replies[signup.status] ?? "Signup saved.";
+  }
+  await interaction.reply({ content, ephemeral: true });
+  await syncSignupEmbed(interaction.guild, guild.id, raidId);
 }
