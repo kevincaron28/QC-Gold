@@ -307,12 +307,12 @@ Rules that apply to every step: reliability over feature count; one
 failing API or event disables only that feature; points are never sent
 by the addon, only computed by the bot from rules.
 
-D1. [ ] **M — Compatibility layer (addon `Compat.lua`)**: every WoW API
+D1. [x] **M — Compatibility layer (addon `Compat.lua`)** *(Done 2026-09-25, v1.7.0.)*: every WoW API
     the dungeon system uses (instance info, group members and roles, GUIDs,
     encounter journal, time, death state) behind `ns.compat`, each checked
     before use, failures logged to `/qg diag`, `/qg dungeon check` reports
     which features are available on this client.
-D2. [ ] **M — Run tracker (addon `Modules/Dungeon.lua`)**: state machine
+D2. [x] **M — Run tracker (addon `Modules/Dungeon.lua`)** *(Done 2026-09-25, v1.7.0; 29-check simulation incl. reload, abandon, peer merge, missing API.)*: state machine
     DETECTED → STARTING → ACTIVE → COMPLETED / ABANDONED / INVALID / ERROR;
     one recorder per group (leader if they have the addon, else first
     addon user by name) so five clients don't make five runs; timer starts

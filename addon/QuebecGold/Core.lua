@@ -895,6 +895,7 @@ ns.runCommand = command
 ns.getSettings = function() return db and db.settings end
 -- Read-only views for the tools panel (Modules/Minimap.lua).
 ns.getDb = function() return db end
+ns.logDiagnostic = logDiagnostic
 ns.getActiveRaid = function() return activeRaid end
 ns.groupMembers = groupMembers
 ns.getPresenceCount = function()
