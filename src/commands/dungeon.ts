@@ -8,6 +8,7 @@ import {
   type Period, type RecordRow, type RunRow
 } from "../services/dungeon-stats.js";
 import { findPlayer } from "../services/player-search.js";
+import { executeDungeonGroup } from "./dungeon-group.js";
 import { guildService, requireGuildContext } from "./context.js";
 
 // Dungeon challenge views (roadmap D5). Points come from runs the addon
@@ -26,7 +27,9 @@ export const dungeonCommand = new SlashCommandBuilder()
     .addStringOption((o) => o.setName("character").setDescription("Or a character name")))
   .addSubcommand((sub) => sub.setName("history").setDescription("The most recent dungeon runs")
     .addUserOption((o) => o.setName("member").setDescription("Only runs with this member")))
-  .addSubcommand((sub) => sub.setName("season").setDescription("The current season and its leaders"));
+  .addSubcommand((sub) => sub.setName("season").setDescription("The current season and its leaders"))
+  .addSubcommand((sub) => sub.setName("group").setDescription("Form a dungeon group: a signup post with buttons and a temporary voice channel")
+    .addStringOption((o) => o.setName("title").setDescription("e.g. Deadmines, need tank + healer").setMinLength(3).setMaxLength(80).setRequired(true)));
 
 function dungeonOption(interaction: ChatInputCommandInteraction): number | null {
   const raw = interaction.options.getString("dungeon");
@@ -77,6 +80,10 @@ export async function executeDungeon(interaction: ChatInputCommandInteraction): 
   if (!context) return;
   const lang = asLang((await guildService.getSettings(context.guildId))?.language);
   const subcommand = interaction.options.getSubcommand();
+  if (subcommand === "group") {
+    await executeDungeonGroup(interaction);
+    return;
+  }
   const embed = new EmbedBuilder().setColor(0xd4a017);
 
   if (subcommand === "leaderboard") {

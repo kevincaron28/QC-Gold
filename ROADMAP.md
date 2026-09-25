@@ -49,7 +49,7 @@ Each step ends with tsc + eslint + tests green and a commit. Status:
 - [x] A. Roadmap entries added.
 - [x] B. Consumable scan (addon `Modules/Consumables.lua`, `ConsumableCheck` model, readiness board section; addon v1.9.0; not yet run in game).
 - [x] C. Raid cores (`/core`, `RaidCore`, `/raid create core:`, signup priority, roster channel; tests/raid-core.test.ts).
-- [ ] D. Dungeon group signup + temporary voice channel.
+- [x] D. Dungeon group signup + temporary voice channel (`/dungeon group`, `DungeonGroup` models, buttons, private voice channel, 2-minute cleanup; tests/dungeon-group.test.ts).
 - [x] E. Setup categories and permissions (5 categories, per-channel access, roster/readiness channels, "Tidy my channels" button; setup is still 7 steps, step 3 = raid team, step 4 = dungeon + recruitment).
 
 ## History — where we were on 2026-09-24 (kept for reference)
@@ -564,8 +564,8 @@ D10. [x] **S — Test path** *(Done 2026-09-25: /testraid dungeon through the re
     signup takes a slot before non-core players, and a non-core player can't
     bump a core member off the waitlist. `/core create|add|remove|list|post`,
     `/raid create core:<name>`.
-44. [ ] **M — Dungeon signups with the bot + temporary voice channel**
-    (requested 2026-09-26; **building tonight**; supersedes #39). `/dungeon
+44. [x] **M — Dungeon signups with the bot + temporary voice channel** *(Built 2026-09-26; checklist section 11; supersedes #39. The voice channel is private to the group, created at 5 players or on Start now, deleted after 5 empty minutes or on Close. Not yet linked to the run tracker.)*
+    (requested 2026-09-26). `/dungeon
     group` posts a signup with Tank/Healer/DPS buttons in the dungeon signups
     channel; when 5 are in (or the leader presses Start) the bot creates a
     **temporary voice channel** for the group, moves nobody by force (it posts
@@ -592,7 +592,7 @@ D10. [x] **S — Test path** *(Done 2026-09-25: /testraid dungeon through the re
     vs self-host first: today the bot is one process per guild owner.
 38. [ ] **S — Warcraft Logs in the launch test** — checklist section 8
     (account, client, "do Forever logs reach WCL", `/wcl report`).
-39. [ ] **M — Real dungeon signups.** The signup channel exists but nothing
+39. [x] **M — Real dungeon signups** *(done as #44)*. The signup channel exists but nothing
     posts there yet. A "form a dungeon group" post with Tank/Healer/DPS
     buttons (reuse the raid signup embed) that the run tracker can match to
     a completed run.

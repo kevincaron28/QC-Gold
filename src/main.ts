@@ -31,6 +31,7 @@ import { EP_AWARD_PREFIX, handleEpAwardButton } from "./commands/ep-award.js";
 import { executeWho } from "./commands/who.js";
 import { executeWcl } from "./commands/wcl.js";
 import { executeCore } from "./commands/core.js";
+import { cleanupDungeonGroups, DUNGEON_GROUP_PREFIX, handleDungeonGroupButton } from "./commands/dungeon-group.js";
 import { executeStats, runWeeklyReports } from "./commands/stats.js";
 import { executeBank } from "./commands/bank.js";
 import { executeTestRaid } from "./commands/testraid.js";
@@ -113,6 +114,12 @@ client.once(Events.ClientReady, (readyClient) => {
       console.warn(`Raid reminder check skipped, will retry in 5 minutes: ${text}`);
     });
   }, 5 * 60 * 1000);
+  // Dungeon group voice channels: deleted after a few empty minutes.
+  setInterval(() => {
+    cleanupDungeonGroups(readyClient).catch((error: unknown) => {
+      console.warn(`Dungeon group cleanup skipped: ${error instanceof Error ? error.message : String(error)}`);
+    });
+  }, 2 * 60 * 1000);
   // Weekly guild report (if enabled): checked hourly.
   setInterval(() => {
     runWeeklyReports(readyClient).catch((error: unknown) => {
@@ -154,6 +161,15 @@ client.on(Events.InteractionCreate, async (interaction) => {
       console.error("Welcome role button failed", error);
       if (!interaction.replied) await interaction.reply({ content: "That didn't work, try again or ask an officer.", ephemeral: true }).catch(() => undefined);
     });
+    return;
+  }
+  if (interaction.isButton() && interaction.customId.startsWith(DUNGEON_GROUP_PREFIX)) {
+    try {
+      await handleDungeonGroupButton(interaction);
+    } catch (error) {
+      const content = error instanceof Error && error.message.length < 200 ? error.message : "Could not update the group.";
+      if (!interaction.replied) await interaction.reply({ content, ephemeral: true }).catch(() => undefined);
+    }
     return;
   }
   if (interaction.isButton() && interaction.customId.startsWith(RAID_SIGNUP_PREFIX)) {

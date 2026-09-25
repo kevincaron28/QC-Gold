@@ -198,6 +198,7 @@ points when a season ends). They show in the run post and on `/dungeon player`.
 | `/dungeon player [member | character]` | Points, runs, best times and recent runs (default: you) |
 | `/dungeon history [member]` | Last 10 runs, including ones that did not count and why |
 | `/dungeon season` | Current season and its top 5 |
+| `/dungeon group <title>` | Form a dungeon group: a post in the dungeon signups channel with Tank / Healer / DPS / Leave buttons (1 tank, 1 healer, 3 DPS, extras waitlist). At 5 players, or when the leader presses **Start now**, the bot creates a **private temporary voice channel** for the group (only its players, the leader and Officers can join). The channel is deleted after 5 empty minutes or when the group is closed; unfinished groups close after 24 hours. Needs the bot to have Manage Channels |
 
 After each import, completed runs and new records are posted once in the dungeon channel (`/config dungeon-channel`, also in `/setup`), or the notify channel if none is set.
 

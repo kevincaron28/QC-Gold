@@ -134,6 +134,7 @@ model Guild {
   warcraftLogsReports WarcraftLogsReport[]
   consumableChecks    ConsumableCheck[]
   raidCores           RaidCore[]
+  dungeonGroups       DungeonGroup[]
 }
 
 model Member {
@@ -153,6 +154,7 @@ model Member {
   readinessSnapshots  InspectedCharacterSnapshot[]
   raidSignups         RaidSignup[]
   coreMemberships     RaidCoreMember[]
+  dungeonGroupSignups DungeonGroupSignup[]
   raidAttendance      RaidAttendance[]
   bids                AuctionBid[]
   lootAwards          LootAward[]
@@ -867,4 +869,45 @@ model RaidCoreMember {
 
   @@unique([coreId, memberId])
   @@index([memberId])
+}
+
+enum DungeonGroupStatus {
+  OPEN
+  STARTED
+  CLOSED
+}
+
+// A 5-player dungeon signup posted with buttons; gets a temporary voice
+// channel when it starts.
+model DungeonGroup {
+  id               String               @id @default(cuid())
+  guildId          String
+  title            String
+  leaderId         String
+  status           DungeonGroupStatus   @default(OPEN)
+  signupChannelId  String?
+  signupMessageId  String?
+  voiceChannelId   String?
+  // Set while the voice channel has nobody in it; it is deleted after a few minutes.
+  voiceEmptySince  DateTime?
+  createdAt        DateTime             @default(now())
+  startedAt        DateTime?
+  closedAt         DateTime?
+  guild            Guild                @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  signups          DungeonGroupSignup[]
+
+  @@index([guildId, status])
+}
+
+model DungeonGroupSignup {
+  id       String           @id @default(cuid())
+  groupId  String
+  memberId String
+  role     RaidRole         @default(DPS)
+  status   RaidSignupStatus @default(SIGNED_UP)
+  joinedAt DateTime         @default(now())
+  group    DungeonGroup     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  member   Member           @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, memberId])
 }
