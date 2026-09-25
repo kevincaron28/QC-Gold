@@ -57,7 +57,15 @@ export function startCompanionApi(): ReturnType<typeof createServer> {
           return;
         }
         const baseGp = (await prisma.guildSettings.findUnique({ where: { guildId: guild.id } }))?.baseGp ?? 0;
-        json(response, 200, { updatedAt: new Date().toISOString(), baseGp, standings: await epgpService.getGuildStandings(guild.id, baseGp) });
+        // Dungeon runs the bot has stored lately, so the addon can mark them
+        // as synced (roadmap D3).
+        const acceptedRunRefs = (await prisma.dungeonRun.findMany({
+          where: { guildId: guild.id, createdAt: { gte: new Date(Date.now() - 45 * 86_400_000) } },
+          select: { runRef: true },
+          orderBy: { createdAt: "desc" },
+          take: 500
+        })).map((row) => row.runRef);
+        json(response, 200, { updatedAt: new Date().toISOString(), baseGp, acceptedRunRefs, standings: await epgpService.getGuildStandings(guild.id, baseGp) });
         return;
       }
       const payload = await readBody(request);

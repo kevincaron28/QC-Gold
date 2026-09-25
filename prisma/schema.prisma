@@ -108,11 +108,11 @@ enum ApplicationStatus {
 }
 
 model Guild {
-  id               String            @id @default(cuid())
-  discordId        String            @unique
+  id               String                    @id @default(cuid())
+  discordId        String                    @unique
   name             String
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
+  createdAt        DateTime                  @default(now())
+  updatedAt        DateTime                  @updatedAt
   members          Member[]
   transactions     DkpTransaction[]
   epgpTransactions EpgpTransaction[]
@@ -126,6 +126,9 @@ model Guild {
   tags             Tag[]
   bankRequests     BankRequest[]
   craftRequests    CraftRequest[]
+  dungeonSeasons   DungeonSeason[]
+  dungeonRuns      DungeonRun[]
+  dungeonPoints    DungeonPointTransaction[]
 }
 
 model Member {
@@ -150,6 +153,8 @@ model Member {
   applications       Application[]
   craftRequests      CraftRequest[]               @relation("CraftRequester")
   craftsClaimed      CraftRequest[]               @relation("CraftCrafter")
+  dungeonRunPlayers  DungeonRunPlayer[]
+  dungeonPoints      DungeonPointTransaction[]
   bankRequests       BankRequest[]
 
   @@unique([guildId, discordUserId])
@@ -400,6 +405,10 @@ model GuildSettings {
   welcomeRoleIds           String[]  @default([])
   // Text above those buttons, e.g. "Which game are you here for?"
   welcomeRolePrompt        String?
+  // Dungeon Challenge: announcements channel and point rules (JSON; missing
+  // keys use the built-in defaults).
+  dungeonChannelId         String?
+  dungeonConfig            Json?
   createdAt                DateTime  @default(now())
   updatedAt                DateTime  @updatedAt
   guild                    Guild     @relation(fields: [guildId], references: [id], onDelete: Cascade)
@@ -645,4 +654,101 @@ model CraftRequest {
   @@index([guildId, status, createdAt])
   @@index([requesterId])
   @@index([crafterId])
+}
+
+// ---------------------------------------------------------------------
+// Dungeon Challenge (roadmap D3-D8). Runs come from the addon via the
+// companion import; points are computed here from rules, never sent by the
+// addon.
+// ---------------------------------------------------------------------
+
+model DungeonSeason {
+  id        String                    @id @default(cuid())
+  guildId   String
+  name      String
+  startsAt  DateTime                  @default(now())
+  endsAt    DateTime?
+  // ACTIVE or ENDED. Ended seasons stay viewable forever.
+  status    String                    @default("ACTIVE")
+  createdAt DateTime                  @default(now())
+  guild     Guild                     @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  runs      DungeonRun[]
+  points    DungeonPointTransaction[]
+
+  @@index([guildId, status])
+}
+
+model DungeonRun {
+  id              String                    @id @default(cuid())
+  guildId         String
+  // The addon's run id (e.g. QG-20260925-120000-Kev); one row per run.
+  runRef          String
+  instanceId      Int
+  dungeonName     String
+  difficultyId    Int                       @default(0)
+  // COMPLETED, ABANDONED, or INVALID, as reported by the addon.
+  state           String
+  // false when validation or an officer rejected it (kept for the audit).
+  valid           Boolean                   @default(true)
+  invalidReason   String?
+  startedAt       DateTime?
+  endedAt         DateTime?
+  durationSec     Int?
+  completedBy     String?
+  recorder        String?
+  reporters       Int                       @default(1)
+  protocolVersion Int
+  addonVersion    String?
+  seasonId        String?
+  importId        String?
+  createdAt       DateTime                  @default(now())
+  guild           Guild                     @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  season          DungeonSeason?            @relation(fields: [seasonId], references: [id], onDelete: SetNull)
+  players         DungeonRunPlayer[]
+  points          DungeonPointTransaction[]
+
+  @@unique([guildId, runRef])
+  @@index([guildId, instanceId, valid])
+  @@index([guildId, endedAt])
+}
+
+model DungeonRunPlayer {
+  id         String     @id @default(cuid())
+  runId      String
+  character  String
+  memberId   String?
+  class      String?
+  role       String?
+  // null = not tracked (player had no addon); never guessed.
+  deaths     Int?
+  presentSec Int        @default(0)
+  inGuild    Boolean    @default(false)
+  run        DungeonRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  member     Member?    @relation(fields: [memberId], references: [id], onDelete: SetNull)
+
+  @@index([runId])
+  @@index([memberId])
+}
+
+// Every point change, with why. Totals and rankings are computed from these.
+model DungeonPointTransaction {
+  id        String         @id @default(cuid())
+  guildId   String
+  memberId  String
+  runId     String?
+  seasonId  String?
+  amount    Int
+  reason    String
+  // "rule:<name>" for automatic points, "admin" for manual changes.
+  source    String
+  createdBy String
+  createdAt DateTime       @default(now())
+  guild     Guild          @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  member    Member         @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  run       DungeonRun?    @relation(fields: [runId], references: [id], onDelete: SetNull)
+  season    DungeonSeason? @relation(fields: [seasonId], references: [id], onDelete: SetNull)
+
+  @@index([guildId, createdAt])
+  @@index([memberId, createdAt])
+  @@index([runId])
 }

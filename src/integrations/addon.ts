@@ -114,7 +114,10 @@ export const addonSnapshotSchema = z.object({
   readiness: z.array(addonReadinessSchema).default([]),
   attunements: z.array(addonAttunementSchema).default([]),
   raids: z.array(addonRaidSchema).default([]),
-  loot: z.array(addonLootSchema).default([])
+  loot: z.array(addonLootSchema).default([]),
+  // Dungeon runs are validated one by one on apply (services/dungeon-rules),
+  // so a single malformed run can't reject the whole import.
+  dungeonRuns: z.array(z.unknown()).max(500).default([])
 });
 
 export type AddonSnapshot = z.infer<typeof addonSnapshotSchema>;

@@ -321,14 +321,14 @@ D2. [x] **M — Run tracker (addon `Modules/Dungeon.lua`)** *(Done 2026-09-25, v
     after combat; per-player time present; saved every change so /reload,
     disconnect, or a crash resumes the run; runs kept until the bot
     confirms them.
-D3. [ ] **M — Sync + validation (companion, bot)**: runs in the export
+D3. [x] **M — Sync + validation (companion, bot)** *(Done 2026-09-25: per-run zod + server checks, id + near-duplicate dedupe, acceptedRunRefs back to the addon.)*: runs in the export
     with `protocolVersion` / `addonVersion`; bot validates (known shape,
     duration 3 min – 4 h, no future timestamps, 1–5 players, completion
     state), rejects duplicates by run id and by same dungeon + same
     players + start within 2 minutes; stores `DungeonRun` +
     `DungeonRunPlayer`; companion writes accepted run ids back so the addon
     can mark them synced.
-D4. [ ] **M — Points (bot)**: configurable rules (completion, 0/1/2
+D4. [x] **M — Points (bot)** *(Done 2026-09-25: rules in dungeon-rules.ts, weekly repeat share, point transactions with rule source.)*: configurable rules (completion, 0/1/2
     deaths, personal record, guild record, first completion, full guild
     group, under target time) and anti-farming (per player per dungeon per
     week: 1st 100%, 2nd 50%, 3rd+ 0%, configurable); every point is a

@@ -3,6 +3,8 @@ import { createAddonImportService } from "../services/addon-import.js";
 import { createAuditService } from "../services/audit.js";
 import { notifications, notify } from "../services/notify.js";
 import type { RaidImportSummary } from "../services/raid-import.js";
+import type { DungeonImportSummary } from "../services/dungeon-import.js";
+import { formatDuration } from "../services/dungeon-rules.js";
 import { prisma } from "../database.js";
 import { hasPermission } from "../permissions.js";
 import { requireGuildContext } from "./context.js";
@@ -14,6 +16,23 @@ export const importApplyCommand = new SlashCommandBuilder()
   .setName("import-apply")
   .setDescription("Apply a reviewed addon import to the DKP ledger.")
   .addStringOption((option) => option.setName("id").setDescription("Import (pick from the list)").setAutocomplete(true).setRequired(true));
+
+// Dungeon runs in this import: accepted, points, records, rejections.
+function dungeonReport(summary: DungeonImportSummary): string {
+  if (summary.results.length === 0 && summary.duplicates === 0 && summary.malformed === 0) return "";
+  const lines = summary.results.map((run) => {
+    if (!run.valid) return `• ${run.dungeonName}: **not counted** (${run.invalidReason})`;
+    if (run.state !== "COMPLETED") return `• ${run.dungeonName}: ${run.state.toLowerCase()}, no points`;
+    const time = run.durationSec !== null ? formatDuration(run.durationSec) : "?";
+    const extras = [run.guildRecord ? "🏆 guild record" : "", run.personalRecords.length ? `${run.personalRecords.length} personal record(s)` : "",
+      run.unlinked.length ? `not linked: ${run.unlinked.join(", ")}` : ""].filter(Boolean).join(", ");
+    return `• ${run.dungeonName} in ${time}: ${run.points} points awarded in total${extras ? ` (${extras})` : ""}`;
+  });
+  if (summary.duplicates) lines.push(`• ${summary.duplicates} run(s) already imported, skipped`);
+  if (summary.malformed) lines.push(`• ${summary.malformed} run(s) unreadable, skipped`);
+  const text = `\n\n**Dungeon runs**\n${lines.join("\n")}`;
+  return text.length > 700 ? `${text.slice(0, 690)}\n…` : text;
+}
 
 // One short block per in-game raid: which Discord raid it matched, how many
 // attendance rows were written, and signup no-shows / walk-ins.
@@ -59,7 +78,8 @@ export async function executeImportApply(interaction: ChatInputCommandInteractio
       + `${result.skipped} ledger entr${result.skipped === 1 ? "y was" : "ies were"} already imported and skipped.`
       + (result.loot.recorded ? ` ${result.loot.recorded} in-game loot award(s) added to /loot history.` : "")
       + (result.loot.unmatched.length ? ` Loot for unlinked characters skipped: ${result.loot.unmatched.join(", ")}.` : "")
-      + raidReport(result.raids),
+      + raidReport(result.raids)
+      + dungeonReport(result.dungeons),
     ephemeral: true
   });
   const matchedRaids = result.raids.filter((raid) => raid.matchedRaidTitle).length;

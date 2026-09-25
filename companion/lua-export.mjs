@@ -178,6 +178,37 @@ export async function readAddonExport(path, realm) {
     });
   }
 
+  // Dungeon runs (addon Modules/Dungeon.lua). The bot validates each run and
+  // ignores ones it already has, so exporting all of them every time is safe.
+  const dungeonRuns = [];
+  for (const run of Object.values(database.dungeon?.runs ?? {})) {
+    if (!run?.id || !run.state || !run.instanceId) continue;
+    dungeonRuns.push({
+      id: String(run.id),
+      protocolVersion: Number(run.protocolVersion ?? 1),
+      ...(run.addonVersion ? { addonVersion: String(run.addonVersion) } : {}),
+      state: String(run.state),
+      instanceId: Number(run.instanceId),
+      name: String(run.name ?? "Unknown dungeon"),
+      difficultyId: Number(run.difficultyId ?? 0),
+      ...(run.startedAt ? { startedAt: Math.trunc(Number(run.startedAt)) } : {}),
+      ...(run.endedAt ? { endedAt: Math.trunc(Number(run.endedAt)) } : {}),
+      ...(run.completedBy ? { completedBy: String(run.completedBy) } : {}),
+      ...(run.endReason ? { endReason: String(run.endReason) } : {}),
+      ...(run.recorder ? { recorder: String(run.recorder) } : {}),
+      reporters: Object.keys(run.reporters ?? {}).length || 1,
+      players: Object.entries(run.players ?? {}).map(([character, player]) => ({
+        character,
+        realm,
+        ...(player.class ? { class: String(player.class) } : {}),
+        ...(player.role ? { role: String(player.role) } : {}),
+        deaths: typeof player.deaths === "number" ? player.deaths : null,
+        presentSec: Math.max(0, Math.trunc(Number(player.presentSec) || 0)),
+        inGuild: player.inGuild === true
+      }))
+    });
+  }
+
   // SavedVariables key order is arbitrary; the ISO timestamps sort correctly.
   const exportKeys = Object.keys(database.exports ?? {}).sort();
   const exportedAt = exportKeys.at(-1) ?? new Date().toISOString();
@@ -192,6 +223,7 @@ export async function readAddonExport(path, realm) {
     ],
     attunements,
     raids,
-    loot
+    loot,
+    dungeonRuns
   };
 }

@@ -31,6 +31,11 @@ export function standingsToLua(data) {
     ...rows,
     "  }",
     "}",
+    "",
+    "-- Dungeon runs the bot has stored; the addon marks these as synced.",
+    "QuebecGoldDungeonAccepted = {",
+    ...(data.acceptedRunRefs ?? []).map((ref) => `  ${luaString(ref)},`),
+    "}",
     ""
   ].join("\n");
 }

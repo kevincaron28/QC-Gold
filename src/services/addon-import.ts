@@ -1,8 +1,9 @@
 import { createHash } from "node:crypto";
-import { DkpTransactionType, type EpgpTransactionType, type PrismaClient } from "@prisma/client";
+import { DkpTransactionType, type EpgpTransactionType, type Prisma, type PrismaClient } from "@prisma/client";
 import { normalizeAddonSnapshot, parseAddonSnapshot, type AddonSnapshot } from "../integrations/addon.js";
 import { deriveReadinessStatus } from "./readiness.js";
 import { applyAddonLoot, applyRaidAttendance, touchLastSeen } from "./raid-import.js";
+import { importDungeonRuns } from "./dungeon-import.js";
 
 export function createAddonImportService(database: PrismaClient) {
   return {
@@ -30,7 +31,8 @@ export function createAddonImportService(database: PrismaClient) {
           source: snapshot.source,
           checksum,
           status: "PREVIEWED",
-          payload: snapshot,
+          // Parsed from a JSON upload, so it is JSON (dungeonRuns stay unvalidated until apply).
+          payload: snapshot as unknown as Prisma.InputJsonValue,
           createdBy
         }
       });
@@ -191,12 +193,14 @@ export function createAddonImportService(database: PrismaClient) {
         const raids = await applyRaidAttendance(tx, guildId, snapshot.raids, characters, appliedBy);
         const raidIds = new Map(raids.filter((raid) => raid.matchedRaidId).map((raid) => [raid.ref, raid.matchedRaidId as string]));
         const loot = await applyAddonLoot(tx, guildId, snapshot.loot, characters, raidIds, appliedBy);
+        const dungeons = await importDungeonRuns(tx, guildId, snapshot.dungeonRuns,
+          characters.map((character) => ({ name: character.name, realm: character.realm, memberId: character.memberId })), appliedBy, importId);
 
         await tx.addonImport.update({
           where: { id: imported.id },
           data: { status: "APPLIED" }
         });
-        return { import: imported, transactions, epgpTransactions, readinessSnapshots, attunements, raids, loot, skipped };
+        return { import: imported, transactions, epgpTransactions, readinessSnapshots, attunements, raids, loot, dungeons, skipped };
       });
     }
   };
