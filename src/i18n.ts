@@ -105,7 +105,36 @@ const STRINGS = {
   "help.raidLeaders": { en: "Raid Leaders", fr: "Chefs de raid" },
   "help.epgpOfficers": { en: "EPGP Officers", fr: "Officiers EPGP" },
   "help.officers": { en: "Officers", fr: "Officiers" },
-  "help.footer": { en: "In game: click the gold coin on the minimap, or type /qg help.", fr: "En jeu : cliquez la pièce d'or près de la minicarte, ou tapez /qg help." }
+  "help.footer": { en: "In game: click the gold coin on the minimap, or type /qg help.", fr: "En jeu : cliquez la pièce d'or près de la minicarte, ou tapez /qg help." },
+
+  // Dungeon challenge
+  "dungeon.board.week": { en: "🏰 Dungeon points — this week", fr: "🏰 Points de donjon — cette semaine" },
+  "dungeon.board.season": { en: "🏰 Dungeon points — {season}", fr: "🏰 Points de donjon — {season}" },
+  "dungeon.board.all": { en: "🏰 Dungeon points — all time", fr: "🏰 Points de donjon — depuis le début" },
+  "dungeon.board.dungeon": { en: "Only {dungeon}", fr: "Seulement {dungeon}" },
+  "dungeon.board.empty": { en: "No points yet. Run a dungeon with the addon installed, then an officer imports it.", fr: "Aucun point pour l'instant. Faites un donjon avec l'addon installé, puis un officier l'importe." },
+  "dungeon.records.title": { en: "⏱️ Guild records", fr: "⏱️ Records de la guilde" },
+  "dungeon.records.one": { en: "⏱️ Fastest {dungeon} clears", fr: "⏱️ {dungeon} les plus rapides" },
+  "dungeon.records.empty": { en: "No completed runs yet.", fr: "Aucun donjon terminé pour l'instant." },
+  "dungeon.player.title": { en: "🏰 {name} — dungeons", fr: "🏰 {name} — donjons" },
+  "dungeon.player.points": { en: "Points", fr: "Points" },
+  "dungeon.player.pointsValue": { en: "Week {week} · Season {season} · All time {all}", fr: "Semaine {week} · Saison {season} · Total {all}" },
+  "dungeon.player.runs": { en: "Runs", fr: "Donjons" },
+  "dungeon.player.runsValue": { en: "{count} completed, {deathless} without dying", fr: "{count} terminés, {deathless} sans mourir" },
+  "dungeon.player.bests": { en: "Best times", fr: "Meilleurs temps" },
+  "dungeon.player.recent": { en: "Recent runs", fr: "Donjons récents" },
+  "dungeon.player.none": { en: "{name} has no dungeon runs yet.", fr: "{name} n'a aucun donjon pour l'instant." },
+  "dungeon.history.title": { en: "📜 Recent dungeon runs", fr: "📜 Donjons récents" },
+  "dungeon.history.empty": { en: "No runs recorded yet.", fr: "Aucun donjon enregistré pour l'instant." },
+  "dungeon.state.COMPLETED": { en: "completed", fr: "terminé" },
+  "dungeon.state.ABANDONED": { en: "abandoned", fr: "abandonné" },
+  "dungeon.state.INVALID": { en: "invalid", fr: "invalide" },
+  "dungeon.notCounted": { en: "not counted", fr: "non compté" },
+  "dungeon.deaths": { en: "{count} death(s)", fr: "{count} mort(s)" },
+  "dungeon.season.title": { en: "🏆 {season}", fr: "🏆 {season}" },
+  "dungeon.season.since": { en: "Started {date}. {runs} completed run(s) so far.", fr: "Commencée le {date}. {runs} donjon(s) terminé(s) jusqu'ici." },
+  "dungeon.season.none": { en: "No season has started yet. It starts by itself with the first imported run.", fr: "Aucune saison n'a commencé. Elle démarre toute seule avec le premier donjon importé." },
+  "dungeon.season.top": { en: "Top players", fr: "Meilleurs joueurs" }
 } satisfies Record<string, Record<Lang, string>>;
 
 export type StringKey = keyof typeof STRINGS;

@@ -5,6 +5,7 @@ import {
   applicationChoices, auctionChoices, bankChoices, craftChoices, epgpEntryChoices, importChoices,
   raidChoices, raidStatusesFor, type Choice
 } from "../services/autocomplete.js";
+import { dungeonChoices } from "../services/dungeon-stats.js";
 import { guildService } from "./context.js";
 
 // Routes every autocomplete request (see setAutocomplete(true) on ID
@@ -45,6 +46,8 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
       choices = await epgpEntryChoices(prisma, guild.id, query);
     } else if (command === "application" && focused.name === "id") {
       choices = await applicationChoices(prisma, guild.id, query);
+    } else if (command === "dungeon" && focused.name === "dungeon") {
+      choices = await dungeonChoices(prisma, guild.id, query);
     } else if (command === "import-apply" && focused.name === "id") {
       choices = await importChoices(prisma, guild.id, query);
     }

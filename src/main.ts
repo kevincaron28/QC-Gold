@@ -35,6 +35,7 @@ import { executeTestRaid } from "./commands/testraid.js";
 import { executeCraft } from "./commands/craft.js";
 import { executeSetup, greetNewGuild, logSetupStatus } from "./commands/setup.js";
 import { executeHelp } from "./commands/help.js";
+import { executeDungeon } from "./commands/dungeon.js";
 import { handleAutocomplete } from "./commands/autocomplete.js";
 import { prisma } from "./database.js";
 import { runRecruitmentPosts } from "./services/recruitment.js";
@@ -76,6 +77,7 @@ handlers.set("testraid", executeTestRaid);
 handlers.set("craft", executeCraft);
 handlers.set("setup", executeSetup);
 handlers.set("help", executeHelp);
+handlers.set("dungeon", executeDungeon);
 
 client.once(Events.ClientReady, (readyClient) => {
   console.info(`Logged in as ${readyClient.user.tag}`);

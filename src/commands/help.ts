@@ -19,6 +19,7 @@ const LINES: Record<"everyone" | "raidLeader" | "dkpOfficer" | "officer", Record
       "`/loot bid` — bid GP on a Discord loot auction",
       "`/wishlist add` · `/profession set` · `/profession who <prof>`",
       "`/bank request` — ask the guild bank · `/craft request` — ask a crafter",
+      "`/dungeon leaderboard` · `/dungeon records` · `/dungeon player` — dungeon challenge",
       "`/readiness me` — your latest gear check from the addon",
       "`/apply` — apply to the guild"
     ],
@@ -30,6 +31,7 @@ const LINES: Record<"everyone" | "raidLeader" | "dkpOfficer" | "officer", Record
       "`/loot bid` — miser des GP sur une enchère Discord",
       "`/wishlist add` · `/profession set` · `/profession who <métier>`",
       "`/bank request` — demander à la banque de guilde · `/craft request` — demander à un artisan",
+      "`/dungeon leaderboard` · `/dungeon records` · `/dungeon player` — défi des donjons",
       "`/readiness me` — votre dernière vérification d'équipement (addon)",
       "`/apply` — postuler à la guilde"
     ]

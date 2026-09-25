@@ -23,6 +23,7 @@ import { testRaidCommand } from "./testraid.js";
 import { craftCommand } from "./craft.js";
 import { setupCommand } from "./setup.js";
 import { helpCommand } from "./help.js";
+import { dungeonCommand } from "./dungeon.js";
 
 export const commands = [
   healthCommand,
@@ -51,6 +52,7 @@ export const commands = [
   , craftCommand
   , setupCommand
   , helpCommand
+  , dungeonCommand
 ];
 
 const commandNames = commands.map((command) => command.name);

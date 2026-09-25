@@ -333,7 +333,7 @@ D4. [x] **M — Points (bot)** *(Done 2026-09-25: rules in dungeon-rules.ts, wee
     group, under target time) and anti-farming (per player per dungeon per
     week: 1st 100%, 2nd 50%, 3rd+ 0%, configurable); every point is a
     `DungeonPointTransaction` with reason, run, source.
-D5. [ ] **M — Seasons, records, leaderboards (bot)**: seasons with
+D5. [x] **M — Seasons, records, leaderboards (bot)** *(Done 2026-09-25: /dungeon leaderboard|records|player|history|season; season start/end moves to D7 admin.)*: seasons with
     start/end, archived not deleted; records (fastest, fewest deaths) per
     dungeon, guild and personal; `/dungeon leaderboard [dungeon]
     [weekly|season|all]`, `/dungeon records`, `/dungeon player`,

@@ -31,6 +31,9 @@ typed command. Names are case-insensitive (`bob` = `Bob`).
 | `/qg calendar check` | Checks whether the in-game guild calendar can be synced (send the result to an officer) |
 | `/qg lang en` / `fr` / `auto` | Language of your window and bid popup (auto = same as your game client) |
 | `/qg standings [player]` | EPGP standings from Discord (top 10, or one player) |
+| `/qg dungeon status` | The dungeon run being recorded: state, timer, bosses, deaths |
+| `/qg dungeon start` / `complete` / `abandon` | Fix a run by hand when detection missed it (group leader, officer, or solo) |
+| `/qg dungeon check` | Checks which dungeon features work on this client (send the result to an officer) |
 | `/qg version` | Your addon version. You're also told automatically when a guildmate has a newer one |
 | `/qg minimap show` / `hide` / `reset` | Control the minimap button |
 | `/qg officer list` | Show which ranks count as officers, and whether you do |
@@ -158,6 +161,26 @@ messages follow the language chosen in `/setup` (English or French).
 | `/craft request <item> [profession] [quantity] [materials] [note]` | Ask a guild crafter to make something; shows who has that profession |
 | `/craft list [profession]` / `/craft claim <id>` | Crafters: see open requests and take one |
 | `/craft done <id>` / `release <id>` / `mine` / `cancel <id>` | Finish, give back, see yours, or cancel. The requester gets DMs |
+
+### Dungeon challenge
+
+Run a dungeon with the addon installed (one person in the group is enough;
+more is better for death tracking). It is recorded automatically: the timer
+starts on the first pull and stops on the last boss. An officer imports it
+like everything else (`/import-apply`) and points are given out:
+completion 50, no deaths 25 (1 death 15, 2 deaths 5), first clear of that
+dungeon 25, personal record 15, guild record 25, full guild group 20.
+The same dungeon more than once a week is worth 50%, then 0% (resets
+Tuesday). Runs under 3 minutes, over 4 hours, or with more than 5 players
+are not counted.
+
+| Command | What it does |
+| --- | --- |
+| `/dungeon leaderboard [period] [dungeon]` | Most points this week, this season (default) or all time; optionally one dungeon |
+| `/dungeon records [dungeon]` | Fastest clear of every dungeon, or the top 5 times of one |
+| `/dungeon player [member | character]` | Points, runs, best times and recent runs (default: you) |
+| `/dungeon history [member]` | Last 10 runs, including ones that did not count and why |
+| `/dungeon season` | Current season and its top 5 |
 
 ### Raid Leaders (and Officers)
 
