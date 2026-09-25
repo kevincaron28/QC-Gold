@@ -221,17 +221,23 @@ Readiness visibility is restricted to the member’s own report or users with Gu
 
 ## Companion app
 
-The bot starts a local-only companion API on port `8787`. Set a random token in `.env`:
+The bot starts a local-only companion API on port `8787`.
 
-```env
-COMPANION_UPLOAD_TOKEN=use-a-long-random-token-here
-```
+**Easiest setup:** double-click `start-companion.bat`. The first time, it runs
+`npm run companion:setup`, which finds your WoW folder, account, and realm,
+creates the upload token, and writes it to both `.env.local` and
+`companion/companion.config.json` (restart the bot afterwards so it picks up
+a new token). After that the same shortcut just starts the watcher, and
+restarts it if it stops.
 
-Then copy `companion/companion.config.example.json` to `companion/companion.config.json`, fill in the values, and run:
+Manual setup, if you prefer: put `COMPANION_UPLOAD_TOKEN=<long random token>`
+in `.env.local`, copy `companion/companion.config.example.json` to
+`companion/companion.config.json` with the same token, and run
+`npm run companion:watch`.
 
-```powershell
-node companion/watcher.mjs
-```
+The bot's own shortcut (`start-bot.bat`) also restarts the bot automatically
+if it crashes, and the bot saves a daily database backup to `backups/`
+(last 14 days kept).
 
 The API binds to `127.0.0.1` only. It records validated imports but does not apply DKP, EPGP, or readiness data without officer review via `/import-apply`. If `COMPANION_UPLOAD_TOKEN` is not set, the companion API rejects every request rather than allowing them through — always set a real token before running the watcher.
 

@@ -98,14 +98,15 @@ within priority. Update the checkbox the moment an item lands.
 
 **P0 — core gaps (bot-side, testable without the game)**
 
-> **Resume here (2026-09-25, committed):** P0 1-11, P1 13-16, #0 test
-> raid environment, #19 crafting requests, #21 in-game GP bidding, and #22
-> in-game loot → Discord loot history are done (99 bot tests, 61 + 28 + 18
-> addon simulation checks). Addon is v1.5.0 (zip rebuilt locally, not
-> released). Live test steps are in `LUNCH_TEST_CHECKLIST.md` (untracked).
-> Next: user live-tests; then push + GitHub release v1.5.0 + refresh the
-> install page. Blocked: #12 WCL (credentials). Held: #17 dashboard. Open:
-> profession cooldown tracking (#19 remainder).
+> **Resume here (2026-09-25, committed):** everything in P0, P1 #13-16,
+> #0 test raid, #19 crafting, #21-23, and all quality-of-life items #24-31
+> (autocomplete, friendly times, signup buttons, auto-restart, companion
+> setup, French, backups, welcome with role buttons) are done. 126 bot
+> tests; 66 + 28 + 18 addon simulation checks. Addon v1.6.0 zip built
+> locally, not released. Next: user live-tests (LUNCH_TEST_CHECKLIST.md,
+> untracked, plus /setup and the welcome preview); then push, GitHub
+> release v1.6.0, refresh the install page. Blocked: #12 WCL
+> (credentials). Held: #17 dashboard. Open: profession cooldowns.
 >
 > **#0 — [x] DONE 2026-09-25.** Bot: `/testraid start|finish|cleanup`
 > (`src/services/simulation.ts`, `src/commands/testraid.ts`; `isTest` on
@@ -251,8 +252,21 @@ within priority. Update the checkbox the moment an item lands.
 28. [x] **S — One-click companion setup.** *(Done 2026-09-25: `npm run companion:setup`, start-companion.bat.)* A script that finds the WoW
     folder, generates the upload token, and writes both `.env.local` and
     `companion.config.json` (today this is manual and error-prone).
-29. [~] **M — French language option.** *(In progress 2026-09-25: `language` setting + /setup picker done.)* Bot replies and addon text in
+29. [x] **M — French language option.** *(Done 2026-09-25: bot `src/i18n.ts` —
+    signup post/buttons/replies, waitlist DM, reminders, announcements,
+    raid report, weekly stats, welcome default + role prompt, getting
+    started guide, /help follow the guild language from /setup; officer
+    admin replies stay English. Addon v1.6.0 `Locale.lua` — player window,
+    minimap tooltip, bid popup, and bidding chat lines; auto from the game
+    client, `/qg lang en|fr|auto`; officer tabs and casino chat lines stay
+    English for now.)* Bot replies and addon text in
     French for a Quebec guild (`/setup` language choice).
+31. [x] **M — Welcome by channel / DM / both, with role buttons.** *(Done
+    2026-09-25, requested: "access to either game of the server or both".
+    Up to 5 role buttons on the welcome message; clicking toggles the role,
+    works from DMs; DM falls back to the channel if closed; only roles still
+    configured are honoured. /setup step 3 + `/config welcome send_to
+    role_prompt preview`. `tests/welcome.test.ts`.)*
 30. [x] **S — Nightly database backup** *(Done 2026-09-25: `src/services/backup.ts`, backups/ gitignored.)* (export key tables to a dated file,
     keep the last 14).
 

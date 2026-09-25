@@ -24,6 +24,9 @@ ns.bidding = bidding
 
 local popup
 
+-- Player-facing text goes through ns.L (Locale.lua) for English/French.
+local function L(text) return ns.L and ns.L(text) or text end
+
 -- ---------------------------------------------------------------------
 -- Messaging
 -- ---------------------------------------------------------------------
@@ -105,7 +108,7 @@ local function closeBidding(id)
   local ranked = rankedBids(auction)
   sendAddon("CLOSE|" .. auction.id, auction.channel)
   if #ranked == 0 then
-    announce("No bids on " .. auction.item .. ".")
+    announce(string.format(L("No bids on %s."), auction.item))
     bidding.current = nil
   else
     auction.winner = ranked[1]
@@ -138,7 +141,7 @@ local function openBidding(args)
     endsAt = clock() + seconds, bids = {}, open = true, channel = channel
   }
   sendAddon(string.format("OPEN|%s|%d|%d|%s", id, bidding.current.min, seconds, item), channel)
-  announce(string.format("Bidding on %s: min %d GP, %ds. Whisper me a number (e.g. 25) or use the Quebec Gold popup.",
+  announce(string.format(L("Bidding on %s: min %d GP, %ds. Whisper me a number (e.g. 25) or use the Quebec Gold popup."),
     item, bidding.current.min, seconds))
   if C_Timer and C_Timer.After then C_Timer.After(seconds, function() closeBidding(id) end) end
   changed()
@@ -152,7 +155,7 @@ local function addBid(name, amount, replyTo, reply)
   if not auction or not auction.open or not name then return end
   amount = math.floor(tonumber(amount) or -1)
   local problem
-  if amount < auction.min then problem = "Minimum bid is " .. auction.min .. " GP."
+  if amount < auction.min then problem = string.format(L("Minimum bid is %d GP."), auction.min)
   elseif amount > MAX_BID then problem = "That bid is too high." end
   if problem then
     if reply == "addon" then sendAddon("REJECT|" .. auction.id .. "|" .. problem, "WHISPER", replyTo)
@@ -161,7 +164,7 @@ local function addBid(name, amount, replyTo, reply)
   end
   auction.bids[name] = { amount = amount, at = clock() }
   if reply == "addon" then sendAddon("ACK|" .. auction.id .. "|" .. amount, "WHISPER", replyTo)
-  elseif reply == "whisper" then sendChat("[QG] Bid of " .. amount .. " GP received for " .. plainItem(auction.item) .. ".", "WHISPER", replyTo) end
+  elseif reply == "whisper" then sendChat("[QG] " .. string.format(L("Bid of %d GP received for %s."), amount, plainItem(auction.item)), "WHISPER", replyTo) end
   changed()
 end
 bidding.addBid = addBid
@@ -177,7 +180,7 @@ local function awardBidding()
   ns.runCommand("loot " .. winner.name .. " " .. item .. " " .. winner.amount)
   ns.runCommand("gp " .. winner.name .. " " .. winner.amount .. " Bid: " .. item)
   sendAddon(string.format("AWARD|%s|%s|%d", auction.id, winner.name, winner.amount), auction.channel)
-  announce(string.format("%s goes to %s for %d GP.", auction.item, winner.name, winner.amount))
+  announce(string.format(L("%s goes to %s for %d GP."), auction.item, winner.name, winner.amount))
   bidding.current = nil
   changed()
 end
@@ -186,7 +189,7 @@ local function cancelBidding()
   local auction = bidding.current
   if not auction then ns.message("No bidding to cancel."); return end
   sendAddon("CLOSE|" .. auction.id, auction.channel)
-  announce("Bidding on " .. auction.item .. " cancelled.")
+  announce(string.format(L("Bidding on %s cancelled."), auction.item))
   bidding.current = nil
   changed()
 end
@@ -233,9 +236,9 @@ local function updatePopup()
   local left = math.max(0, math.floor(incoming.endsAt - clock()))
   local standing = ns.getStanding and ns.getStanding(ns.playerName())
   popup.item:SetText(incoming.item)
-  popup.info:SetText(string.format("Min %d GP   -   %ds left%s", incoming.min, left,
-    standing and string.format("   -   your PR %.2f", standing.pr) or ""))
-  popup.mine:SetText(incoming.myBid and ("Your bid: " .. incoming.myBid .. " GP") or (incoming.problem or ""))
+  popup.info:SetText(string.format(L("Min %d GP   -   %ds left"), incoming.min, left) ..
+    (standing and string.format(L("   -   your PR %.2f"), standing.pr) or ""))
+  popup.mine:SetText(incoming.myBid and string.format(L("Your bid: %d GP"), incoming.myBid) or (incoming.problem or ""))
   if left <= 0 then hidePopup() end
 end
 
@@ -260,7 +263,7 @@ local function buildPopup()
   end
   local title = popup:CreateFontString(nil, "OVERLAY", "GameFontNormal")
   title:SetPoint("TOP", popup, "TOP", 0, -14)
-  title:SetText("Quebec Gold - GP bidding")
+  title:SetText(L("Quebec Gold - GP bidding"))
   popup.item = popup:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
   popup.item:SetPoint("TOP", popup, "TOP", 0, -34)
   popup.info = popup:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
@@ -289,14 +292,14 @@ local function buildPopup()
   bid:SetWidth(80)
   bid:SetHeight(22)
   bid:SetPoint("TOPLEFT", popup, "TOPLEFT", 110, -75)
-  bid:SetText("Bid")
+  bid:SetText(L("Bid"))
   bid:SetScript("OnClick", placeBid)
 
   local pass = CreateFrame("Button", nil, popup, "UIPanelButtonTemplate")
   pass:SetWidth(80)
   pass:SetHeight(22)
   pass:SetPoint("TOPLEFT", popup, "TOPLEFT", 196, -75)
-  pass:SetText("Pass")
+  pass:SetText(L("Pass"))
   pass:SetScript("OnClick", hidePopup)
 
   popup.mine = popup:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
@@ -395,7 +398,7 @@ local function onEvent(_, event, ...)
       local id, winner, amount = string.match(text, "^AWARD|([^|]+)|([^|]+)|(%d+)$")
       if bidding.incoming and bidding.incoming.id == id then
         hidePopup()
-        if winner == ns.playerName() then ns.message("You won " .. bidding.incoming.item .. " for " .. amount .. " GP.") end
+        if winner == ns.playerName() then ns.message(string.format(L("You won %s for %s GP."), bidding.incoming.item, amount)) end
         bidding.incoming = nil
       end
     end

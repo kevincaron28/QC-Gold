@@ -28,6 +28,7 @@ typed command. Names are case-insensitive (`bob` = `Bob`).
 | `/qg attune <key> clear` | Mark it not done |
 | `/qg diag` | Show recent addon errors / blocked actions (send this when reporting a bug) |
 | `/qg menu` | Open the tools window |
+| `/qg lang en` / `fr` / `auto` | Language of your window and bid popup (auto = same as your game client) |
 | `/qg standings [player]` | EPGP standings from Discord (top 10, or one player) |
 | `/qg version` | Your addon version. You're also told automatically when a guildmate has a newer one |
 | `/qg minimap show` / `hide` / `reset` | Control the minimap button |
@@ -119,6 +120,11 @@ Casino games can't be started while you're in combat.
 
 ## Discord bot
 
+Tips: wherever a command asks for a raid, auction, request, or entry, **start
+typing its name and pick it from the list** (no IDs to copy). Raid signup
+posts have buttons, so members rarely need `/raid signup`. Member-facing
+messages follow the language chosen in `/setup` (English or French).
+
 ### Everyone on Discord
 
 | Command | What it does |
@@ -156,7 +162,7 @@ Casino games can't be started while you're in combat.
 
 | Command | What it does |
 | --- | --- |
-| `/raid create <title> <time> [description] [bosses] [tanks] [healers] [dps]` | Create a raid (time in ISO format, e.g. `2026-10-01T20:00:00-04:00`); posts the signup embed |
+| `/raid create <title> <time> [description] [bosses] [tanks] [healers] [dps]` | Create a raid. Time like `friday 8pm`, `tonight 20:00`, `vendredi 20h`, `2026-10-03 20:00` (your server's timezone). Posts the signup message with Tank / Healer / DPS / Maybe / Can't come buttons |
 | `/raid edit` / `cancel` / `start` | Manage the raid (raising a cap moves waitlisted players in) |
 | `/raid end <raid>` | End the raid and see the **proposed EP** with Approve / Cancel buttons |
 | `/raid award-ep <raid>` | Show the proposed EP again (e.g. after `/import-apply` added attendance) |
@@ -199,7 +205,9 @@ Approve, and a raid can never be paid twice.
 | `/config notify-channel` | Where raid started/ended, boss kills, loot awards, EPGP changes, and raid reports are announced |
 | `/config weekly-report <true\|false>` | Post `/stats` for the week in the notify channel every 7 days |
 | `/bank list [status]` / `/bank handle <id> <Approve\|Fulfilled\|Deny> [reply]` | Guild bank queue (new requests also appear in the log channel) |
-| `/config welcome` / `farewell` | Join/leave messages |
+| `/config welcome [channel] [message] [send_to] [role_prompt] [preview]` | Welcome message: in a channel, by DM, or both; role buttons are picked in `/setup` step 3. `preview:true` sends it to you |
+| `/config farewell` | Leave message |
+| `/config timezone <zone>` | Timezone for typed raid times (also in `/setup`) |
 | `/config roles` | Auto-assigned applicant/member roles |
 | `/config raid-channel` | Where raid signup embeds and raid reminders go |
 | `/config log-channel` | Where join/leave/moderation logs go |

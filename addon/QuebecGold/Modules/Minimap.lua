@@ -27,6 +27,9 @@ local PANEL_HEIGHT = 480
 local ATTUNEMENT_PRESETS = { "Molten Core", "Onyxia", "Blackwing Lair", "Naxxramas" }
 
 local button, panel
+
+-- Player-facing text goes through ns.L (Locale.lua) for English/French.
+local function L(text) return ns.L and ns.L(text) or text end
 local built = false
 local ui = { tabs = {}, officerOnly = {}, currentTab = nil }
 
@@ -205,7 +208,7 @@ local function showPicker()
         insets = { left = 11, right = 12, top = 12, bottom = 11 }
       })
     end
-    picker.title = at(newLabel(picker, "Pick a player"), picker, 18, -16)
+    picker.title = at(newLabel(picker, L("Pick a player")), picker, 18, -16)
     local close = CreateFrame("Button", nil, picker, "UIPanelCloseButton")
     close:SetPoint("TOPRIGHT", picker, "TOPRIGHT", -4, -4)
   end
@@ -222,7 +225,7 @@ local function showPicker()
     b:SetScript("OnClick", function() setPlayer(name); picker:Hide() end)
     b:Show()
   end
-  picker.title:SetText(#names > 1 and "Pick a player" or "Nobody else found")
+  picker.title:SetText(#names > 1 and L("Pick a player") or L("Nobody else found"))
   picker:SetWidth(248)
   picker:SetHeight(60 + math.ceil(math.max(#names, 1) / 2) * 24)
   picker:Show()
@@ -445,11 +448,11 @@ local function buildCasinoPage(page)
 end
 
 local function buildMePage(page)
-  at(newButton(page, "Check my gear", 140, function() run("inspect") end), page, 0, 0)
+  at(newButton(page, L("Check my gear"), 180, function() run("inspect") end), page, 0, 0)
   ui.gearInfo = at(newLabel(page, "", "GameFontHighlightSmall"), page, 0, -30)
   ui.gearInfo:SetWidth(PANEL_WIDTH - 44)
 
-  at(newLabel(page, "Attunements"), page, 0, -100)
+  at(newLabel(page, L("Attunements")), page, 0, -100)
   local x = 0
   for _, preset in ipairs(ATTUNEMENT_PRESETS) do
     at(newButton(page, preset, 104, function() ui.attuneBox:SetText(preset) end), page, x, -120)
@@ -466,8 +469,8 @@ local function buildMePage(page)
       run('attune "' .. key .. '"' .. (clear and " clear" or ""))
     end
   end
-  at(newButton(page, "Mark done", 90, function() attune(false) end), page, 214, -152)
-  at(newButton(page, "Clear", 70, function() attune(true) end), page, 308, -152)
+  at(newButton(page, L("Mark done"), 90, function() attune(false) end), page, 214, -152)
+  at(newButton(page, L("Clear"), 70, function() attune(true) end), page, 308, -152)
   ui.attuneInfo = at(newLabel(page, "", "GameFontHighlightSmall"), page, 0, -184)
   ui.attuneInfo:SetWidth(PANEL_WIDTH - 44)
 end
@@ -484,9 +487,9 @@ local function buildToolsPage(page)
     { "Diagnostics", "diag" }, { "Raid status", "status" }, { "All commands", "help" }, { "Addon version", "version" }
   }
   for i, item in ipairs(everyone) do
-    at(newButton(page, item[1], 136, function() run(item[2]) end), page, ((i - 1) % 3) * 142, -math.floor((i - 1) / 3) * 28)
+    at(newButton(page, L(item[1]), 136, function() run(item[2]) end), page, ((i - 1) % 3) * 142, -math.floor((i - 1) / 3) * 28)
   end
-  at(newButton(page, "Hide minimap button", 180, function() run("minimap hide") end), page, 0, -64)
+  at(newButton(page, L("Hide minimap button"), 180, function() run("minimap hide") end), page, 0, -64)
 
   officerOnly(at(newLabel(page, "Officer", "GameFontNormalSmall"), page, 0, -100))
   officerOnly(at(newButton(page, "Export data", 136, function() run("export") end), page, 0, -116))
@@ -494,8 +497,8 @@ local function buildToolsPage(page)
   officerOnly(at(newButton(page, "Casino help", 136, function() run("casino") end), page, 284, -116))
 
   local help = at(newLabel(page,
-    "Minimap button hidden? Type /qg minimap show.\n\n" ..
-    "Something wrong? Press Diagnostics and send a screenshot to an officer.", "GameFontHighlightSmall"), page, 0, -156)
+    L("Minimap button hidden? Type /qg minimap show.\n\nSomething wrong? Press Diagnostics and send a screenshot to an officer."),
+    "GameFontHighlightSmall"), page, 0, -156)
   help:SetWidth(PANEL_WIDTH - 44)
   ui.exportHelp = officerOnly(at(newLabel(page,
     "Export: press it, then /reload so the game saves; the companion uploads it to Discord.", "GameFontHighlightSmall"), page, 0, -210))
@@ -598,11 +601,11 @@ refresh = function()
     for _, finding in ipairs(snapshot.findings or {}) do
       if finding.severity ~= "INFO" then table.insert(problems, finding.message) end
     end
-    ui.gearInfo:SetText(string.format("Last check: %s%s\n%s", snapshot.status or "?",
-      snapshot.itemLevel and ("   Item level " .. snapshot.itemLevel) or "",
-      #problems > 0 and table.concat(problems, "\n") or "Nothing missing."))
+    ui.gearInfo:SetText(string.format(L("Last check: %s%s\n%s"), snapshot.status or "?",
+      snapshot.itemLevel and string.format(L("   Item level %s"), snapshot.itemLevel) or "",
+      #problems > 0 and table.concat(problems, "\n") or L("Nothing missing.")))
   else
-    ui.gearInfo:SetText("No gear check yet.")
+    ui.gearInfo:SetText(L("No gear check yet."))
   end
 
   local attuneTarget = (officer and name) or me
@@ -611,19 +614,20 @@ refresh = function()
     if entry.completed then table.insert(done, key) end
   end
   table.sort(done)
-  ui.attuneInfo:SetText((attuneTarget == me and "You have" or (attuneTarget .. " has")) .. " done: " ..
-    (#done > 0 and table.concat(done, ", ") or "none recorded") ..
-    (officer and "\n(Officers: Mark done applies to the selected player.)" or ""))
+  local doneText = #done > 0 and table.concat(done, ", ") or L("none recorded")
+  ui.attuneInfo:SetText((attuneTarget == me and string.format(L("You have done: %s"), doneText)
+    or string.format(L("%s has done: %s"), attuneTarget, doneText)) ..
+    (officer and L("\n(Officers: Mark done applies to the selected player.)") or ""))
 
   local updatedAt = ns.getStandingsUpdatedAt and ns.getStandingsUpdatedAt()
   if not updatedAt then
-    ui.standingsPlayer:SetText("No standings yet.")
-    ui.standingsList:SetText("They come from the Discord bot through an officer's addon. Check back after the next raid.")
+    ui.standingsPlayer:SetText(L("No standings yet."))
+    ui.standingsList:SetText(L("They come from the Discord bot through an officer's addon. Check back after the next raid."))
   else
     local row = name and ns.getStanding(name)
     ui.standingsPlayer:SetText(row and string.format("%s:  EP %d   GP %d   PR %.2f", name, row.ep, row.gp, row.pr)
-      or ((name or "?") .. ": no standings (character not linked on Discord?)"))
-    local lines = { "Top by PR (from Discord, " .. updatedAt .. "):" }
+      or string.format(L("%s: no standings (character not linked on Discord?)"), name or "?"))
+    local lines = { string.format(L("Top by PR (from Discord, %s):"), updatedAt) }
     local rows = standingsRows()
     for i = 1, math.min(15, #rows) do
       local r = rows[i]
@@ -676,12 +680,12 @@ local function buildPanel()
   close:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -4, -4)
 
   -- Shared player field.
-  at(newLabel(panel, "Player"), panel, 22, -76)
+  at(newLabel(panel, L("Player")), panel, 22, -76)
   ui.playerBox = at(newEdit(panel, 130), panel, 76, -72)
   ui.playerBox:SetScript("OnTextChanged", function() refresh() end)
-  at(newButton(panel, "Target", 70, fillFromTarget), panel, 214, -72)
-  at(newButton(panel, "Me", 50, function() setPlayer(ns.playerName()) end), panel, 288, -72)
-  at(newButton(panel, "Group...", 84, showPicker), panel, 342, -72)
+  at(newButton(panel, L("Target"), 70, fillFromTarget), panel, 214, -72)
+  at(newButton(panel, L("Me"), 50, function() setPlayer(ns.playerName()) end), panel, 288, -72)
+  at(newButton(panel, L("Group..."), 84, showPicker), panel, 342, -72)
 
   for i, def in ipairs(TAB_DEFS) do
     local page = CreateFrame("Frame", nil, panel)
@@ -689,7 +693,7 @@ local function buildPanel()
     page:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -18, 40)
     def.build(page)
     page:Hide()
-    local tabButton = newButton(panel, def.name, 72, function() selectTab(i) end)
+    local tabButton = newButton(panel, L(def.name), 72, function() selectTab(i) end)
     ui.tabs[i] = { name = def.name, officer = def.officer, page = page, button = tabButton }
   end
 
@@ -798,9 +802,9 @@ local function buildButton()
   button:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_LEFT")
     GameTooltip:AddLine("Quebec Gold")
-    GameTooltip:AddLine("Left-click: open the tools window", 1, 1, 1)
-    GameTooltip:AddLine("Right-click: check my gear", 1, 1, 1)
-    GameTooltip:AddLine("Drag: move this button", 1, 1, 1)
+    GameTooltip:AddLine(L("Left-click: open the tools window"), 1, 1, 1)
+    GameTooltip:AddLine(L("Right-click: check my gear"), 1, 1, 1)
+    GameTooltip:AddLine(L("Drag: move this button"), 1, 1, 1)
     GameTooltip:Show()
   end)
   button:SetScript("OnLeave", function() GameTooltip:Hide() end)
