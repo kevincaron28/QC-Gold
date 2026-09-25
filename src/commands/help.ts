@@ -12,26 +12,26 @@ export const helpCommand = new SlashCommandBuilder()
 const LINES: Record<"everyone" | "raidLeader" | "dkpOfficer" | "officer", Record<Lang, string[]>> = {
   everyone: {
     en: [
-      "`/character add` — link your WoW character (do this first)",
+      "`/character add` — link your WoW character (do this first), or `/character import` with the line `/qg character` shows in game",
       "Raid posts have buttons to sign up (or use `/raid signup`)",
       "`/epgp balance` · `/epgp leaderboard` · `/profile` · `/who <name>`",
       "`/raid progress` · `/raid report` · `/stats` · `/loot history`",
       "`/loot bid` — bid GP on a Discord loot auction",
       "`/wishlist add` · `/profession set` · `/profession who <prof>`",
       "`/bank request` — ask the guild bank · `/craft request` — ask a crafter",
-      "`/dungeon leaderboard` · `/dungeon records` · `/dungeon player` — dungeon challenge",
+      "`/dungeon leaderboard` · `/dungeon records` · `/dungeon player` — dungeon challenge · `/dungeon group` — form a group with its own voice channel",
       "`/readiness me` — your latest gear check from the addon",
       "`/apply` — apply to the guild"
     ],
     fr: [
-      "`/character add` — liez votre personnage WoW (à faire en premier)",
+      "`/character add` — liez votre personnage WoW (à faire en premier), ou `/character import` avec la ligne de `/qg character` en jeu",
       "Les annonces de raid ont des boutons pour s'inscrire (ou `/raid signup`)",
       "`/epgp balance` · `/epgp leaderboard` · `/profile` · `/who <nom>`",
       "`/raid progress` · `/raid report` · `/stats` · `/loot history`",
       "`/loot bid` — miser des GP sur une enchère Discord",
       "`/wishlist add` · `/profession set` · `/profession who <métier>`",
       "`/bank request` — demander à la banque de guilde · `/craft request` — demander à un artisan",
-      "`/dungeon leaderboard` · `/dungeon records` · `/dungeon player` — défi des donjons",
+      "`/dungeon leaderboard` · `/dungeon records` · `/dungeon player` — défi des donjons · `/dungeon group` — former un groupe avec son salon vocal",
       "`/readiness me` — votre dernière vérification d'équipement (addon)",
       "`/apply` — postuler à la guilde"
     ]

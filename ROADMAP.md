@@ -15,22 +15,26 @@ priority (P0 = do first) · **S/M/L** = rough size
 
 - **Everything planned so far is built** except what's blocked or held:
   backlog P0/P1/P2 (#1–31 minus #17, #18, #20), Dungeon Challenge D1–D10,
-  addon modules M1–M2, and the 2026-09-26 batch (#33–#38 below: character
-  import, setup channels, WCL). Addon **v1.8.0**, zip built into `dist/`
-  (not released).
+  addon modules M1–M2, and the 2026-09-26 batch (#33–#45: character import,
+  setup channels and categories, WCL, readiness channel, consumable scan,
+  raid cores, dungeon groups with voice). Only #46 (public rebrand) and
+  the review ideas below are unbuilt. Addon **v1.9.0**, zip built into
+  `dist/` (not released). 180 bot tests.
 - **Tonight (user):** run `LUNCH_TEST_CHECKLIST.md` (untracked, sections
-  0-8; section 8 is **Warcraft Logs**: create the API client, confirm Forever
-  logs reach WCL, `/wcl report`). Before that: restart the bot with the desktop shortcut (it now updates
-  the database and opens the companion itself), install v1.8.0. Also send the output of `/qg calendar check` (decides #32).
+  0-11; 8 = **Warcraft Logs**, 9 = consumable scan, 10 = raid cores,
+  11 = dungeon group voice). Before that: restart the bot with the desktop
+  shortcut (it updates the database and opens the companion itself),
+  install v1.9.0. The Lua for the consumable scan and `/qg character` has
+  only been syntax-checked, so game tests matter most. Also send the output of `/qg calendar check` (decides #32).
   Then push, GitHub release v1.8.0, refresh the install page.
 - **Next (build):** pick from the GuildOS review (G1–G13) and the eight-addon
   review (PM, LR, VG, RF, ID, GP, IR, GK series, with "common themes" at the end);
   #18 WCL auto-discovery once the manual import proves useful; M3
   CurseForge packaging when the user wants a public listing; #32 calendar
-  sync after the check result; a real dungeon-signup flow (#39).
+  sync after the check result; #46 rebrand.
 - **Blocked / held:** #18 (needs #12 proven on real Forever logs); #17
   web dashboard (held); #20 guild achievements/graphs (open).
-- **Verification baseline:** 165 bot tests, `tsc`, `eslint`, addon
+- **Verification baseline:** 180 bot tests, `tsc`, `eslint`, addon
   validator (also a Lua syntax check), and Lua simulations in the
   session scratchpad: core 18, window/sync/modules 92, casino 28,
   calendar 9, dungeon 29, sim dungeon + module gating 37. The new
