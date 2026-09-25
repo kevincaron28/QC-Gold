@@ -27,7 +27,8 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
     const language = settings?.language ?? "en";
 
     if (focused.name === "core") {
-      choices = await coreChoices(prisma, guild.id, query);
+      // Only cores with their own point pool make sense for /epgp.
+      choices = await coreChoices(prisma, guild.id, query, command === "epgp");
     } else if (focused.name === "raid") {
       choices = await raidChoices(prisma, {
         guildId: guild.id,

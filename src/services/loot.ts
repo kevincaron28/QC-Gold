@@ -1,4 +1,5 @@
 import { AuctionStatus, EpgpTransactionType, type PrismaClient } from "@prisma/client";
+import { poolFor } from "./core-rules.js";
 
 export interface CreateAuctionInput {
   guildId: string;
@@ -66,9 +67,12 @@ export function createLootService(database: PrismaClient) {
         });
         if (updated.count !== 1) throw new Error("Auction was already closed");
         if (!winner) return { auction, award: null };
+        // GP lands in the raid's core pool when that core keeps its own points.
+        const raid = auction.raidId ? await tx.raid.findFirst({ where: { id: auction.raidId, guildId: auction.guildId }, include: { core: true } }) : null;
+        const coreId = poolFor(raid?.core);
         // Snapshot the winner's totals before the GP lands, for loot history.
         const before = await tx.epgpTransaction.aggregate({
-          where: { memberId: winner.memberId },
+          where: { memberId: winner.memberId, coreId },
           _sum: { epAmount: true, gpAmount: true }
         });
         const transaction = await tx.epgpTransaction.create({
@@ -80,7 +84,8 @@ export function createLootService(database: PrismaClient) {
             type: EpgpTransactionType.ITEM_AWARD,
             reason: `Loot auction: ${auction.itemName}`,
             sourceRef: auctionId,
-            createdBy: closedBy
+            createdBy: closedBy,
+            coreId
           }
         });
         const award = await tx.lootAward.create({
@@ -111,13 +116,15 @@ export function createLootService(database: PrismaClient) {
       return database.$transaction(async (tx) => {
         const member = await tx.member.findUnique({ where: { id: input.memberId } });
         if (!member || member.guildId !== input.guildId) throw new Error("That player is not in this guild");
-        const before = await tx.epgpTransaction.aggregate({ where: { memberId: input.memberId }, _sum: { epAmount: true, gpAmount: true } });
+        const raid = input.raidId?.trim() ? await tx.raid.findFirst({ where: { id: input.raidId.trim(), guildId: input.guildId }, include: { core: true } }) : null;
+        const coreId = poolFor(raid?.core);
+        const before = await tx.epgpTransaction.aggregate({ where: { memberId: input.memberId, coreId }, _sum: { epAmount: true, gpAmount: true } });
         if (input.gp > 0) {
           await tx.epgpTransaction.create({
             data: {
               guildId: input.guildId, memberId: input.memberId, epAmount: 0, gpAmount: input.gp,
               type: EpgpTransactionType.ITEM_AWARD, reason: `Loot award: ${itemName}`,
-              sourceRef: `loot-direct:${input.memberId}:${Date.now()}:${itemName}`, createdBy: input.awardedBy
+              sourceRef: `loot-direct:${input.memberId}:${Date.now()}:${itemName}`, createdBy: input.awardedBy, coreId
             }
           });
         }

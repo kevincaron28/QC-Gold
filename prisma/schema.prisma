@@ -254,6 +254,8 @@ model EpgpTransaction {
   reason    String
   sourceRef String?
   createdBy String
+  // Set when the entry belongs to a raid core's own point pool; null = the guild pool.
+  coreId    String?
   createdAt DateTime            @default(now())
   guild     Guild               @relation(fields: [guildId], references: [id], onDelete: Cascade)
   member    Member              @relation(fields: [memberId], references: [id], onDelete: Cascade)
@@ -862,6 +864,12 @@ model RaidCore {
   lateEp          Int?
   bossEp          Int?
   completionEp    Int?
+  baseGp          Int?
+  decayPercent    Float?
+  // "EPGP" or "COUNCIL"; empty follows the guild's /config loot-mode.
+  lootMode        String?
+  // true: this core keeps its own EP/GP, apart from the guild pool.
+  separatePool    Boolean          @default(false)
   createdAt       DateTime         @default(now())
   guild           Guild            @relation(fields: [guildId], references: [id], onDelete: Cascade)
   members         RaidCoreMember[]

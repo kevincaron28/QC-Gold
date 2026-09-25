@@ -4,6 +4,7 @@ import { notifications, notify } from "../services/notify.js";
 import { createWishlistService } from "../services/wishlist.js";
 import { prisma } from "../database.js";
 import { hasPermission } from "../permissions.js";
+import { coreForRaid, effectiveRules } from "../services/core-rules.js";
 import { guildService, requireGuildContext } from "./context.js";
 
 const lootService = createLootService(prisma);
@@ -43,7 +44,15 @@ export async function executeLoot(interaction: ChatInputCommandInteraction): Pro
     await interaction.reply({ content: "Only officers, Guild Masters, or administrators can manage auctions.", ephemeral: true });
     return;
   }
-  const councilMode = (await guildService.getSettings(context.guildId))?.lootMode === "COUNCIL";
+  // Loot council can be set for the whole guild (/config loot-mode) or for one
+  // core (/core rules); a raid made for a core follows that core's mode.
+  const guildSettings = await guildService.getSettings(context.guildId);
+  let raidForMode = subcommand === "auction" ? interaction.options.getString("raid") : null;
+  if (subcommand === "bid") {
+    const auction = await prisma.auction.findFirst({ where: { id: interaction.options.getString("auction", true), guildId: context.guildId }, select: { raidId: true } });
+    raidForMode = auction?.raidId ?? null;
+  }
+  const councilMode = effectiveRules(guildSettings, await coreForRaid(prisma, context.guildId, raidForMode)).lootMode === "COUNCIL";
   if (subcommand === "award") {
     const user = interaction.options.getUser("player", true);
     const target = await guildService.ensureMember(context.guildId, user.id, user.username);
@@ -57,7 +66,7 @@ export async function executeLoot(interaction: ChatInputCommandInteraction): Pro
     return;
   }
   if (councilMode && (subcommand === "auction" || subcommand === "bid")) {
-    await interaction.reply({ content: "This guild uses **loot council**: officers decide. Officers award with `/loot award`; add the item to your `/wishlist` to state interest.", ephemeral: true });
+    await interaction.reply({ content: "This raid uses **loot council**: officers decide. Officers award with `/loot award`; add the item to your `/wishlist` to state interest.", ephemeral: true });
     return;
   }
   if (subcommand === "auction") {

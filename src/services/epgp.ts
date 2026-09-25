@@ -9,6 +9,8 @@ export interface CreateEpgpTransaction {
   reason: string;
   createdBy: string;
   sourceRef?: string;
+  // A raid core's own point pool; leave out for the guild pool.
+  coreId?: string | null;
 }
 
 export interface EpgpStanding {
@@ -54,14 +56,16 @@ export function createEpgpService(database: PrismaClient) {
         type: input.type,
         reason,
         createdBy: input.createdBy,
-        sourceRef: input.sourceRef ?? null
+        sourceRef: input.sourceRef ?? null,
+        coreId: input.coreId ?? null
       }
     });
   };
 
-  const getStanding = async (memberId: string, baseGp = 0): Promise<EpgpStanding> => {
+  // `coreId` picks a core's own pool; the default (null) is the guild pool.
+  const getStanding = async (memberId: string, baseGp = 0, coreId: string | null = null): Promise<EpgpStanding> => {
     const result = await database.epgpTransaction.aggregate({
-      where: { memberId },
+      where: { memberId, coreId },
       _sum: { epAmount: true, gpAmount: true }
     });
     const ep = result._sum.epAmount ?? 0;
@@ -88,7 +92,7 @@ export function createEpgpService(database: PrismaClient) {
       const [sums, characters] = await Promise.all([
         database.epgpTransaction.groupBy({
           by: ["memberId"],
-          where: { guildId },
+          where: { guildId, coreId: null },
           _sum: { epAmount: true, gpAmount: true }
         }),
         database.character.findMany({
@@ -105,15 +109,16 @@ export function createEpgpService(database: PrismaClient) {
       });
     },
 
-    async getHistory(memberId: string, limit = 10) {
+    async getHistory(memberId: string, limit = 10, coreId: string | null = null) {
       return database.epgpTransaction.findMany({
-        where: { memberId },
+        where: { memberId, coreId },
         orderBy: { createdAt: "desc" },
         take: limit
       });
     },
 
-    async applyDecay(guildId: string, percent: number, createdBy: string) {
+    // Decays one pool: the guild pool, or a core's own pool when `coreId` is given.
+    async applyDecay(guildId: string, percent: number, createdBy: string, coreId: string | null = null) {
       if (!Number.isFinite(percent) || percent < 0 || percent > 1) {
         throw new Error("Decay percent must be between 0 and 1");
       }
@@ -123,7 +128,7 @@ export function createEpgpService(database: PrismaClient) {
       });
       const transactions = [];
       for (const member of members) {
-        const standing = await getStanding(member.id);
+        const standing = await getStanding(member.id, 0, coreId);
         const ep = -Math.floor(standing.ep * percent);
         const gp = -Math.floor(standing.gp * percent);
         if (ep !== 0 || gp !== 0) {
@@ -134,7 +139,8 @@ export function createEpgpService(database: PrismaClient) {
             gpAmount: gp,
             type: EpgpTransactionType.DECAY,
             reason: `EPGP decay (${percent * 100}%)`,
-            createdBy
+            createdBy,
+            coreId
           }));
         }
       }
@@ -163,7 +169,9 @@ export function createEpgpService(database: PrismaClient) {
         type: EpgpTransactionType.REVERSAL,
         reason,
         createdBy,
-        sourceRef: `reversal:${original.id}`
+        sourceRef: `reversal:${original.id}`,
+        // A correction lands in the same pool as the entry it undoes.
+        coreId: original.coreId
       });
     }
   };

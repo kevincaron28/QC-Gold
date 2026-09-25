@@ -2,6 +2,7 @@ import { SlashCommandBuilder, type ChatInputCommandInteraction, type GuildMember
 import type { RaidRole } from "@prisma/client";
 import { prisma } from "../database.js";
 import { hasPermission } from "../permissions.js";
+import { describeRules, effectiveRules } from "../services/core-rules.js";
 import { createRaidCoreService, removeCoreRosterMessage, syncCoreRoster } from "../services/raid-core.js";
 import { guildService, requireGuildContext } from "./context.js";
 
@@ -26,13 +27,19 @@ export const coreCommand = new SlashCommandBuilder()
   .addSubcommand((sub) => sub.setName("remove").setDescription("Remove a player from a core (Raid Leaders).")
     .addStringOption(coreOption)
     .addUserOption((o) => o.setName("player").setDescription("Discord member").setRequired(true)))
-  .addSubcommand((sub) => sub.setName("rules").setDescription("Set this core's own EP rules for its raids (Raid Leaders). Empty options keep the guild default.")
+  .addSubcommand((sub) => sub.setName("rules").setDescription("A core's point rules. Every core follows the guild's rules unless you change a value here.")
     .addStringOption(coreOption)
     .addIntegerOption((o) => o.setName("attendance").setDescription("EP for attending").setMinValue(0))
     .addIntegerOption((o) => o.setName("late").setDescription("EP for arriving late").setMinValue(0))
     .addIntegerOption((o) => o.setName("boss").setDescription("EP per boss killed").setMinValue(0))
     .addIntegerOption((o) => o.setName("clear").setDescription("Bonus EP for a full clear").setMinValue(0))
-    .addBooleanOption((o) => o.setName("reset").setDescription("Go back to the guild defaults for everything")))
+    .addIntegerOption((o) => o.setName("base_gp").setDescription("Base GP for this core's PR").setMinValue(0))
+    .addIntegerOption((o) => o.setName("decay").setDescription("Decay percent for this core's /epgp decay").setMinValue(0).setMaxValue(100))
+    .addStringOption((o) => o.setName("loot_mode").setDescription("How this core's loot is decided").addChoices(
+      { name: "Follow the guild", value: "DEFAULT" }, { name: "GP bids", value: "EPGP" }, { name: "Loot council", value: "COUNCIL" }))
+    .addStringOption((o) => o.setName("pool").setDescription("Points: shared guild pool, or this core's own pool (applies to future points)").addChoices(
+      { name: "Shared guild pool", value: "shared" }, { name: "Its own pool", value: "separate" }))
+    .addBooleanOption((o) => o.setName("reset").setDescription("Go back to the guild defaults for every rule (points already in a pool stay there)")))
   .addSubcommand((sub) => sub.setName("show").setDescription("Show one core's roster.")
     .addStringOption(coreOption))
   .addSubcommand((sub) => sub.setName("list").setDescription("All raid cores and how many players each has."))
@@ -81,30 +88,41 @@ export async function executeCore(interaction: ChatInputCommandInteraction): Pro
 
   if (subcommand === "rules") {
     const core = await coreService.byIdOrName(guildId, interaction.options.getString("core", true));
-    const reset = interaction.options.getBoolean("reset") ?? false;
-    const pick = (name: string) => interaction.options.getInteger(name);
-    const data = reset
-      ? { attendanceEp: null, lateEp: null, bossEp: null, completionEp: null }
-      : {
-        ...(pick("attendance") !== null ? { attendanceEp: pick("attendance") } : {}),
-        ...(pick("late") !== null ? { lateEp: pick("late") } : {}),
-        ...(pick("boss") !== null ? { bossEp: pick("boss") } : {}),
-        ...(pick("clear") !== null ? { completionEp: pick("clear") } : {})
-      };
+    const settings = await guildService.getSettings(guildId);
+    const number = (name: string) => interaction.options.getInteger(name);
+    const data: Record<string, number | string | boolean | null> = {};
+    if (interaction.options.getBoolean("reset")) {
+      Object.assign(data, { attendanceEp: null, lateEp: null, bossEp: null, completionEp: null, baseGp: null, decayPercent: null, lootMode: null });
+    } else {
+      for (const [option, field] of [["attendance", "attendanceEp"], ["late", "lateEp"], ["boss", "bossEp"], ["clear", "completionEp"], ["base_gp", "baseGp"]] as const) {
+        if (number(option) !== null) data[field] = number(option);
+      }
+      if (number("decay") !== null) data["decayPercent"] = (number("decay") ?? 0) / 100;
+      const mode = interaction.options.getString("loot_mode");
+      if (mode) data["lootMode"] = mode === "DEFAULT" ? null : mode;
+    }
+    const pool = interaction.options.getString("pool");
+    if (pool === "separate" && !core.separatePool) data["separatePool"] = true;
+    if (pool === "shared" && core.separatePool) {
+      // Going back to the shared pool would strand the points already in the core's pool.
+      const stranded = await prisma.epgpTransaction.count({ where: { guildId, coreId: core.id } });
+      if (stranded > 0) throw new Error(`${core.name} already has ${stranded} entries in its own pool. Those points would disappear from view, so it stays separate.`);
+      data["separatePool"] = false;
+    }
     const updated = Object.keys(data).length ? await prisma.raidCore.update({ where: { id: core.id }, data }) : core;
-    const show = (value: number | null) => (value === null ? "guild default" : `${value} EP`);
-    await interaction.reply({
-      content: `**${core.name}** EP rules: attendance ${show(updated.attendanceEp)}, late ${show(updated.lateEp)}, per boss ${show(updated.bossEp)}, full clear ${show(updated.completionEp)}.`,
-      ephemeral: true
-    });
+    const note = pool === "separate" && data["separatePool"] === true
+      ? "\nFrom now on this core's raids pay EP and GP into its own pool (`/epgp balance core:...`). Points already in the guild pool stay there."
+      : "";
+    await interaction.reply({ content: describeRules(effectiveRules(settings, updated), core.name) + note, ephemeral: true });
     return;
   }
 
   if (subcommand === "show") {
     const core = await coreService.byIdOrName(guildId, interaction.options.getString("core", true));
     const byRole = (role: RaidRole) => core.members.filter((entry) => entry.role === role).map((entry) => entry.member.displayName).join(", ") || "—";
+    const rules = describeRules(effectiveRules(await guildService.getSettings(guildId), core), core.name);
     await interaction.reply({
-      content: `**${core.name}**${core.description ? ` — ${core.description}` : ""}\n🎯 EP rules: attendance ${core.attendanceEp ?? "default"}, late ${core.lateEp ?? "default"}, boss ${core.bossEp ?? "default"}, clear ${core.completionEp ?? "default"}\n🛡️ Tanks: ${byRole("TANK")}\n💚 Healers: ${byRole("HEALER")}\n⚔️ DPS: ${byRole("DPS")}`,
+      content: `${core.description ? `${core.description}\n` : ""}${rules}\n🛡️ Tanks: ${byRole("TANK")}\n💚 Healers: ${byRole("HEALER")}\n⚔️ DPS: ${byRole("DPS")}`,
       ephemeral: true
     });
     return;
@@ -132,7 +150,10 @@ export async function executeCore(interaction: ChatInputCommandInteraction): Pro
     return;
   }
 
-  const core = await coreService.remove(guildId, interaction.options.getString("core", true));
+  const toDelete = await coreService.byIdOrName(guildId, interaction.options.getString("core", true));
+  const pooled = toDelete.separatePool ? await prisma.epgpTransaction.count({ where: { guildId, coreId: toDelete.id } }) : 0;
+  if (pooled > 0) throw new Error(`${toDelete.name} has ${pooled} entries in its own point pool. Deleting it would orphan them, so it can't be deleted while it keeps its own points.`);
+  const core = await coreService.remove(guildId, toDelete.id);
   await removeCoreRosterMessage(interaction.guild, prisma, guildId, core.rosterMessageId);
   await interaction.reply({ content: `Deleted raid core **${core.name}**.`, ephemeral: true });
 }

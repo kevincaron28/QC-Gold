@@ -1,4 +1,5 @@
 import { EpgpTransactionType, type PrismaClient } from "@prisma/client";
+import { effectiveRules, poolFor } from "./core-rules.js";
 
 // Proposed EP for one raid, built from recorded attendance and boss kills
 // using the guild's settings. Nothing is written until an officer approves.
@@ -17,6 +18,9 @@ export interface EpProposal {
   perBoss: number;
   completionBonus: number;
   rows: EpProposalRow[];
+  // The core's own pool the EP goes to; null = the guild pool.
+  poolCoreId: string | null;
+  coreName: string | null;
 }
 
 type Db = Pick<PrismaClient, "raid" | "guildSettings" | "epgpTransaction">;
@@ -32,14 +36,16 @@ export async function computeRaidEpProposal(database: Db, guildId: string, raidI
   });
   if (!raid) throw new Error("Raid not found in this guild.");
   const settings = await database.guildSettings.findUnique({ where: { guildId } });
-  // A raid made for a core uses that core's EP rules where it has set them.
+  // A raid made for a core uses that core's EP rules where it has set them
+  // (everything else follows the guild), and pays into its pool if it has one.
   const core = raid.core;
-  const presentEp = core?.attendanceEp ?? settings?.attendanceDkp ?? 10;
-  const lateEp = core?.lateEp ?? settings?.lateAttendanceDkp ?? 5;
-  const perBoss = core?.bossEp ?? settings?.bossKillDkp ?? 5;
+  const rules = effectiveRules(settings, core);
+  const presentEp = rules.attendanceEp;
+  const lateEp = rules.lateEp;
+  const perBoss = rules.bossEp;
   const bossesKilled = raid.bosses.filter((boss) => boss.status === "KILLED").length;
   const fullClear = raid.bosses.length > 0 && bossesKilled === raid.bosses.length;
-  const completionBonus = fullClear ? core?.completionEp ?? settings?.epCompletionBonus ?? 0 : 0;
+  const completionBonus = fullClear ? rules.completionEp : 0;
 
   const rows: EpProposalRow[] = raid.attendance
     .filter((row) => row.status === "PRESENT" || row.status === "LATE" || row.status === "BENCHED")
@@ -53,7 +59,10 @@ export async function computeRaidEpProposal(database: Db, guildId: string, raidI
     .filter((row) => row.ep > 0)
     .sort((a, b) => b.ep - a.ep || a.name.localeCompare(b.name));
 
-  return { raidId: raid.id, title: raid.title, bossesKilled, bossesPlanned: raid.bosses.length, perBoss, completionBonus, rows };
+  return {
+    raidId: raid.id, title: raid.title, bossesKilled, bossesPlanned: raid.bosses.length, perBoss, completionBonus, rows,
+    poolCoreId: poolFor(core), coreName: core?.name ?? null
+  };
 }
 
 // Writes the approved EP. Recomputes from current data (attendance may have
@@ -79,7 +88,8 @@ export async function applyRaidEpProposal(database: Db, guildId: string, raidId:
         type: EpgpTransactionType.EP_AWARD,
         reason: `Raid: ${proposal.title} (${row.status === "LATE" ? "late" : row.status === "BENCHED" ? "benched" : "present"}, ${proposal.bossesKilled} boss kill${proposal.bossesKilled === 1 ? "" : "s"})`,
         createdBy,
-        sourceRef
+        sourceRef,
+        coreId: proposal.poolCoreId
       }
     });
     created += 1;

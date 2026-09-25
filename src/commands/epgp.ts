@@ -5,6 +5,8 @@ import { createEpgpService } from "../services/epgp.js";
 import { createMeritService, meritScore } from "../services/merit.js";
 import { notifications, notify } from "../services/notify.js";
 import { hasPermission } from "../permissions.js";
+import { effectiveRules } from "../services/core-rules.js";
+import { createRaidCoreService } from "../services/raid-core.js";
 import { guildService, requireGuildContext } from "./context.js";
 import { BRAND } from "../brand.js";
 
@@ -12,22 +14,32 @@ const epgpService = createEpgpService(prisma);
 const meritService = createMeritService(prisma);
 const auditService = createAuditService(prisma);
 
+// Which point pool: leave empty for the guild pool, or name a raid core that keeps its own.
+const poolOption = (o: import("discord.js").SlashCommandStringOption) =>
+  o.setName("core").setDescription("A raid core with its own point pool (default: the guild pool)").setAutocomplete(true);
+
 export const epgpCommand = new SlashCommandBuilder()
   .setName("epgp")
   .setDescription("View and manage EPGP.")
-  .addSubcommand((sub) => sub.setName("balance").setDescription("View your EP, GP, and PR."))
+  .addSubcommand((sub) => sub.setName("balance").setDescription("View your EP, GP, and PR (guild pool, plus any raid core with its own pool).")
+    .addStringOption(poolOption))
   .addSubcommand((sub) => sub.setName("history").setDescription("View recent EPGP history (officers can view anyone's).")
-    .addUserOption((o) => o.setName("player").setDescription("Guild member (officers only; default you)")))
-  .addSubcommand((sub) => sub.setName("leaderboard").setDescription("View the EPGP leaderboard."))
+    .addUserOption((o) => o.setName("player").setDescription("Guild member (officers only; default you)"))
+    .addStringOption(poolOption))
+  .addSubcommand((sub) => sub.setName("leaderboard").setDescription("View the EPGP leaderboard.")
+    .addStringOption(poolOption))
   .addSubcommand((sub) => sub.setName("award-ep").setDescription("Award EP to a member.")
     .addUserOption((o) => o.setName("player").setDescription("Guild member").setRequired(true))
     .addIntegerOption((o) => o.setName("amount").setDescription("EP amount").setMinValue(1).setRequired(true))
-    .addStringOption((o) => o.setName("reason").setDescription("Reason").setMinLength(3).setRequired(true)))
+    .addStringOption((o) => o.setName("reason").setDescription("Reason").setMinLength(3).setRequired(true))
+    .addStringOption(poolOption))
   .addSubcommand((sub) => sub.setName("award-gp").setDescription("Award GP for an item.")
     .addUserOption((o) => o.setName("player").setDescription("Guild member").setRequired(true))
     .addIntegerOption((o) => o.setName("amount").setDescription("GP amount").setMinValue(1).setRequired(true))
-    .addStringOption((o) => o.setName("reason").setDescription("Reason").setMinLength(3).setRequired(true)))
-  .addSubcommand((sub) => sub.setName("decay").setDescription("Apply the configured EPGP decay to all active members."))
+    .addStringOption((o) => o.setName("reason").setDescription("Reason").setMinLength(3).setRequired(true))
+    .addStringOption(poolOption))
+  .addSubcommand((sub) => sub.setName("decay").setDescription("Apply EPGP decay to all active members (guild pool, or one core's own pool).")
+    .addStringOption(poolOption))
   .addSubcommand((sub) => sub.setName("reverse").setDescription("Undo a mistaken EPGP entry (adds an opposite entry; history is kept).")
     .addStringOption((o) => o.setName("entry").setDescription("Entry (start typing a name or reason)").setAutocomplete(true).setRequired(true))
     .addStringOption((o) => o.setName("reason").setDescription("Why it is being reversed").setMinLength(3).setRequired(true)));
@@ -41,10 +53,26 @@ export async function executeEpgp(interaction: ChatInputCommandInteraction): Pro
   if (!context) return;
   const subcommand = interaction.options.getSubcommand();
   const settings = await guildService.getSettings(context.guildId);
-  const baseGp = settings?.baseGp ?? 0;
-  const standing = await epgpService.getStanding(context.memberId, baseGp);
+  // The pool this command works on: the guild pool, or a core that keeps its own points.
+  const coreName = interaction.options.getString("core");
+  let pool: { id: string | null; name: string; baseGp: number; decay: number } = { id: null, name: "Guild pool", baseGp: settings?.baseGp ?? 0, decay: settings?.epgpDecayPercent ?? 0.1 };
+  if (coreName) {
+    const core = await createRaidCoreService(prisma).byIdOrName(context.guildId, coreName);
+    if (!core.separatePool) throw new Error(`${core.name} shares the guild pool. Turn on its own pool with /core rules pool:separate first.`);
+    const rules = effectiveRules(settings, core);
+    pool = { id: core.id, name: `${core.name} pool`, baseGp: rules.baseGp, decay: rules.decayPercent };
+  }
+  const baseGp = pool.baseGp;
+  const standing = await epgpService.getStanding(context.memberId, baseGp, pool.id);
   if (subcommand === "balance") {
-    await interaction.reply({ content: `EP: **${standing.ep}** | GP: **${standing.gp}** | PR: **${standing.pr.toFixed(3)}**`, ephemeral: true });
+    const lines = [`**${pool.name}** — EP: **${standing.ep}** | GP: **${standing.gp}** | PR: **${standing.pr.toFixed(3)}**`];
+    if (!coreName) {
+      for (const core of (await createRaidCoreService(prisma).list(context.guildId)).filter((c) => c.separatePool)) {
+        const other = await epgpService.getStanding(context.memberId, effectiveRules(settings, core).baseGp, core.id);
+        lines.push(`**${core.name} pool** — EP: **${other.ep}** | GP: **${other.gp}** | PR: **${other.pr.toFixed(3)}**`);
+      }
+    }
+    await interaction.reply({ content: lines.join("\n"), ephemeral: true });
     return;
   }
   if (subcommand === "history") {
@@ -57,9 +85,9 @@ export async function executeEpgp(interaction: ChatInputCommandInteraction): Pro
         return;
       }
       memberId = (await guildService.ensureMember(context.guildId, other.id, other.username)).id;
-      shown = await epgpService.getStanding(memberId, baseGp);
+      shown = await epgpService.getStanding(memberId, baseGp, pool.id);
     }
-    const history = await epgpService.getHistory(memberId);
+    const history = await epgpService.getHistory(memberId, 10, pool.id);
     // Entry IDs are shown so officers can pass one to /epgp reverse.
     await interaction.reply({
       content: [`${other ? `**${other.username}** - ` : ""}EP: **${shown.ep}** | GP: **${shown.gp}** | PR: **${shown.pr.toFixed(3)}**`,
@@ -70,7 +98,7 @@ export async function executeEpgp(interaction: ChatInputCommandInteraction): Pro
   }
   if (subcommand === "leaderboard") {
     const members = await prisma.member.findMany({ where: { guildId: context.guildId, status: "ACTIVE" }, orderBy: { displayName: "asc" } });
-    const rows = await Promise.all(members.map(async (member) => ({ member, standing: await epgpService.getStanding(member.id, baseGp) })));
+    const rows = await Promise.all(members.map(async (member) => ({ member, standing: await epgpService.getStanding(member.id, baseGp, pool.id) })));
     const merit = settings?.meritEnabled === true;
     const rates = await meritService.getAttendanceRates(context.guildId);
     const scored = rows.map((row) => {
@@ -78,7 +106,7 @@ export async function executeEpgp(interaction: ChatInputCommandInteraction): Pro
       return { ...row, rate, score: merit ? meritScore(row.standing.pr, rate) : row.standing.pr };
     });
     scored.sort((a, b) => b.score - a.score);
-    await interaction.reply({ embeds: [new EmbedBuilder().setTitle(`${BRAND.emoji} ${BRAND.name} EPGP`).setDescription(
+    await interaction.reply({ embeds: [new EmbedBuilder().setTitle(`${BRAND.emoji} ${BRAND.name} EPGP${pool.id ? ` — ${pool.name}` : ""}`).setDescription(
       scored.length
         ? scored.map((row, i) => `${i + 1}. ${row.member.displayName} - EP ${row.standing.ep} | GP ${row.standing.gp} | PR ${row.standing.pr.toFixed(3)} | Att ${Math.round(row.rate * 100)}%${merit ? ` | Merit ${row.score.toFixed(3)}` : ""}`).join("\n")
         : "No EPGP recorded."
@@ -91,18 +119,18 @@ export async function executeEpgp(interaction: ChatInputCommandInteraction): Pro
   }
   if (subcommand === "decay") {
     if (!settings) throw new Error("Guild settings have not been initialized.");
-    const transactions = await epgpService.applyDecay(context.guildId, settings.epgpDecayPercent, interaction.user.id);
+    const transactions = await epgpService.applyDecay(context.guildId, pool.decay, interaction.user.id, pool.id);
     await auditService.record({
       guildId: context.guildId,
       actorId: interaction.user.id,
       action: "EPGP_TRANSACTION_CREATED",
-      metadata: { type: "DECAY", memberCount: transactions.length, percent: settings.epgpDecayPercent }
+      metadata: { type: "DECAY", memberCount: transactions.length, percent: pool.decay, pool: pool.name }
     });
     await interaction.reply({
-      content: `Applied ${(settings.epgpDecayPercent * 100).toFixed(0)}% EPGP decay to ${transactions.length} member(s).`,
+      content: `Applied ${(pool.decay * 100).toFixed(0)}% EPGP decay to ${transactions.length} member(s) in the ${pool.name}.`,
       ephemeral: true
     });
-    await notify(interaction.guild, notifications.decayApplied(Math.round(settings.epgpDecayPercent * 100), transactions.length));
+    await notify(interaction.guild, notifications.decayApplied(Math.round(pool.decay * 100), transactions.length));
     return;
   }
   if (subcommand === "reverse") {
@@ -129,8 +157,8 @@ export async function executeEpgp(interaction: ChatInputCommandInteraction): Pro
   const amount = interaction.options.getInteger("amount", true);
   const reason = interaction.options.getString("reason", true);
   const transaction = subcommand === "award-ep"
-    ? await epgpService.awardEP({ guildId: context.guildId, memberId: targetMember.id, amount, reason, createdBy: interaction.user.id })
-    : await epgpService.awardItem({ guildId: context.guildId, memberId: targetMember.id, gp: amount, reason, createdBy: interaction.user.id });
+    ? await epgpService.awardEP({ guildId: context.guildId, memberId: targetMember.id, amount, reason, createdBy: interaction.user.id, coreId: pool.id })
+    : await epgpService.awardItem({ guildId: context.guildId, memberId: targetMember.id, gp: amount, reason, createdBy: interaction.user.id, coreId: pool.id });
   await auditService.record({ guildId: context.guildId, actorId: interaction.user.id, action: "EPGP_TRANSACTION_CREATED", entityId: transaction.id, metadata: { memberId: targetMember.id, epAmount: transaction.epAmount, gpAmount: transaction.gpAmount, reason } });
   await interaction.reply({ content: `Recorded ${transaction.epAmount ? `${transaction.epAmount} EP` : `${transaction.gpAmount} GP`} for ${target.username}.`, ephemeral: true });
   await notify(interaction.guild, notifications.epgpChanged(targetMember.displayName, transaction.epAmount, transaction.gpAmount, reason), "loot");

@@ -52,8 +52,8 @@ export async function raidChoices(
     }));
 }
 
-export async function coreChoices(database: Pick<PrismaClient, "raidCore">, guildId: string, query: string): Promise<Choice[]> {
-  const cores = await database.raidCore.findMany({ where: { guildId }, orderBy: { name: "asc" }, take: 50 });
+export async function coreChoices(database: Pick<PrismaClient, "raidCore">, guildId: string, query: string, separatePoolOnly = false): Promise<Choice[]> {
+  const cores = await database.raidCore.findMany({ where: { guildId, ...(separatePoolOnly ? { separatePool: true } : {}) }, orderBy: { name: "asc" }, take: 50 });
   return cores.filter((core) => matches(query, core.name)).slice(0, MAX).map((core) => ({ name: clip(core.name), value: core.name }));
 }
 
