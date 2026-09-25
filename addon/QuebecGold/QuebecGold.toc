@@ -16,5 +16,6 @@ Modules\Sim.lua
 Modules\Bidding.lua
 Modules\Calendar.lua
 Modules\Consumables.lua
+Modules\Digest.lua
 Modules\Dungeon.lua
 Modules\Minimap.lua
