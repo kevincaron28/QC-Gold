@@ -4,7 +4,16 @@ ns = ns or {}
 QuebecGold = ns
 
 local PREFIX = "QuebecGold"
-local DB_VERSION = 3
+local DB_VERSION = 4
+-- SavedVariables are rewritten on every logout; unbounded journals slowly
+-- make login/logout (and the companion's parse) slower for months, so the
+-- informational logs are capped. The EPGP ledger is NOT capped: the
+-- companion identifies entries by id/position and it is the audit trail.
+local MAX_EVENTS = 1000
+local MAX_EXPORT_MARKERS = 10
+local MAX_EPGP_AMOUNT = 100000
+-- Addon messages longer than 255 bytes are rejected by the client.
+local MAX_ADDON_MESSAGE = 255
 local db
 local activeRaid
 
@@ -18,19 +27,47 @@ end
 
 local function message(text)
   DEFAULT_CHAT_FRAME:AddMessage("|cffd4af37[QuebecGold]|r " .. tostring(text))
+  -- Lets the tools panel show the latest result without reading chat.
+  if ns.onMessage then pcall(ns.onMessage, tostring(text)) end
+end
+
+-- Midnight-era clients can hand addons "secret" values (e.g. chat text during
+-- boss encounters) that error when compared or pattern-matched.
+local function isSecret(value)
+  return issecretvalue ~= nil and issecretvalue(value) == true
+end
+
+-- One canonical spelling per character, so "bob", "Bob" and "Bob-Realm"
+-- (addon-message senders and guild roster names carry the realm) never end
+-- up as separate ledger, roster, or attendance entries. Only ASCII letters
+-- change case; accented names pass through untouched.
+local function normalizeName(name)
+  if type(name) ~= "string" or isSecret(name) then return nil end
+  name = string.match(name, "^%s*(.-)%s*$")
+  name = string.match(name, "^([^%-]+)") or name
+  if name == "" then return nil end
+  return string.upper(string.sub(name, 1, 1)) .. string.lower(string.sub(name, 2))
+end
+
+local function defaultSettings()
+  return {
+    officerRanks = { [0] = true, [1] = true },
+    officers = {},
+    announceChannel = "RAID",
+    captureLoot = true
+  }
 end
 
 local function ensureDb()
   QuebecGoldDB = QuebecGoldDB or {}
   db = QuebecGoldDB
   db.version = DB_VERSION
-  db.settings = db.settings or {
-    officerRanks = { [0] = true, [1] = true },
-    officers = {},
-    announceChannel = "RAID",
-    captureCombatHints = true,
-    captureLoot = true
-  }
+  -- Fill in any setting missing from an older saved file instead of only
+  -- creating settings when the whole table is absent.
+  db.settings = db.settings or {}
+  for key, value in pairs(defaultSettings()) do
+    if db.settings[key] == nil then db.settings[key] = value end
+  end
   db.raids = db.raids or {}
   db.roster = db.roster or {}
   db.attendance = db.attendance or {}
@@ -50,25 +87,46 @@ local function ensureDb()
     end
     db.dkp = nil
   end
+  db.ledgerSeq = db.ledgerSeq or 0
   db.readiness = db.readiness or {}
   db.attunements = db.attunements or {}
   -- Diagnostics: blocked-action reports (ADDON_ACTION_BLOCKED/FORBIDDEN,
   -- which name the exact function WoW refused to let an addon call) and
-  -- captured Lua errors that mention this addon. See /qg diag.
+  -- captured Lua errors. See /qg diag.
   db.diagnostics = db.diagnostics or {}
   -- Roster digests broadcast by other guildmates' clients (gear/profession
   -- summary only, not full detail) so one officer's export can carry the
   -- whole online guild's readiness picture, not just their own.
   db.peerRoster = db.peerRoster or {}
   db.loot = db.loot or {}
+  -- Who was actually in the raid group during each raid: [raidId][name] =
+  -- { firstSeen, lastSeen }. Filled automatically while a raid is active.
+  db.presence = db.presence or {}
   db.events = db.events or {}
+  while #db.events > MAX_EVENTS do table.remove(db.events, 1) end
+  -- Older versions stored a full copy of the database per export, which
+  -- the SavedVariables writer duplicates on disk every time. Keep markers only.
   db.exports = db.exports or {}
+  for key, value in pairs(db.exports) do
+    if type(value) == "table" and value.roster then db.exports[key] = { exportedAt = key } end
+  end
+
+  -- A raid survives /reload and disconnects: without this, a crash mid-raid
+  -- left the raid open forever and every later attendance call failed.
+  activeRaid = nil
+  if db.activeRaidId then
+    for _, raid in ipairs(db.raids) do
+      if raid.id == db.activeRaidId and not raid.endedAt then activeRaid = raid end
+    end
+    if not activeRaid then db.activeRaidId = nil end
+  end
 end
 
 local function logEvent(kind, payload)
   table.insert(db.events, {
     at = now(), kind = kind, player = playerName(), data = payload
   })
+  while #db.events > MAX_EVENTS do table.remove(db.events, 1) end
 end
 
 -- Records a diagnostic entry (blocked action or captured Lua error) so it
@@ -76,34 +134,87 @@ end
 -- action disappears without saying which function was blocked, and a
 -- regular Lua error can scroll off before anyone reads it. /qg diag prints
 -- the last few of these.
-local function logDiagnostic(kind, detail)
-  if not db then return end
+-- `foreign` marks noise from other addons (recorded quietly, evicted first).
+-- Consecutive identical entries collapse into one with a count, so an
+-- unrelated addon erroring every few seconds can't flood the log.
+-- Anything reported before the saved database exists (which is exactly when a
+-- load-time blocked-action popup fires) is held here and flushed on login,
+-- instead of being silently dropped.
+local pendingDiagnostics = {}
+
+local function logDiagnostic(kind, detail, foreign)
+  if not db then
+    if #pendingDiagnostics < 25 then
+      table.insert(pendingDiagnostics, { kind = kind, detail = detail, foreign = foreign })
+    end
+    return
+  end
   db.diagnostics = db.diagnostics or {}
-  table.insert(db.diagnostics, { at = now(), kind = kind, detail = detail })
-  while #db.diagnostics > 25 do table.remove(db.diagnostics, 1) end
-  message("|cffff5555[Diagnostic]|r " .. kind .. ": " .. detail .. " (see /qg diag)")
+  local list = db.diagnostics
+  local last = list[#list]
+  if last and last.kind == kind and last.detail == detail then
+    last.count = (last.count or 1) + 1
+    last.at = now()
+    return
+  end
+  table.insert(list, { at = now(), kind = kind, detail = detail, count = 1, foreign = foreign or false })
+  while #list > 25 do
+    local removeIndex = 1
+    for i = 1, #list do
+      if list[i].foreign then
+        removeIndex = i
+        break
+      end
+    end
+    table.remove(list, removeIndex)
+  end
+  if not foreign then
+    message("|cffff5555[Diagnostic]|r " .. kind .. ": " .. detail .. " (see /qg diag)")
+  end
 end
 
--- Captures every Lua error while this diagnostic build is installed --
--- intentionally unfiltered for now (not just errors mentioning this addon),
--- since the ADDON_ACTION_BLOCKED/FORBIDDEN hook below caught nothing on a
--- reproduction that definitely happened, meaning either this isn't a taint
--- error at all or the real error text doesn't name this addon. Chains to
--- whatever error handler was already set so this never suppresses another
--- addon's own error reporting.
+-- Records Lua errors (other addons' errors are kept quietly as "foreign")
+-- and always chains to the previous handler, so BugSack/the default error
+-- frame keep working. The recording itself is pcall-guarded: an error inside
+-- an error handler would hide the original error.
 local previousErrorHandler = geterrorhandler and geterrorhandler()
 if seterrorhandler then
   seterrorhandler(function(err)
-    logDiagnostic("LUA_ERROR", tostring(err))
+    pcall(function()
+      local text = tostring(err)
+      logDiagnostic("LUA_ERROR", text, not string.find(text, "QuebecGold", 1, true))
+    end)
     if previousErrorHandler then return previousErrorHandler(err) end
   end)
 end
 
 local function isOfficer()
+  if not db then return false end
   local name = playerName()
   if db.settings.officers[name] then return true end
   local _, _, rankIndex = GetGuildInfo("player")
-  return rankIndex and db.settings.officerRanks[rankIndex] == true
+  return rankIndex ~= nil and db.settings.officerRanks[rankIndex] == true
+end
+
+local function isGuildMaster()
+  local _, _, rankIndex = GetGuildInfo("player")
+  return rankIndex == 0
+end
+
+-- Rank check for someone else, from the guild roster (used to decide whether
+-- to trust an officer-only message another client broadcast).
+local function isOfficerName(name)
+  name = normalizeName(name)
+  if not db or not name then return false end
+  if db.settings.officers[name] then return true end
+  if not GetNumGuildMembers or not GetGuildRosterInfo then return false end
+  for i = 1, GetNumGuildMembers() do
+    local rosterName, _, rankIndex = GetGuildRosterInfo(i)
+    if normalizeName(rosterName) == name then
+      return rankIndex ~= nil and db.settings.officerRanks[rankIndex] == true
+    end
+  end
+  return false
 end
 
 local function requireOfficer()
@@ -114,30 +225,69 @@ local function requireOfficer()
   return true
 end
 
+-- Splits on whitespace but keeps "double quoted phrases" together, so
+-- /qg attune Bob "Onyxia Key" works as documented.
 local function split(text)
   local result = {}
-  for part in string.gmatch(text or "", "%S+") do table.insert(result, part) end
+  text = text or ""
+  local pos = 1
+  while true do
+    local s = string.find(text, "%S", pos)
+    if not s then break end
+    if string.sub(text, s, s) == '"' then
+      local e = string.find(text, '"', s + 1, true)
+      table.insert(result, string.sub(text, s + 1, (e or 0) - 1))
+      if not e then break end
+      pos = e + 1
+    else
+      local e = string.find(text, "%s", s)
+      table.insert(result, string.sub(text, s, (e or 0) - 1))
+      if not e then break end
+      pos = e
+    end
+  end
   return result
 end
 
 local function send(messageText, target)
   target = target or "RAID"
-  if C_ChatInfo and C_ChatInfo.RegisterAddonMessagePrefix and C_ChatInfo.SendAddonMessage then
+  messageText = string.sub(tostring(messageText), 1, MAX_ADDON_MESSAGE)
+  -- Sending can be refused (not in a group, throttled, encounter lockdown);
+  -- none of that should ever break the command that triggered it.
+  pcall(function()
+    if C_ChatInfo and C_ChatInfo.SendAddonMessage then
+      C_ChatInfo.SendAddonMessage(PREFIX, messageText, target)
+    elseif SendAddonMessage then
+      SendAddonMessage(PREFIX, messageText, target)
+    end
+  end)
+end
+
+local function registerPrefix()
+  if C_ChatInfo and C_ChatInfo.RegisterAddonMessagePrefix then
     C_ChatInfo.RegisterAddonMessagePrefix(PREFIX)
-    C_ChatInfo.SendAddonMessage(PREFIX, messageText, target)
-  elseif SendAddonMessage then
-    if RegisterAddonMessagePrefix then RegisterAddonMessagePrefix(PREFIX) end
-    SendAddonMessage(PREFIX, messageText, target)
+  elseif RegisterAddonMessagePrefix then
+    RegisterAddonMessagePrefix(PREFIX)
   end
 end
 
+-- Assigned below groupMembers(); declared here so raid start/end can use it.
+local recordPresence
+
 local function raidStart(title)
+  if activeRaid then
+    message("Raid '" .. activeRaid.title .. "' is still active. Use /qg end first.")
+    return
+  end
+  if not title or title == "" then title = "Raid" end
   activeRaid = {
     id = tostring(time()) .. "-" .. playerName(),
-    title = title or "Raid",
+    title = title,
     startedAt = now(), endedAt = nil, startedBy = playerName()
   }
   table.insert(db.raids, activeRaid)
+  recordPresence()
+  db.activeRaidId = activeRaid.id
   logEvent("RAID_START", { id = activeRaid.id, title = activeRaid.title })
   send("RAID_START|" .. activeRaid.id .. "|" .. activeRaid.title)
   message("Started raid: " .. activeRaid.title)
@@ -145,16 +295,18 @@ end
 
 local function raidEnd()
   if not activeRaid then message("No active raid."); return end
+  recordPresence()
   activeRaid.endedAt = now()
   logEvent("RAID_END", { id = activeRaid.id })
   send("RAID_END|" .. activeRaid.id)
   message("Ended raid: " .. activeRaid.title)
   activeRaid = nil
+  db.activeRaidId = nil
 end
 
-local function setAttendance(name, status)
+local function setAttendance(name, status, quiet)
   if not activeRaid then message("Start a raid first."); return end
-  name = name or playerName()
+  name = normalizeName(name) or playerName()
   status = string.upper(status or "PRESENT")
   if status ~= "PRESENT" and status ~= "ABSENT" and status ~= "LATE" then
     message("Status must be PRESENT, ABSENT, or LATE."); return
@@ -164,12 +316,13 @@ local function setAttendance(name, status)
   db.roster[name] = db.roster[name] or { firstSeen = now() }
   logEvent("ATTENDANCE", { raid = activeRaid.id, name = name, status = status })
   send("ATTENDANCE|" .. activeRaid.id .. "|" .. name .. "|" .. status)
-  message(name .. " marked " .. status .. ".")
+  if not quiet then message(name .. " marked " .. status .. ".") end
+  return true
 end
 
 local function bossKill(name)
   if not activeRaid then message("Start a raid first."); return end
-  name = name or "Unknown boss"
+  if not name or name == "" then message("Usage: /qg boss <name>"); return end
   db.bosses[activeRaid.id] = db.bosses[activeRaid.id] or {}
   table.insert(db.bosses[activeRaid.id], { name = name, at = now(), by = playerName() })
   logEvent("BOSS_KILL", { raid = activeRaid.id, boss = name })
@@ -177,26 +330,114 @@ local function bossKill(name)
   message("Recorded boss kill: " .. name)
 end
 
-local function changeEpgp(name, amount, reason, kind, epAmount, gpAmount)
-  amount = tonumber(amount)
-  if not name or not amount or amount == 0 then
-    message("Usage: /qg " .. string.lower(kind) .. " <player> <amount> <reason>"); return
+local EPGP_KINDS = {
+  EP_AWARD = { command = "award", ep = 1, gp = 0 },
+  GP_AWARD = { command = "gp", ep = 0, gp = 1 },
+  ADJUSTMENT = { command = "deduct", ep = -1, gp = 0 }
+}
+
+-- Every ledger entry gets a permanent unique id. The companion sends it to
+-- the bot, which uses it to skip entries it already imported: each export
+-- carries the whole ledger, so without ids every import would re-add them.
+local function nextLedgerId()
+  db.ledgerSeq = (db.ledgerSeq or 0) + 1
+  return string.format("%s-%d-%d", playerName(), time(), db.ledgerSeq)
+end
+
+local function changeEpgp(rawName, rawAmount, reason, kind, quiet)
+  local spec = EPGP_KINDS[kind]
+  local name = normalizeName(rawName)
+  local amount = tonumber(rawAmount)
+  if not name or not amount or amount <= 0 or amount > MAX_EPGP_AMOUNT then
+    message(string.format("Usage: /qg %s <player> <amount 1-%d> [reason]", spec.command, MAX_EPGP_AMOUNT)); return
   end
-  if kind == "DEDUCTION" then amount = -math.abs(amount) else amount = math.abs(amount) end
+  amount = math.floor(amount + 0.5)
+  -- The bot requires a reason of at least 3 characters on import.
+  if not reason or string.len(reason) < 3 then reason = "Manual adjustment" .. (reason and reason ~= "" and (": " .. reason) or "") end
+  local epAmount, gpAmount = spec.ep * amount, spec.gp * amount
   db.epgp[name] = db.epgp[name] or { ep = 0, gp = 0, ledger = {} }
-  epAmount = epAmount or 0
-  gpAmount = gpAmount or 0
-  db.epgp[name].ep = db.epgp[name].ep + epAmount
-  db.epgp[name].gp = db.epgp[name].gp + gpAmount
-  table.insert(db.epgp[name].ledger, {
-    epAmount = epAmount, gpAmount = gpAmount, type = kind, reason = reason or "Manual adjustment",
+  local account = db.epgp[name]
+  account.ep = account.ep + epAmount
+  account.gp = account.gp + gpAmount
+  table.insert(account.ledger, {
+    id = nextLedgerId(), epAmount = epAmount, gpAmount = gpAmount, type = kind, reason = reason,
     at = now(), by = playerName(), raid = activeRaid and activeRaid.id
   })
   logEvent(kind, { name = name, epAmount = epAmount, gpAmount = gpAmount, reason = reason })
-  send("EPGP|" .. name .. "|" .. epAmount .. "|" .. gpAmount .. "|" .. (reason or "Manual adjustment"))
-  message(string.format("%s EP %d, GP %d (%s), PR %.3f.", name, db.epgp[name].ep,
-    db.epgp[name].gp, reason or "Manual adjustment",
-    db.epgp[name].gp > 0 and db.epgp[name].ep / db.epgp[name].gp or 0))
+  send("EPGP|" .. name .. "|" .. epAmount .. "|" .. gpAmount .. "|" .. reason)
+  if not quiet then
+    message(string.format("%s EP %d, GP %d (%s), PR %.3f.", name, account.ep, account.gp, reason,
+      account.gp > 0 and account.ep / account.gp or 0))
+  end
+  return true
+end
+
+-- Everyone in your current raid or party, plus you, as normalized names.
+local function groupMembers()
+  local names, seen = {}, {}
+  local function add(name)
+    name = normalizeName(name)
+    if name and not seen[name] then
+      seen[name] = true
+      table.insert(names, name)
+    end
+  end
+  add(playerName())
+  if IsInRaid and IsInRaid() and GetNumGroupMembers and GetRaidRosterInfo then
+    for i = 1, GetNumGroupMembers() do add((GetRaidRosterInfo(i))) end
+  elseif IsInGroup and IsInGroup() then
+    for i = 1, 4 do
+      if UnitExists("party" .. i) then add((UnitName("party" .. i))) end
+    end
+  end
+  return names
+end
+
+-- /qg attendance group [status]: one command for the whole raid.
+recordPresence = function()
+  if not activeRaid then return end
+  db.presence[activeRaid.id] = db.presence[activeRaid.id] or {}
+  local seen = db.presence[activeRaid.id]
+  for _, name in ipairs(groupMembers()) do
+    seen[name] = seen[name] or { firstSeen = now() }
+    seen[name].lastSeen = now()
+    db.roster[name] = db.roster[name] or { firstSeen = now() }
+  end
+end
+
+-- /qg attendance seen: PRESENT for everyone who was in the group at any
+-- point during this raid, without overwriting anything already recorded
+-- (so a manual LATE or ABSENT stays).
+local function seenAttendance()
+  if not activeRaid then message("Start a raid first."); return end
+  recordPresence()
+  local recorded = db.attendance[activeRaid.id] or {}
+  local count = 0
+  for name in pairs(db.presence[activeRaid.id] or {}) do
+    if not recorded[name] and setAttendance(name, "PRESENT", true) then count = count + 1 end
+    recorded = db.attendance[activeRaid.id]
+  end
+  message(string.format("Marked %d more player(s) PRESENT from who was in the raid group.", count))
+end
+
+local function groupAttendance(status)
+  if not activeRaid then message("Start a raid first."); return end
+  local count = 0
+  for _, name in ipairs(groupMembers()) do
+    if setAttendance(name, status or "PRESENT", true) then count = count + 1 end
+  end
+  message(string.format("Marked %d group member(s) %s.", count, string.upper(status or "PRESENT")))
+end
+
+-- /qg award group <amount> [reason]: EP to everyone in the group.
+local function groupAward(rawAmount, reason)
+  local names = groupMembers()
+  local count = 0
+  for _, name in ipairs(names) do
+    if changeEpgp(name, rawAmount, reason, "EP_AWARD", true) then count = count + 1 else return end
+  end
+  message(string.format("Awarded %s EP to %d group member(s)%s.", tostring(rawAmount), count,
+    (reason and reason ~= "") and (" (" .. reason .. ")") or ""))
 end
 
 local function collectProfessions()
@@ -216,25 +457,31 @@ local function collectProfessions()
   return result
 end
 
+local READINESS_SLOTS = {
+  { 1, "Head" }, { 3, "Shoulder" }, { 5, "Chest" }, { 6, "Waist" },
+  { 7, "Legs" }, { 8, "Feet" }, { 9, "Wrist" }, { 10, "Hands" },
+  { 16, "MainHand" }, { 17, "OffHand" }
+}
+
 local function inspectReadiness(silent, target)
   local professions = collectProfessions()
   local snapshot = { character = playerName(), inspectedAt = now(), items = {}, consumables = {}, professions = professions, findings = {} }
-  local slots = {
-    { 1, "Head" }, { 3, "Shoulder" }, { 5, "Chest" }, { 6, "Waist" },
-    { 7, "Legs" }, { 8, "Feet" }, { 9, "Wrist" }, { 10, "Hands" },
-    { 16, "MainHand" }, { 17, "OffHand" }
-  }
   local missing = 0
+  local missingSlots = {}
   local minDurability = 100
-  for _, slot in ipairs(slots) do
+  for _, slot in ipairs(READINESS_SLOTS) do
     local link = GetInventoryItemLink("player", slot[1])
-    if link then
+    -- Right after login the link can still be loading while the item id is
+    -- already known; an equipped item must never count as missing.
+    local itemId = GetInventoryItemID and GetInventoryItemID("player", slot[1])
+    if link or itemId then
       -- Item links look like |cAARRGGBB|Hitem:ID:...|h[Name]|h|r; pull the
       -- readable name and numeric id out instead of exporting the raw link.
-      local itemName = string.match(link, "%[(.-)%]") or link
-      local itemId = string.match(link, "item:(%d+)")
-      local row = { slot = slot[2], itemName = itemName, itemId = itemId }
-      local current, maximum = GetInventoryItemDurability and GetInventoryItemDurability(slot[1])
+      local itemName = link and string.match(link, "%[(.-)%]")
+      if not itemName or itemName == "" then itemName = "Item " .. tostring(itemId or "?") end
+      local row = { slot = slot[2], itemName = itemName, itemId = itemId and tostring(itemId) or (link and string.match(link, "item:(%d+)")) }
+      local current, maximum
+      if GetInventoryItemDurability then current, maximum = GetInventoryItemDurability(slot[1]) end
       if current and maximum and maximum > 0 then
         row.durability = math.floor(current / maximum * 100)
         if row.durability < minDurability then minDurability = row.durability end
@@ -247,15 +494,37 @@ local function inspectReadiness(silent, target)
       table.insert(snapshot.findings, { code = "MISSING_OFFHAND", severity = "WARNING", message = "No off-hand item equipped (expected when using a two-handed weapon)." })
     else
       missing = missing + 1
+      table.insert(missingSlots, slot[2])
       table.insert(snapshot.findings, { code = "MISSING_" .. string.upper(slot[2]), severity = "ERROR", message = "Missing " .. slot[2] .. " equipment." })
     end
+  end
+  if minDurability < 20 then
+    table.insert(snapshot.findings, { code = "LOW_DURABILITY", severity = "WARNING", message = "Lowest equipped durability is " .. minDurability .. "%." })
   end
   if missing == 0 then
     table.insert(snapshot.findings, { code = "GEAR_PRESENT", severity = "INFO", message = "Required gear slots are populated." })
   end
-  snapshot.status = #snapshot.findings == 0 and "READY" or missing > 0 and "NOT_READY" or "PARTIAL"
+  -- Same rule as the bot's deriveReadinessStatus: any ERROR -> NOT_READY,
+  -- any WARNING -> PARTIAL, otherwise READY. (INFO findings don't count; the
+  -- old check counted them, so READY was impossible to reach.)
+  local hasWarning = false
+  for _, finding in ipairs(snapshot.findings) do
+    if finding.severity == "WARNING" then hasWarning = true end
+  end
+  snapshot.status = missing > 0 and "NOT_READY" or hasWarning and "PARTIAL" or "READY"
+  -- Item level: earlier notes assumed this client had no such API (it was
+  -- thought to be a vanilla-era client). Forever uses the modern API, so try
+  -- it, fully guarded so a missing or restricted API can never break inspect.
+  pcall(function()
+    if GetAverageItemLevel then
+      local _, equipped = GetAverageItemLevel()
+      if type(equipped) == "number" and equipped > 0 then
+        snapshot.itemLevel = math.floor(equipped * 10 + 0.5) / 10
+      end
+    end
+  end)
   db.readiness[playerName()] = snapshot
-  logEvent("READINESS", snapshot)
+  logEvent("READINESS", { status = snapshot.status, missing = missing, itemLevel = snapshot.itemLevel })
 
   local profParts = {}
   for _, profession in ipairs(professions) do
@@ -266,27 +535,40 @@ local function inspectReadiness(silent, target)
   -- so it reaches everyone online, not just the current raid group.
   send(string.format("READINESS|%s|%s|%d|%d|%s", playerName(), snapshot.status, missing, minDurability, table.concat(profParts, ",")), target or "GUILD")
   if not silent then
-    message("Readiness captured: " .. snapshot.status .. ".")
+    local detail = ""
+    if missing > 0 then
+      detail = " Empty slots: " .. table.concat(missingSlots, ", ") .. "."
+    elseif snapshot.status == "PARTIAL" then
+      for _, finding in ipairs(snapshot.findings) do
+        if finding.severity == "WARNING" then detail = detail .. " " .. finding.message end
+      end
+    end
+    local ilvl = snapshot.itemLevel and (" Item level " .. snapshot.itemLevel .. ".") or ""
+    message("Readiness captured: " .. snapshot.status .. "." .. detail .. ilvl)
   end
 end
 
+-- Title-cases attunement keys so "onyxia key" and "Onyxia Key" are one entry
+-- on the bot side (it keys attunements by exact name).
+local function canonicalKey(key)
+  return (string.gsub(key, "(%a)([%w']*)", function(first, rest)
+    return string.upper(first) .. string.lower(rest)
+  end))
+end
+
 local function setAttunement(name, key, completed)
-  if not key then message("Usage: /qg attune <key> | /qg attune <player> <key> [clear]"); return end
+  key = canonicalKey(key)
   db.attunements[name] = db.attunements[name] or {}
   db.attunements[name][key] = { completed = completed, at = now(), by = playerName() }
   logEvent("ATTUNEMENT", { name = name, key = key, completed = completed })
-  send("ATTUNEMENT|" .. name .. "|" .. key .. "|" .. tostring(completed))
+  send("ATTUNEMENT|" .. name .. "|" .. key .. "|" .. tostring(completed), "GUILD")
   message(name .. " attunement " .. (completed and "completed" or "cleared") .. ": " .. key .. ".")
 end
 
 -- Automatic sync: re-run inspectReadiness (silently, broadcasting to GUILD)
 -- on login, on gear changes, and when the raid roster changes, instead of
 -- requiring everyone to run /qg inspect manually. Deliberately event-driven
--- only (no OnUpdate ticker): a per-frame polling script is one of the most
--- common sources of WoW's "taint" bugs, where code running outside a normal
--- event handler contaminates whatever the game engine runs immediately
--- after it, and an unrelated Blizzard UI action gets blocked and blamed on
--- this addon. Every trigger below fires from a real Blizzard event instead.
+-- only (no OnUpdate ticker).
 local lastAutoSyncAt = 0
 local AUTO_SYNC_DEBOUNCE_SECONDS = 5
 local AUTO_SYNC_RAID_INTERVAL_SECONDS = 600
@@ -304,9 +586,18 @@ local function maybeAutoSync(minInterval)
   inspectReadiness(true, "GUILD")
 end
 
-local function recordLoot(name, item, cost)
-  if not name or not item then message("Usage: /qg loot <player> <item> [cost]"); return end
-  local row = { player = name, item = item, cost = tonumber(cost) or 0,
+-- /qg loot <player> <item, may contain spaces or be a shift-clicked link> [cost]
+local function recordLoot(args)
+  local name = normalizeName(args[2])
+  local last = #args
+  local cost = 0
+  if last >= 4 and tonumber(args[last]) then
+    cost = math.floor(tonumber(args[last]))
+    last = last - 1
+  end
+  local item = table.concat(args, " ", 3, last)
+  if not name or item == "" then message("Usage: /qg loot <player> <item> [cost]"); return end
+  local row = { player = name, item = item, cost = cost,
     at = now(), by = playerName(), raid = activeRaid and activeRaid.id }
   table.insert(db.loot, row)
   logEvent("LOOT", row)
@@ -316,79 +607,140 @@ end
 
 local function exportData()
   local key = now()
-  db.exports[key] = {
-    source = "QuebecGold", exportedAt = key, version = db.version,
-    roster = db.roster, raids = db.raids, attendance = db.attendance,
-    bosses = db.bosses, epgp = db.epgp, readiness = db.readiness,
-    attunements = db.attunements, peerRoster = db.peerRoster,
-    diagnostics = db.diagnostics, loot = db.loot, events = db.events
-  }
-  message("Export saved in QuebecGoldDB.exports[" .. key .. "]. Copy it from SavedVariables.")
+  -- The companion reads the live tables (epgp, readiness, ...) straight from
+  -- SavedVariables; an export is just a timestamped marker that tells it
+  -- (and you) when the officer last asked for a sync.
+  db.exports[key] = { exportedAt = key, by = playerName() }
+  local keys = {}
+  for existing in pairs(db.exports) do table.insert(keys, existing) end
+  table.sort(keys)
+  for i = 1, #keys - MAX_EXPORT_MARKERS do db.exports[keys[i]] = nil end
+  message("Export marked at " .. key .. ". /reload (or log out) so the game writes SavedVariables, then run the companion.")
 end
 
+local function showDiagnostics()
+  local entries = db.diagnostics or {}
+  if #entries == 0 then
+    message("No diagnostics recorded.")
+    return
+  end
+  message(string.format("Last %d diagnostic(s):", math.min(5, #entries)))
+  for i = math.max(1, #entries - 4), #entries do
+    local entry = entries[i]
+    local repeats = (entry.count or 1) > 1 and (" x" .. entry.count) or ""
+    local origin = entry.foreign and " (other addon)" or ""
+    message(entry.at .. " [" .. entry.kind .. "]" .. origin .. repeats .. " " .. entry.detail)
+  end
+end
+
+-- /qg officer add|remove <name>, /qg officer rank <index> on|off, /qg officer list
+-- Guild master only: changes who the addon treats as an officer without
+-- hand-editing SavedVariables.
+local function officerCommand(args)
+  local action = string.lower(args[2] or "list")
+  if action == "list" then
+    local names = {}
+    for name in pairs(db.settings.officers) do table.insert(names, name) end
+    local ranks = {}
+    for rank, on in pairs(db.settings.officerRanks) do if on then table.insert(ranks, tostring(rank)) end end
+    table.sort(ranks)
+    message("Officer rank indexes (0 = guild master): " .. (#ranks > 0 and table.concat(ranks, ", ") or "none"))
+    message("Extra officers: " .. (#names > 0 and table.concat(names, ", ") or "none"))
+    message("You are " .. (isOfficer() and "" or "NOT ") .. "an officer for this addon.")
+    return
+  end
+  if not isGuildMaster() then message("Only the guild master can change officer settings."); return end
+  if action == "add" or action == "remove" then
+    local name = normalizeName(args[3])
+    if not name then message("Usage: /qg officer add|remove <name>"); return end
+    db.settings.officers[name] = action == "add" or nil
+    message(name .. (action == "add" and " added as" or " removed as") .. " an addon officer.")
+  elseif action == "rank" then
+    local rank = tonumber(args[3])
+    local on = string.lower(args[4] or "")
+    if not rank or (on ~= "on" and on ~= "off") then message("Usage: /qg officer rank <index> on|off"); return end
+    db.settings.officerRanks[rank] = on == "on" or nil
+    message("Guild rank index " .. rank .. " is " .. (on == "on" and "now" or "no longer") .. " an officer rank.")
+  else
+    message("Usage: /qg officer list | add <name> | remove <name> | rank <index> on|off")
+  end
+end
+
+-- Each rank only sees the commands it can use. Module help lines are either
+-- plain strings (everyone) or { officer = true, text = "..." }.
 local function showHelp()
-  message("/qg start [title] | end | attendance <name> [status] | boss <name>")
-  message("/qg award <name> <amount> [reason] | gp <name> <amount> [reason] | deduct <name> <amount> [reason]")
-  message("/qg loot <name> <item> [cost] | inspect | export | status | roster")
-  message("/qg attune <key> [clear] | attune <player> <key> [clear]")
-  message("/qg diag - show recent blocked-action reports and captured Lua errors")
-  message("Readiness (gear/profession summary) auto-syncs to the guild on login, gear changes, and every 10 min while raiding.")
-  if next(ns.commandHelp or {}) then
-    for _, line in pairs(ns.commandHelp) do message(line) end
+  local officer = isOfficer()
+  message("/qg menu (or click the minimap coin) | inspect | status | roster | standings [player] | diag | version")
+  message("/qg attune <key> [clear] - mark your own attunement")
+  if officer then
+    message("Officer: /qg start [title] | end | attendance <name>|group|seen [PRESENT|ABSENT|LATE] | boss <name>")
+    message("Officer: /qg award <name>|group <amount> [reason] | gp <name> <amount> [reason] | deduct <name> <amount> [reason]")
+    message("Officer: /qg loot <name> <item> [cost] | export | attune <player> <key> [clear] | officer list|add|remove|rank")
+  end
+  for _, line in pairs(ns.commandHelp or {}) do
+    if type(line) == "table" then
+      if officer or not line.officer then message(line.text) end
+    else
+      message(line)
+    end
   end
 end
 
 -- Extension point for modules loaded after Core.lua (see Modules/Casino.lua):
 -- ns.commandHandlers["casino"] = function(args) ... end registers /qg casino ...
--- ns.commandHelp["casino"] = "/qg casino ..." adds a line to /qg help.
+-- table.insert(ns.commandHelp, "...") adds a line to /qg help.
 ns.commandHandlers = ns.commandHandlers or {}
 ns.commandHelp = ns.commandHelp or {}
 
 local function command(text)
+  if not db then message("Still loading, try again in a moment."); return end
   local args = split(text)
   local action = string.lower(args[1] or "help")
-  if action == "help" then showHelp(); return end
-  if action == "status" then
-    message(activeRaid and ("Active raid: " .. activeRaid.title) or "No active raid.")
-    return
-  end
-  if action == "roster" then
-    for name in pairs(db.roster) do message(name) end
-    return
-  end
-  if action == "start" then if requireOfficer() then raidStart(table.concat(args, " ", 2)) end
+  if action == "help" then showHelp()
+  elseif action == "status" then
+    message(activeRaid and ("Active raid: " .. activeRaid.title .. " (started " .. activeRaid.startedAt .. ")") or "No active raid.")
+  elseif action == "roster" then
+    local names = {}
+    for name in pairs(db.roster) do table.insert(names, name) end
+    table.sort(names)
+    message(#names .. " known character(s): " .. table.concat(names, ", "))
+  elseif action == "start" then if requireOfficer() then raidStart(table.concat(args, " ", 2)) end
   elseif action == "end" then if requireOfficer() then raidEnd() end
+  elseif action == "attendance" and string.lower(args[2] or "") == "group" then
+    if requireOfficer() then groupAttendance(args[3]) end
+  elseif action == "attendance" and string.lower(args[2] or "") == "seen" then
+    if requireOfficer() then seenAttendance() end
+  elseif action == "award" and string.lower(args[2] or "") == "group" then
+    if requireOfficer() then groupAward(args[3], table.concat(args, " ", 4)) end
   elseif action == "attendance" then if requireOfficer() then setAttendance(args[2], args[3]) end
   elseif action == "boss" then if requireOfficer() then bossKill(table.concat(args, " ", 2)) end
-  elseif action == "award" then if requireOfficer() then changeEpgp(args[2], args[3], table.concat(args, " ", 4), "EP_AWARD", math.abs(tonumber(args[3]) or 0), 0) end
-  elseif action == "gp" then if requireOfficer() then changeEpgp(args[2], args[3], table.concat(args, " ", 4), "GP_AWARD", 0, math.abs(tonumber(args[3]) or 0)) end
-  elseif action == "deduct" then if requireOfficer() then changeEpgp(args[2], args[3], table.concat(args, " ", 4), "ADJUSTMENT", -(math.abs(tonumber(args[3]) or 0)), 0) end
-  elseif action == "loot" then if requireOfficer() then recordLoot(args[2], args[3], args[4]) end
+  elseif action == "award" then if requireOfficer() then changeEpgp(args[2], args[3], table.concat(args, " ", 4), "EP_AWARD") end
+  elseif action == "gp" then if requireOfficer() then changeEpgp(args[2], args[3], table.concat(args, " ", 4), "GP_AWARD") end
+  elseif action == "deduct" then if requireOfficer() then changeEpgp(args[2], args[3], table.concat(args, " ", 4), "ADJUSTMENT") end
+  elseif action == "loot" then if requireOfficer() then recordLoot(args) end
   elseif action == "attune" then
     local completed = true
     local last = string.lower(args[#args] or "")
-    if last == "false" or last == "clear" or last == "no" then
+    if #args > 2 and (last == "false" or last == "clear" or last == "no") then
       completed = false
       table.remove(args, #args)
     end
-    if args[3] then
-      if requireOfficer() then setAttunement(args[2], args[3], completed) end
-    else
-      setAttunement(playerName(), args[2], completed)
+    -- "/qg attune Onyxia Key" is a key for yourself; the first word is only
+    -- treated as a player when it is a known guild member and a key follows.
+    local target = playerName()
+    local keyStart = 2
+    local candidate = normalizeName(args[2])
+    if args[3] and candidate and db.roster[candidate] and candidate ~= playerName() then
+      target, keyStart = candidate, 3
     end
+    local key = table.concat(args, " ", keyStart)
+    if key == "" then message("Usage: /qg attune <key> [clear] | /qg attune <player> <key> [clear]"); return end
+    if target ~= playerName() and not requireOfficer() then return end
+    setAttunement(target, key, completed)
   elseif action == "inspect" then inspectReadiness()
   elseif action == "export" then if requireOfficer() then exportData() end
-  elseif action == "diag" then
-    local entries = db.diagnostics or {}
-    if #entries == 0 then
-      message("No diagnostics recorded this session.")
-    else
-      message(string.format("Last %d diagnostic(s):", math.min(5, #entries)))
-      for i = math.max(1, #entries - 4), #entries do
-        local entry = entries[i]
-        message(entry.at .. " [" .. entry.kind .. "] " .. entry.detail)
-      end
-    end
+  elseif action == "diag" then showDiagnostics()
+  elseif action == "officer" then officerCommand(args)
   elseif ns.commandHandlers[action] then
     -- args[1] is the action itself; hand the module the remaining tokens.
     table.remove(args, 1)
@@ -396,73 +748,107 @@ local function command(text)
   else showHelp() end
 end
 
+-- /roll results. The pattern is built from the client's own
+-- RANDOM_ROLL_RESULT text so French (and other) clients work, with the
+-- English form as a fallback. Returns name, value, min, max.
+local function buildRollPattern(template)
+  template = string.gsub(template, "%%%d*%$?s", "\001")
+  template = string.gsub(template, "%%%d*%$?d", "\002")
+  template = string.gsub(template, "([%%%(%)%.%+%-%*%?%[%]%^%$])", "%%%1")
+  template = string.gsub(template, "\001", "(.-)")
+  template = string.gsub(template, "\002", "(%%d+)")
+  return "^" .. template .. "$"
+end
+
+local ROLL_PATTERNS = { buildRollPattern("%s rolls %d (%d-%d)") }
+if type(RANDOM_ROLL_RESULT) == "string" then
+  table.insert(ROLL_PATTERNS, 1, buildRollPattern(RANDOM_ROLL_RESULT))
+end
+
+local function parseRoll(text)
+  if type(text) ~= "string" or isSecret(text) then return nil end
+  for _, pattern in ipairs(ROLL_PATTERNS) do
+    local roller, value, minValue, maxValue = string.match(text, pattern)
+    if roller then return normalizeName(roller), tonumber(value), tonumber(minValue), tonumber(maxValue) end
+  end
+  return nil
+end
+
 local function handlePeerReadiness(text, sender)
   local parts = {}
   for part in string.gmatch(text, "[^|]+") do table.insert(parts, part) end
   if parts[1] ~= "READINESS" or not parts[2] then return end
-  db.peerRoster[parts[2]] = {
+  -- A client may only report its own character; otherwise anyone could
+  -- overwrite a guildmate's readiness in every officer's export.
+  local name = normalizeName(parts[2])
+  if not name or name ~= normalizeName(sender) then return end
+  db.peerRoster[name] = {
     status = parts[3] or "UNKNOWN",
     missing = tonumber(parts[4]) or 0,
     minDurability = tonumber(parts[5]) or 100,
     professions = parts[6] or "",
     updatedAt = now(),
-    reportedBy = sender
+    reportedBy = name
   }
 end
 
 local function onEvent(_, event, ...)
   if event == "PLAYER_LOGIN" then
     ensureDb()
-    message("Loaded. Automatic combat/loot capture is advisory; use officer commands.")
-    if C_ChatInfo and C_ChatInfo.RegisterAddonMessagePrefix then
-      C_ChatInfo.RegisterAddonMessagePrefix(PREFIX)
-    elseif RegisterAddonMessagePrefix then
-      RegisterAddonMessagePrefix(PREFIX)
+    registerPrefix()
+    message("Loaded. /qg help for commands" .. (activeRaid and (" - raid '" .. activeRaid.title .. "' is still active.") or "."))
+    for _, pending in ipairs(pendingDiagnostics) do
+      logDiagnostic(pending.kind, pending.detail, pending.foreign)
     end
-  elseif not db then
-    ensureDb()
-  elseif event == "PLAYER_ENTERING_WORLD" then
+    pendingDiagnostics = {}
+    return
+  end
+  if not db then return end
+  if event == "PLAYER_ENTERING_WORLD" then
     maybeAutoSync(AUTO_SYNC_DEBOUNCE_SECONDS)
   elseif event == "UNIT_INVENTORY_CHANGED" then
     local unit = ...
     if unit == "player" then maybeAutoSync(AUTO_SYNC_DEBOUNCE_SECONDS) end
   elseif event == "GROUP_ROSTER_UPDATE" then
+    if activeRaid then recordPresence() end
     if inRaidGroup() then maybeAutoSync(AUTO_SYNC_RAID_INTERVAL_SECONDS) end
   elseif event == "GUILD_ROSTER_UPDATE" then
     local count = GetNumGuildMembers and GetNumGuildMembers() or 0
     db.lastRosterUpdate = now()
     for i = 1, count do
-      local name = GetGuildRosterInfo(i)
+      local name = normalizeName(GetGuildRosterInfo(i))
       if name then db.roster[name] = db.roster[name] or { firstSeen = now() } end
     end
   elseif event == "CHAT_MSG_LOOT" and db.settings.captureLoot then
-    logEvent("LOOT_HINT", { text = ... })
-  elseif event == "COMBAT_LOG_EVENT_UNFILTERED" and db.settings.captureCombatHints then
-    local timestamp, subEvent, _, sourceName, _, _, _, destName = ...
-    if subEvent == "UNIT_DIED" or subEvent == "PARTY_KILL" then
-      logEvent("COMBAT_HINT", { at = timestamp, event = subEvent, source = sourceName, target = destName })
-    end
+    local text = ...
+    if not isSecret(text) then logEvent("LOOT_HINT", { text = text }) end
   elseif event == "CHAT_MSG_ADDON" then
     local prefix, text, channel, sender = ...
-    if prefix == PREFIX and sender ~= playerName() then
-      logEvent("ADDON_MESSAGE", { text = text, channel = channel, sender = sender })
+    if isSecret(prefix) or isSecret(text) or isSecret(sender) then return end
+    if prefix ~= PREFIX or normalizeName(sender) == playerName() then return end
+    if string.sub(text, 1, 10) == "READINESS|" then
+      -- Every online guildmate sends these; keep them out of the journal.
       handlePeerReadiness(text, sender)
+    else
+      logEvent("ADDON_MESSAGE", { text = text, channel = channel, sender = normalizeName(sender) })
     end
   elseif event == "ADDON_ACTION_BLOCKED" or event == "ADDON_ACTION_FORBIDDEN" then
     -- Fires with the exact addon and function name WoW refused to let run --
     -- this is the precise diagnostic the "blocked from an action only
     -- available to the Blizzard UI" popup itself doesn't show you.
     local blockedAddon, blockedFunction = ...
-    logDiagnostic(event, string.format("%s tried to call %s", tostring(blockedAddon), tostring(blockedFunction)))
+    logDiagnostic(event, string.format("%s tried to call %s", tostring(blockedAddon), tostring(blockedFunction)),
+      blockedAddon ~= addonName)
   elseif event == "UI_ERROR_MESSAGE" then
     -- Fallback net in case the blocked-action popup surfaces as a generic UI
     -- error toast instead of ADDON_ACTION_BLOCKED/FORBIDDEN -- log it only
     -- when it looks relevant, since this event also fires constantly for
     -- ordinary gameplay ("not enough mana", etc.).
     local errorType, errorText = ...
-    local text = tostring(errorText or errorType or "")
-    if string.find(string.lower(text), "block") or string.find(string.lower(text), "forbidden") or string.find(string.lower(text), "addon") then
-      logDiagnostic("UI_ERROR_MESSAGE", text)
+    if isSecret(errorText) then return end
+    local text = string.lower(tostring(errorText or errorType or ""))
+    if string.find(text, "block") or string.find(text, "forbidden") or string.find(text, "addon") then
+      logDiagnostic("UI_ERROR_MESSAGE", tostring(errorText or errorType))
     end
   end
 end
@@ -474,19 +860,43 @@ frame:RegisterEvent("UNIT_INVENTORY_CHANGED")
 frame:RegisterEvent("GROUP_ROSTER_UPDATE")
 frame:RegisterEvent("GUILD_ROSTER_UPDATE")
 frame:RegisterEvent("CHAT_MSG_LOOT")
-frame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+-- Deliberately NOT registering COMBAT_LOG_EVENT_UNFILTERED: since patch 12.0.0
+-- addons cannot register it, and WoW Forever inherits that restriction.
+-- Trying to is what produced the "blocked from an action only available to
+-- the Blizzard UI" popup at load. Boss kills and attendance are manual anyway.
 frame:RegisterEvent("CHAT_MSG_ADDON")
 frame:RegisterEvent("ADDON_ACTION_BLOCKED")
 frame:RegisterEvent("ADDON_ACTION_FORBIDDEN")
 frame:RegisterEvent("UI_ERROR_MESSAGE")
-frame:SetScript("OnEvent", onEvent)
+-- One bad event must not stop the handler for every later event.
+frame:SetScript("OnEvent", function(...)
+  local ok, err = pcall(onEvent, ...)
+  if not ok then logDiagnostic("LUA_ERROR", "QuebecGold event handler: " .. tostring(err)) end
+end)
 
 SLASH_QUEBECGOLD1 = "/qg"
 SlashCmdList["QUEBECGOLD"] = command
 
 -- Shared namespace API for modules (see Modules/Casino.lua).
 ns.playerName = playerName
+ns.normalizeName = normalizeName
+ns.parseRoll = parseRoll
+ns.isSecret = isSecret
 ns.now = now
 ns.message = message
 ns.send = send
 ns.isOfficer = isOfficer
+ns.isOfficerName = isOfficerName
+ns.runCommand = command
+ns.getSettings = function() return db and db.settings end
+-- Read-only views for the tools panel (Modules/Minimap.lua).
+ns.getDb = function() return db end
+ns.getActiveRaid = function() return activeRaid end
+ns.groupMembers = groupMembers
+ns.getPresenceCount = function()
+  local count = 0
+  if activeRaid and db and db.presence[activeRaid.id] then
+    for _ in pairs(db.presence[activeRaid.id]) do count = count + 1 end
+  end
+  return count
+end

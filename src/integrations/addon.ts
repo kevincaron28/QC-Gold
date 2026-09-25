@@ -73,13 +73,32 @@ export const addonAttunementSchema = z.object({
   completed: z.boolean().default(true)
 });
 
+// A raid the officer ran in game (/qg start ... /qg end): who was marked,
+// and who was seen in the raid group at any point. Matched to a Discord raid
+// by start time on import.
+export const addonRaidSchema = z.object({
+  ref: z.string().min(1),
+  title: z.string().min(1),
+  startedAt: z.coerce.date(),
+  endedAt: z.coerce.date().optional(),
+  players: z.array(z.object({
+    character: z.string().min(1),
+    realm: z.string().min(1),
+    status: z.enum(["PRESENT", "LATE", "ABSENT"]).optional(),
+    seen: z.boolean().default(false)
+  })).default([])
+});
+
+export type AddonRaid = z.infer<typeof addonRaidSchema>;
+
 export const addonSnapshotSchema = z.object({
   source: z.string().min(1),
   exportedAt: z.coerce.date(),
   transactions: z.array(addonTransactionSchema).default([]),
   epgpTransactions: z.array(addonEpgpTransactionSchema).default([]),
   readiness: z.array(addonReadinessSchema).default([]),
-  attunements: z.array(addonAttunementSchema).default([])
+  attunements: z.array(addonAttunementSchema).default([]),
+  raids: z.array(addonRaidSchema).default([])
 });
 
 export type AddonSnapshot = z.infer<typeof addonSnapshotSchema>;
@@ -125,6 +144,11 @@ export function normalizeAddonSnapshot(snapshot: AddonSnapshot): AddonSnapshot {
       character: attunement.character.trim(),
       realm: attunement.realm.trim(),
       name: attunement.name.trim()
+    })),
+    raids: snapshot.raids.map((raid) => ({
+      ...raid,
+      title: raid.title.trim(),
+      players: raid.players.map((player) => ({ ...player, character: player.character.trim(), realm: player.realm.trim() }))
     }))
   };
 }

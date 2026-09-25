@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { DkpTransactionType, type EpgpTransactionType, type PrismaClient } from "@prisma/client";
 import { normalizeAddonSnapshot, parseAddonSnapshot, type AddonSnapshot } from "../integrations/addon.js";
 import { deriveReadinessStatus } from "./readiness.js";
+import { applyRaidAttendance, touchLastSeen } from "./raid-import.js";
 
 export function createAddonImportService(database: PrismaClient) {
   return {
@@ -17,7 +18,7 @@ export function createAddonImportService(database: PrismaClient) {
         snapshot,
         checksum,
         duplicate: existing !== null,
-        transactionCount: snapshot.transactions.length,
+        transactionCount: snapshot.transactions.length + snapshot.epgpTransactions.length,
         createdBy
       };
     },
@@ -45,8 +46,28 @@ export function createAddonImportService(database: PrismaClient) {
           where: { member: { guildId } },
           include: { member: true }
         });
+
+        // Each addon export carries the officer's WHOLE ledger, not just new
+        // entries. Entries with a stable ref are keyed `addon:<ref>` and skipped
+        // when already imported, so re-importing next week doesn't double
+        // everyone's EP/GP. Entries without a ref keep the old per-import key.
+        const ledgerRef = (item: { sourceRef?: string | undefined; character: string }) =>
+          item.sourceRef ? `addon:${item.sourceRef}` : `addon:${importId}:${item.character}`;
+        const candidateRefs = [...snapshot.transactions, ...snapshot.epgpTransactions]
+          .filter((item) => item.sourceRef)
+          .map(ledgerRef);
+        const [existingDkp, existingEpgp] = await Promise.all([
+          tx.dkpTransaction.findMany({ where: { guildId, sourceRef: { in: candidateRefs } }, select: { sourceRef: true } }),
+          tx.epgpTransaction.findMany({ where: { guildId, sourceRef: { in: candidateRefs } }, select: { sourceRef: true } })
+        ]);
+        const alreadyImported = new Set([...existingDkp, ...existingEpgp].map((row) => row.sourceRef));
+        let skipped = 0;
+
         const transactions = [];
         for (const item of snapshot.transactions) {
+          const sourceRef = ledgerRef(item);
+          if (alreadyImported.has(sourceRef)) { skipped++; continue; }
+          alreadyImported.add(sourceRef);
           const character = characters.find((candidate) =>
             candidate.name.toLowerCase() === item.character.toLowerCase() &&
             candidate.realm.toLowerCase() === item.realm.toLowerCase()
@@ -59,13 +80,16 @@ export function createAddonImportService(database: PrismaClient) {
               amount: item.amount,
               type: DkpTransactionType.IMPORT,
               reason: item.reason,
-              sourceRef: `addon:${importId}:${item.sourceRef ?? item.character}`,
+              sourceRef,
               createdBy: appliedBy
             }
           }));
         }
         const epgpTransactions = [];
         for (const item of snapshot.epgpTransactions) {
+          const sourceRef = ledgerRef(item);
+          if (alreadyImported.has(sourceRef)) { skipped++; continue; }
+          alreadyImported.add(sourceRef);
           const character = characters.find((candidate) =>
             candidate.name.toLowerCase() === item.character.toLowerCase() &&
             candidate.realm.toLowerCase() === item.realm.toLowerCase()
@@ -79,7 +103,7 @@ export function createAddonImportService(database: PrismaClient) {
               gpAmount: item.gpAmount,
               type: item.type as EpgpTransactionType,
               reason: item.reason,
-              sourceRef: `addon:${importId}:${item.sourceRef ?? item.character}`,
+              sourceRef,
               createdBy: appliedBy
             }
           }));
@@ -94,6 +118,7 @@ export function createAddonImportService(database: PrismaClient) {
             candidate.realm.toLowerCase() === entry.realm.toLowerCase()
           );
           if (!character) continue;
+          await touchLastSeen(tx, character.id, entry.inspectedAt ?? new Date(snapshot.exportedAt));
 
           for (const profession of entry.professions) {
             await tx.professionSkill.upsert({
@@ -161,11 +186,15 @@ export function createAddonImportService(database: PrismaClient) {
           }));
         }
 
+        // In-game raid presence -> Discord raid attendance (best effort, like
+        // readiness: an unmatched raid or character doesn't block the import).
+        const raids = await applyRaidAttendance(tx, guildId, snapshot.raids, characters, appliedBy);
+
         await tx.addonImport.update({
           where: { id: imported.id },
           data: { status: "APPLIED" }
         });
-        return { import: imported, transactions, epgpTransactions, readinessSnapshots, attunements };
+        return { import: imported, transactions, epgpTransactions, readinessSnapshots, attunements, raids, skipped };
       });
     }
   };

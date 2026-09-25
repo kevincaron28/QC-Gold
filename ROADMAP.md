@@ -11,50 +11,233 @@ priority (P0 = do first) · **S/M/L** = rough size
 
 ---
 
-## ⏸ Paused here — resume next session (2026-09-24)
+## ⏸ Where we are — resume here (updated 2026-09-24, evening)
 
-Live-testing the bot + addon for the first time today. Session paused
-mid-troubleshoot to be picked up again later. **Read this before doing
-anything else:**
+- **Blocked-action popup: fixed.** Cause was registering
+  `COMBAT_LOG_EVENT_UNFILTERED`, which addons can't do since 12.0.0
+  (Midnight), and WoW Forever inherits that. After removing it and setting
+  `## Interface: 16001` (from `/dump select(4, GetBuildInfo())`), the user
+  reports the login warning is gone. `validate-addon.mjs` fails the build if
+  any file registers a combat log event again.
+- **Bot confirmed working live** (`/health`, Server Members Intent on,
+  companion API running). Phase 8–11 Discord features not yet exercised live.
+- **Addon audit #2 done (v1.2.0, 2026-09-24).** Found after the first
+  live `/qg inspect` returned NOT_READY with no explanation:
+  - `READY` was unreachable (INFO findings counted as problems) — status now
+    follows the bot's rule (ERROR → NOT_READY, WARNING → PARTIAL), and
+    inspect names the empty slots and shows item level.
+  - **Critical (bot):** every export carries the officer's whole ledger and
+    import refs included the import id, so each weekly import would have
+    re-added all past EP/GP. Ledger entries now carry a permanent `id`; the
+    companion sends a stable ref; `/import-apply` skips refs already imported
+    (`tests/addon-import-dedupe.test.ts`). Live DB had 0 addon imports, so
+    no cleanup needed.
+  - Empty EPGP reasons would have failed the bot's 3-char minimum and
+    rejected the whole import — defaulted in addon and companion.
+  - Names normalized everywhere ("bob"/"Bob-Realm" → "Bob"): roster,
+    ledgers, attendance, addon-message senders. This also fixed casino
+    results counting twice via the sender's own message echo.
+  - Active raid now survives `/reload`/disconnect; starting a second raid
+    while one is open is refused.
+  - `/qg loot` item names with spaces, `/qg attune Onyxia Key` (was parsed
+    as player "Onyxia"), quoted arguments — all fixed.
+  - Peer readiness can only be reported by the character itself (no
+    spoofing another player's readiness into officer exports).
+  - SavedVariables bloat: events capped at 1000, exports are small markers
+    (old versions stored a full DB copy per export), peer readiness spam
+    kept out of the journal.
+  - Casino: `/qg casino join` never reached the host (group games could
+    not actually be joined) — now an OPEN/JOIN/JOINED addon-message
+    handshake. Roll parsing uses the client's `RANDOM_ROLL_RESULT`, so
+    French clients work. Mirrored ledger updates only accepted from someone
+    involved, or an officer. Wagers capped.
+  - Hardening: all sends pcall-guarded and truncated to 255 bytes, event
+    handlers pcall-guarded, Midnight "secret value" chat text ignored.
+  - New `/qg officer list|add|remove|rank` (GM only for changes) so rank
+    layout doesn't require editing SavedVariables.
+  - Companion watcher watches the folder, not the file (a file watch can go
+    deaf after WoW replaces the file on save) and prints the exact
+    `/import-apply` line.
+  - Verified with a 28-check simulation of the addon under a Lua
+    interpreter with stubbed WoW APIs (not committed; lives in the session
+    scratchpad), plus 60 bot tests, `tsc`, `eslint`, validator.
+- **Live-confirmed 2026-09-24:** v1.2.0 loads, minimap button shows,
+  `/qg inspect` names empty slots and reports item level.
+- **v1.3.0 (2026-09-24, not yet live):** tabbed tools window with a
+  target-aware Player box (user found the first panel clunky), attendance
+  from raid presence, version check, bot EPGP standings in game. Verified
+  with a 29-check UI/sync simulation plus the earlier 28 logic checks,
+  63 bot tests, `tsc`, `eslint`, validator.
+- **Still unverified in a live client:** the new window, casino,
+  readiness → `/readiness me` end to end, standings sync.
+- **Command reference:** `COMMANDS.md`.
+- **v1.4.0 (2026-09-24, not yet live):** casino reworked per the user:
+  officers only; announcements in party/raid chat so pugs without the
+  addon can play (type 1 to join, `/roll`, "stand"); gold or silver wagers
+  (`10g`, `50s`, `1g50s`); chat pacing (queued lines merged, sends spaced,
+  joins silent, deathroll elimination + next roll in one line); pot entries
+  owed to the host; trades with the officer settle debts automatically.
+  Window hides officer tabs/tools from members instead of greying them;
+  `/qg help` lists only what your rank can use. In-game raid presence now
+  imports into Discord raid attendance (see section A). Verified: 28-check
+  casino simulation, 34-check window/sync simulation, 18 core checks,
+  66 bot tests, `tsc`, `eslint`, validator.
+- **Release:** `dist/QuebecGold-v1.4.0.zip` built; GitHub release and the
+  install-page artifact still point at v1.1.0 — refresh both once the live
+  test passes.
 
-- **Bot is confirmed working**: online in Discord, `/health` replies,
-  Server Members Intent enabled, companion API running. Nothing to redo
-  here.
-- **Addon is confirmed loading** (`[QuebecGold] Loaded.` on login, `/qg
-  help` works), but has an **unresolved live bug**: a "QuebecGold has been
-  blocked from an action only available to the Blizzard UI" popup occurs,
-  cause not yet identified.
-  - First fix attempt: removed the `OnUpdate`-based auto-sync ticker
-    (suspected taint source), moved the same logic into real event
-    handlers. **Did not resolve it** — popup still occurs.
-  - Built diagnostics into the addon itself to pin this down precisely:
-    hooks `ADDON_ACTION_BLOCKED`/`ADDON_ACTION_FORBIDDEN` (fire with the
-    exact addon + function name WoW blocked) and the global Lua error
-    handler, logged to `/qg diag`. **First version of this caught nothing**
-    on a confirmed reproduction — widened it (unfiltered Lua error capture,
-    added a `UI_ERROR_MESSAGE` fallback listener) since the narrow version
-    may have missed the actual signal.
-  - **Not yet confirmed**: whether the widened diagnostics build (latest
-    `Core.lua`, zip rebuilt via `npm run addon:zip` but not yet re-uploaded
-    to the GitHub release) catches anything on the next reproduction.
-  - **Still needed regardless of `/qg diag` results**: the exact moment the
-    popup occurs (login? moving? a specific command?) — not pinned down
-    yet, would narrow this dramatically.
-  - **Fallback if `/qg diag` stays empty again**: WoW's own
-    `/console scriptErrors 1` shows a full Lua stack-trace popup for any
-    script error, independent of whatever this addon's own hooks catch —
-    reach for this next if the custom diagnostics don't produce a lead.
-- **Live test script is otherwise un-started past this point** — see
-  `LUNCH_TEST_CHECKLIST.md` for the exact checklist and current checkbox
-  state (raid signups, housekeeping, casino are all still untested).
-- **Not committed**: the widened-diagnostics change to `Core.lua` and the
-  rebuilt `dist/QuebecGold-v1.1.0.zip` are sitting uncommitted locally.
-  Nobody has asked for a commit since the last one (`576eff4`).
-- **Added while the WoW servers were down (2026-09-24):** all the bot-side
-  roadmap items — see Phase 11 in the phase list below. New migration
-  `20260924211657_bot_tools_tags_wishlist_moderation_merit_recruitment`
-  already applied to the live Neon database (additive only). 58 tests,
-  `tsc` and `eslint` clean. None of it has run against live Discord yet.
+---
+
+## ▶ Prioritized backlog (added 2026-09-24 from the "complete recommendation list" review)
+
+Gaps between that list and what's already built. Everything else on the
+list (EP/GP/PR, history, decay, audit log, attendance %, signups with role
+caps, wishlists, professions per character, readiness, recruitment,
+applications, gear snapshots) already exists. Work order is easiest-first
+within priority. Update the checkbox the moment an item lands.
+
+**P0 — core gaps (bot-side, testable without the game)**
+
+> **Resume here (session ended 2026-09-24, committed):** all P0 items
+> (1-11) and P1 #13-16 are done and tested (94 bot tests, `tsc`,
+> `eslint`). Not pushed, no new GitHub release yet (addon zip
+> `dist/QuebecGold-v1.4.0.zip` rebuilt locally). First thing next session:
+> restart the bot, live-test the new commands and addon v1.4.0, then decide
+> between #19 crafting requests and #21 in-game GP bidding. Remaining P1:
+> #12 WCL (blocked on credentials + confirming Forever logs reach WCL),
+> #17 web dashboard (held), #18 WCL auto-discovery (after #12). Next
+> unblocked work is P2 (#19 crafting requests) or #21 in-game GP bidding. #12 Warcraft Logs is
+> blocked on WCL API credentials from the user and on confirming Forever
+> logs upload to WCL. The user must restart the bot to register the new
+> commands (`/who`, `/raid progress|note|award-ep`, `/epgp reverse`,
+> `/profession who|coverage`, `/config notify-channel`).
+>
+> Progress note (2026-09-24): one additive migration covers items 4-11 —
+> `20260925002811_backlog_basegp_notify_reminders_notes_signups_loot_context`
+> (GuildSettings `baseGp`/`notifyChannelId`/`raidReminderMinutes`/
+> `epCompletionBonus`; RaidSignupStatus `MAYBE`/`WAITLISTED`; Raid
+> `reminderSentAt` + `RaidNote` model; Auction/LootAward raid/boss/
+> awardedBy/EP-GP-before; Character `race`/`lastSeenAt`). **Already applied
+> to the live Neon DB.** `prisma generate` hit EPERM because the bot was
+> running (engine DLL locked) but the types regenerated; restart the bot to
+> be safe.
+
+1. [x] **S — `/profession who <profession>`**: every linked character with
+   that profession and skill, sorted; plus `/profession coverage` (count and
+   top skill per profession). Query only. *(Done 2026-09-24:
+   `src/services/profession-search.ts`, `tests/profession-search.test.ts`.)*
+2. [x] **S — `/epgp reverse <transaction>`**: officer correction command
+   (service `reverseTransaction` already exists); `/epgp history` shows
+   transaction ids so they can be picked. *(Done 2026-09-24: `/epgp reverse
+   entry reason`; refuses double reversal, other guilds' entries, and
+   reversing a reversal; `/epgp history player:` lets officers view anyone.
+   `tests/epgp-reverse.test.ts`.)*
+3. [x] **S — `/raid progress`**: boss progression from recorded kills: each
+   boss, first kill date, total kills, last kill. Query only. *(Done
+   2026-09-24: `src/services/progress.ts`, `tests/progress.test.ts`.)*
+4. [x] **S/M — Minimum (base) GP**: guild setting `baseGp` (default 0);
+   PR = EP / (GP + baseGP) everywhere PR is shown or sorted. Standard EPGP;
+   stops a new player with 1 GP having a huge PR. *(Done 2026-09-24:
+   `priority()` in `src/services/epgp.ts` used by /epgp, /profile, the
+   standings API; `/config set baseGp`; companion writes `baseGp` into
+   Standings.lua and the addon's STAND sync message carries it, so in-game
+   PR matches. Also added `/config set` choices for `raidReminderMinutes`
+   and `epCompletionBonus` ahead of items 8 and 10.)*
+5. [x] **M — Discord notifications channel**: `/config notify-channel`;
+   posts raid started/ended, boss killed, loot awarded (item, winner, GP),
+   and EPGP awards (batched per command, not per person). *(Done
+   2026-09-24: `src/services/notify.ts`; hooked into /raid start|end|boss,
+   /loot close, /epgp award-ep|award-gp|decay|reverse, /import-apply (one
+   summary line). Never pings, never throws. `tests/notify.test.ts`.)*
+6. [x] **M — Raid notes**: `/raid note <raid> <text> [boss]` officer notes
+   (general, per boss, "improve next time"); shown in `/raid status`.
+   *(Done 2026-09-24: raid-leader only to add and to see; `RaidNote` model,
+   `raidService.addNote`, `tests/raid-notes.test.ts`.)*
+7. [x] **M — Signup Maybe + waitlist**: signup status Available/Maybe;
+   when a role is full, new signups go to a waitlist and auto-promote when
+   a slot frees; embed shows Maybe and Waitlist sections. *(Done
+   2026-09-24: `/raid signup availability:Maybe`; full role → WAITLISTED
+   instead of an error; cancellations and raised caps (`/raid edit`)
+   promote the earliest waitlisted player per role and DM them; embed has
+   Maybe and Waitlist fields. Maybe/waitlisted aren't counted as no-shows.
+   Tests in `tests/raid.test.ts`.)*
+8. [x] **M — Raid reminders**: ping signed-up members N minutes before start
+   (guild setting, default 60), once per raid. *(Done 2026-09-24:
+   `src/services/reminders.ts`, checked every 5 min from main.ts; posts in
+   the raid's signup channel, pings only SIGNED_UP members; marks the raid
+   before sending so it can never double-ping; `/config set
+   raidReminderMinutes` (0 = off). `tests/reminders.test.ts`.)*
+9. [x] **M — Loot history detail**: record raid, boss, awarding officer, and
+   EP/GP before/after on each award; show in `/loot history`. *(Done
+   2026-09-24: `/loot auction` takes optional `boss`/`raid`; closing
+   snapshots the winner's EP/GP before the award and who closed it;
+   `/loot history` shows item [boss, raid], winner, GP, GP before → after,
+   awarding officer, date.)*
+10. [x] **M — EP award proposal with approval**: after a raid ends (or after
+    addon attendance import), the bot proposes EP (attendance + per boss
+    kill + completion bonus, from settings) with Approve / Cancel buttons;
+    approval creates the transactions. Never automatic. *(Done 2026-09-24:
+    `/raid end` shows the proposal; `/raid award-ep raid:` re-proposes any
+    time (e.g. after `/import-apply` adds attendance). EP = attendance
+    (`attendanceDkp`, late `lateAttendanceDkp`) + kills × `bossKillDkp` +
+    `epCompletionBonus` on a full clear. Approve (EPGP officers only)
+    recomputes and writes EP_AWARD rows with `sourceRef raid-ep:<raid>:<member>`
+    so a raid can never be paid twice. `src/services/ep-award.ts`,
+    `src/commands/ep-award.ts`, `tests/ep-award.test.ts`.)*
+11. [x] **S — Character race + last seen**: store race on `/character add`,
+    last seen from addon roster/readiness imports; show in `/profile`.
+    *(Done 2026-09-24: `race` option; `lastSeenAt` moves forward only, from
+    imported gear checks and from being seen in a raid group that matched a
+    Discord raid; shown in `/profile` and `/character list`.)*
+
+**P1 — second wave**
+
+12. [ ] **M — Warcraft Logs, manual import first**: `/wcl <report url>`
+    pulls the report through WCL API v2 (GraphQL, client-credentials
+    auth, keys only in the bot's `.env`, never in the addon), stores a
+    compact summary (zone, duration, bosses killed/wipes, deaths, player
+    list) linked to the raid, posts a raid report embed, and links to WCL
+    for detail. **Blocked on:** WCL API client id/secret from the user, and
+    confirming WoW Forever logs upload to WCL at all. No DPS leaderboard /
+    "raid score" by design.
+13. [x] **M — Automated raid report embed** (duration, raiders, bosses,
+    EP awarded, loot and GP spent, WCL link) posted when a raid ends.
+    *(Done 2026-09-24, minus the WCL link which waits for #12: posted to the
+    notify channel when the raid's EP is approved (numbers are final then),
+    and `/raid report raid:` posts it on demand. Loot counts only auctions
+    started with `raid:`. `src/services/raid-report.ts`,
+    `src/commands/raid-report.ts`, `tests/raid-report.test.ts`.)*
+14. [x] **S — Player/character search** (`/who <name>`: main, alts, class,
+    professions, EPGP, last seen, attendance %). *(Done 2026-09-24:
+    exact then partial name match; `src/services/player-search.ts`,
+    `src/commands/who.ts`, `tests/player-search.test.ts`.)*
+15. [x] **M — Guild statistics / weekly guild report** (attendance trends,
+    loot distribution, new members). *(Done 2026-09-24: `/stats [days]`
+    (raids, avg raiders, boss kills, EP, loot/GP, new members,
+    applications, most raids attended, most loot); `/config weekly-report
+    enabled:` posts it to the notify channel every 7 days (hourly check,
+    marked before posting). Migration `20260925004829_weekly_guild_report`
+    applied to live DB. `src/services/guild-stats.ts`,
+    `src/commands/stats.ts`, `tests/guild-stats.test.ts`.)*
+16. [x] **M — Guild-bank requests** (request an item, officer
+    approves/fulfils, logged). *(Done 2026-09-24: `/bank request|mine|
+    cancel` for everyone, `/bank list|handle` for officers; new requests go
+    to the log channel; the requester gets a DM on approve/fulfil/deny;
+    max 10 open per member; only forward status changes. `BankRequest`
+    model, migration `20260925005009_guild_bank_requests` applied to live
+    DB. `src/services/bank.ts`, `src/commands/bank.ts`,
+    `tests/bank.test.ts`.)*
+17. [ ] **L — Web dashboard** (EPGP, loot, raid history) — held until the
+    data model settles.
+18. [ ] **M — WCL automatic report discovery** (poll guild reports every
+    15 min) — after #12 proves which data is actually useful.
+
+**P2 — later / optional**
+
+19. [ ] Profession cooldown tracking and crafting requests.
+20. [ ] Guild achievements, progression graphs, historical analytics.
+21. [ ] In-game GP bidding tied to the bot (see section A; L, needs a raid
+    to test).
 
 ---
 
@@ -313,8 +496,17 @@ in the existing one.
   now covers this permanently — array detection, peer-roster folding, and
   full schema validation, all against realistic Lua syntax rather than
   hand-built JS objects).
-- [ ] **P1 / M — Attendance from actual raid presence, not just manual
-  marking.** Hook `GROUP_ROSTER_UPDATE` while a raid is active in the addon
+- [x] **P1 / M — Attendance from actual raid presence, not just manual
+  marking.** *(Done 2026-09-24. Addon v1.3.0: `db.presence` records
+  everyone seen in the group while a raid is active; `/qg attendance seen`
+  marks them PRESENT without overwriting manual marks. Bot: the companion
+  exports finished raids (marks + presence); `/import-apply` matches each to
+  the Discord raid scheduled closest to its start (within 4h), records
+  attendance without overwriting Discord-recorded rows, marks signed-up
+  members never seen as ABSENT (only when presence was recorded), and
+  reports no-shows and walk-ins. `src/services/raid-import.ts`,
+  `tests/raid-import.test.ts`.)*
+  Hook `GROUP_ROSTER_UPDATE` while a raid is active in the addon
   to auto-record who was actually in the raid group over time, and flag
   "signed up but didn't show" vs. "showed but didn't sign up" — the officer
   `/qg attendance` command stays as a manual override on top, not a
@@ -332,7 +524,22 @@ in the existing one.
   addition, not a one-off debugging hack — it's the addon's only way to
   surface this class of bug without installing a separate error-display
   addon like BugSack.
-- [ ] **P2 / M — Minimap button with a quick-access menu.** Requested
+- [x] **P2 / M — Minimap button with a quick-access menu.** *(Button
+  confirmed live 2026-09-24. The first panel was a template text box and the
+  user found it clunky, so v1.3.0 replaced it with a tabbed window (Raid,
+  EPGP, Me, Casino, Tools) and a shared Player box that fills from your
+  target, Me, or a clickable group list; presets for amounts/wagers/
+  attunements; one-click casino (the addon rolls for you); two-click confirm
+  on whole-group actions; officer buttons greyed out for other ranks. Still
+  avoids dropdown menus, unit right-click menu hooks, and StaticPopups
+  (common taint sources).)* Original notes: A draggable coin button on the
+  minimap opens a plain tools panel: one-click actions plus a text box that
+  pre-fills templates for commands needing arguments (refuses to run while
+  `<placeholders>` remain). `/qg menu` and `/qg minimap show|hide|reset` as
+  fallbacks if the button is lost. Built in a way meant to survive Mainline
+  API churn: no dropdown-menu APIs, `BackdropTemplate` only when it exists,
+  everything created inside `pcall` so a UI failure can never break the core
+  addon. Original request text follows. Requested
   2026-09-24 ("we need an addon button in wow to quickly access the
   interface and use all the tools"). A small draggable minimap icon with a
   right-click dropdown covering the main `/qg` actions (inspect, attune,
@@ -353,6 +560,28 @@ in the existing one.
 - [ ] **P2 / M — Buff/cooldown coverage check.** Extend `/qg inspect`-style
   reporting to a raid-wide view: which raid buffs/consumable categories are
   covered vs. missing across the current roster. Officer-only, informational.
+- [x] **P1 / S — Addon version check.** *(Done 2026-09-24, v1.3.0,
+  `Modules/Sync.lua`; older clients are also whispered directly.)* Broadcast
+  the addon version on login; clients print "a newer Quebec Gold is out"
+  when a guildmate runs a higher version. Cheap, and it removes the most
+  common support problem (members on stale builds).
+- [x] **P1 / M — EPGP standings in game.** *(Done 2026-09-24, v1.3.0: bot
+  `GET /api/v1/standings`, `companion/standings.mjs` writes `Standings.lua`
+  every 15 min, `Modules/Sync.lua` shares it guild-wide in chunks, accepted
+  only from officers; `/qg standings`, EPGP tab shows Discord numbers.)* Data
+  only flows addon → bot today. The companion could write a generated
+  `Standings.lua` into the addon folder (loaded on `/reload`) so
+  `/qg standings` and the loot flow show the bot's real EP/GP/PR.
+- [ ] **P1 / L — In-game GP bidding tied to the bot.** *(Suggested
+  2026-09-24.)* Officer shift-clicks an item to open bidding, raiders bid
+  from a popup, the winner's GP is recorded with a ledger id (so it imports
+  cleanly). Replaces typing `/qg gp` by hand mid-raid.
+- [~] **P2 / M — Casino debt settlement by trade.** *(Built 2026-09-24,
+  v1.4.0, not yet seen live: trade money is read on accept and applied
+  when the game reports "Trade complete", in both directions. Unverified
+  whether Forever restricts any trade events; everything is pcall-guarded.)*
+  Offer to clear a debt when a trade with that player completes with gold
+  in it.
 
 ### B. Discord bot — EPGP / guild-manager upgrades
 
@@ -465,6 +694,25 @@ guild before picking up Part 2 work:
 
 ### Decision log
 
+- **SUPERSEDED (2026-09-24): "this client lacks spec and item-level
+  APIs."** That claim (below, and in the Phase 10 notes) assumed interface
+  11200 meant a vanilla 1.12 client. It doesn't. Per Blizzard's WoW UI
+  Discord statement (via [Wowhead](https://www.wowhead.com/news/wow-forever-will-have-addon-changes-from-midnight)),
+  WoW Forever "shares Mainline WoW's UI architecture, including the vast
+  majority of APIs available in 12.1.5", the Midnight addon disarmament
+  (secret values, restrictions on computational addons) is active in
+  Forever, and Classic-era addons generally need rebuilding for the new API.
+  Consequences for this project: (1) the combat-log registration that caused
+  the live popup was never going to work; (2) `GetAverageItemLevel` is now
+  tried (guarded) in `/qg inspect`, so readiness reports may carry item
+  level after all; (3) spec detection is worth re-checking once someone can
+  test whether Forever exposes specialization APIs; (4) new addon features
+  should be checked against the 12.x API-change list *before* being built,
+  not after. The addon never used Classic-only APIs (it was modern-first
+  with guarded legacy fallbacks), so no rewrite is needed. Still to do: set
+  `## Interface:` in the `.toc` to Forever's real number. **Done:** it is
+  `16001` (from `/dump select(4, GetBuildInfo())` in game); `.toc` and
+  `validate-addon.mjs` updated, and the login "out of date" warning is gone.
 - **"As much addon sync as possible," resolved 2026-09-24 — implemented
   same day.** User's direction superseded the earlier "event-triggered,
   not continuous" caution — see section A below for what shipped: a

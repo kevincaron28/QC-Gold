@@ -18,7 +18,7 @@ export async function executeProfile(interaction: ChatInputCommandInteraction): 
     prisma.member.findUnique({ where: { id: context.memberId } }),
     guildService.listCharacters(context.memberId),
     dkpService.getBalance(context.memberId),
-    epgpService.getStanding(context.memberId)
+    guildService.getSettings(context.guildId).then((settings) => epgpService.getStanding(context.memberId, settings?.baseGp ?? 0))
   ]);
   if (!member) throw new Error("Your guild profile could not be found.");
 
@@ -28,7 +28,8 @@ export async function executeProfile(interaction: ChatInputCommandInteraction): 
       const professions = character.professions
         .map((skill) => `${skill.profession} ${skill.skillLevel}`)
         .join(", ");
-      return `${character.isMain ? "**Main**" : "Alt"}: ${character.name} (${character.className}${character.spec ? `, ${character.spec}` : ""})${professions ? ` — ${professions}` : ""}`;
+      const seen = character.lastSeenAt ? ` · seen <t:${Math.floor(character.lastSeenAt.getTime() / 1000)}:R>` : "";
+      return `${character.isMain ? "**Main**" : "Alt"}: ${character.name} (${character.race ? `${character.race} ` : ""}${character.className}${character.spec ? `, ${character.spec}` : ""})${professions ? ` — ${professions}` : ""}${seen}`;
     });
   await interaction.reply({
     embeds: [new EmbedBuilder()

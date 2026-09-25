@@ -28,11 +28,37 @@ export interface CreateRaidInput {
   dpsLimit?: number;
 }
 
+export type SignupAvailability = "AVAILABLE" | "MAYBE";
+
 export function createRaidService(database: PrismaClient) {
   async function getRaid(raidId: string, guildId: string) {
     const raid = await database.raid.findFirst({ where: { id: raidId, guildId } });
     if (!raid) throw new Error("Raid not found in this guild.");
     return raid;
+  }
+
+  // Fills open role slots from the waitlist, earliest signup first. Runs
+  // after a cancellation or a cap change. Returns who was promoted.
+  async function promoteWaitlist(raidId: string) {
+    const raid = await database.raid.findUnique({ where: { id: raidId } });
+    if (!raid || raid.status !== "PLANNED") return [];
+    const promoted = [];
+    for (const role of ["TANK", "HEALER", "DPS"] as const) {
+      const cap = raid[roleCapField[role]];
+      const waiting = await database.raidSignup.findMany({
+        where: { raidId, role, status: "WAITLISTED" },
+        orderBy: { signedUpAt: "asc" },
+        include: { member: true }
+      });
+      if (waiting.length === 0) continue;
+      const taken = cap === null ? 0 : await database.raidSignup.count({ where: { raidId, role, status: "SIGNED_UP" } });
+      const open = cap === null ? waiting.length : Math.max(0, cap - taken);
+      for (const signup of waiting.slice(0, open)) {
+        await database.raidSignup.update({ where: { id: signup.id }, data: { status: "SIGNED_UP" } });
+        promoted.push(signup);
+      }
+    }
+    return promoted;
   }
 
   return {
@@ -91,7 +117,7 @@ export function createRaidService(database: PrismaClient) {
           throw new Error("Role limits must be non-negative integers.");
         }
       }
-      return database.raid.update({
+      const updated = await database.raid.update({
         where: { id: raid.id },
         data: {
           ...(input.title === undefined ? {} : { title: input.title.trim() }),
@@ -102,6 +128,9 @@ export function createRaidService(database: PrismaClient) {
           ...(input.dpsLimit === undefined ? {} : { dpsLimit: input.dpsLimit })
         }
       });
+      // A raised cap opens slots for the waitlist.
+      const promoted = await promoteWaitlist(raid.id);
+      return Object.assign(updated, { promoted });
     },
 
     async cancel(raidId: string, guildId: string) {
@@ -111,20 +140,33 @@ export function createRaidService(database: PrismaClient) {
       return database.raid.update({ where: { id: raid.id }, data: { status: "CANCELLED" } });
     },
 
-    async signup(raidId: string, guildId: string, memberId: string, role: RaidRole) {
+    // AVAILABLE takes a role slot, or joins the waitlist when that role is
+    // full. MAYBE never takes a slot.
+    async signup(raidId: string, guildId: string, memberId: string, role: RaidRole, availability: SignupAvailability = "AVAILABLE") {
       const raid = await getRaid(raidId, guildId);
       if (raid.status !== "PLANNED") throw new Error("Signups are closed for this raid.");
+      let status: RaidSignupStatus = availability === "MAYBE" ? "MAYBE" : "SIGNED_UP";
       const cap = raid[roleCapField[role]];
-      if (cap !== null) {
+      if (status === "SIGNED_UP" && cap !== null) {
         const count = await database.raidSignup.count({
           where: { raidId, role, status: "SIGNED_UP", memberId: { not: memberId } }
         });
-        if (count >= cap) throw new Error(`${role} slots are full (${count}/${cap}).`);
+        if (count >= cap) status = "WAITLISTED";
       }
       return database.raidSignup.upsert({
         where: { raidId_memberId: { raidId, memberId } },
-        create: { raidId, memberId, role },
-        update: { status: "SIGNED_UP", role, signedUpAt: new Date(), cancelledAt: null }
+        create: { raidId, memberId, role, status },
+        update: { status, role, signedUpAt: new Date(), cancelledAt: null }
+      });
+    },
+
+    // Everyone not cancelled, for the embed: signed up, maybe, waitlist.
+    async signups(raidId: string, guildId: string) {
+      await getRaid(raidId, guildId);
+      return database.raidSignup.findMany({
+        where: { raidId, status: { not: "CANCELLED" } },
+        include: { member: true },
+        orderBy: { signedUpAt: "asc" }
       });
     },
 
@@ -135,10 +177,12 @@ export function createRaidService(database: PrismaClient) {
       }
       const signup = await database.raidSignup.findUnique({ where: { raidId_memberId: { raidId, memberId } } });
       if (!signup || signup.status === "CANCELLED") throw new Error("You are not signed up for this raid.");
-      return database.raidSignup.update({
+      const cancelled = await database.raidSignup.update({
         where: { id: signup.id },
         data: { status: "CANCELLED", cancelledAt: new Date() }
       });
+      const promoted = signup.status === "SIGNED_UP" ? await promoteWaitlist(raidId) : [];
+      return { cancelled, promoted };
     },
 
     getStatus(raidId: string, guildId: string) {
@@ -146,11 +190,23 @@ export function createRaidService(database: PrismaClient) {
         where: { id: raidId, guildId },
         include: {
           bosses: { orderBy: { sortOrder: "asc" } },
+          notes: { orderBy: { createdAt: "asc" } },
           _count: { select: { signups: true, attendance: true } }
         }
       }).then((raid) => {
         if (!raid) throw new Error("Raid not found in this guild.");
         return raid;
+      });
+    },
+
+    // Officer notes: general, per boss, or "improve next time".
+    async addNote(raidId: string, guildId: string, body: string, createdBy: string, bossName?: string) {
+      const text = body.trim();
+      if (text.length < 2) throw new Error("Write a note first.");
+      const raid = await database.raid.findFirst({ where: { id: raidId, guildId }, select: { id: true } });
+      if (!raid) throw new Error("Raid not found in this guild.");
+      return database.raidNote.create({
+        data: { raidId, body: text.slice(0, 1000), createdBy, bossName: bossName?.trim() || null }
       });
     },
 

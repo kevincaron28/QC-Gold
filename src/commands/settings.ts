@@ -22,7 +22,10 @@ export const configCommand = new SlashCommandBuilder()
         { name: "Minimum bid", value: "minimumBid" },
         { name: "Bid increment", value: "bidIncrement" },
         { name: "Auction duration (seconds)", value: "auctionDurationSec" },
-        { name: "EPGP decay percent (0-100)", value: "epgpDecayPercent" }
+        { name: "EPGP decay percent (0-100)", value: "epgpDecayPercent" },
+        { name: "EPGP base GP (PR = EP / (GP + base))", value: "baseGp" },
+        { name: "Raid reminder minutes before start (0 = off)", value: "raidReminderMinutes" },
+        { name: "EP bonus for a full clear", value: "epCompletionBonus" }
       ))
     .addIntegerOption((option) => option.setName("value").setDescription("New non-negative value").setMinValue(0).setRequired(true)))
   .addSubcommand((sub) => sub.setName("welcome").setDescription("Configure the welcome message for new members.")
@@ -46,6 +49,12 @@ export const configCommand = new SlashCommandBuilder()
     .addChannelOption((o) => o.setName("channel").setDescription("Log channel")
       .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
     .addBooleanOption((o) => o.setName("disable").setDescription("Stop logging")))
+  .addSubcommand((sub) => sub.setName("weekly-report").setDescription("Post a weekly guild activity report in the notify channel.")
+    .addBooleanOption((o) => o.setName("enabled").setDescription("Turn the weekly report on or off").setRequired(true)))
+  .addSubcommand((sub) => sub.setName("notify-channel").setDescription("Channel for raid started/ended, boss kills, loot awards, and EPGP changes.")
+    .addChannelOption((o) => o.setName("channel").setDescription("Announcement channel")
+      .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
+    .addBooleanOption((o) => o.setName("disable").setDescription("Stop announcements")))
   .addSubcommand((sub) => sub.setName("merit").setDescription("Rank /epgp leaderboard by PR x 30-day attendance instead of raw PR.")
     .addBooleanOption((o) => o.setName("enabled").setDescription("Use merit ranking").setRequired(true)))
   .addSubcommand((sub) => sub.setName("recruitment").setDescription("Schedule a recurring recruitment post.")
@@ -71,6 +80,10 @@ export async function executeConfig(interaction: ChatInputCommandInteraction): P
         `Bid increment: ${settings.bidIncrement} DKP`,
         `Auction duration: ${settings.auctionDurationSec}s`,
         `EPGP decay: ${(settings.epgpDecayPercent * 100).toFixed(0)}% (run \`/epgp decay\` to apply)`,
+        `EPGP base GP: ${settings.baseGp} (PR = EP / (GP + base))`,
+        `Full-clear EP bonus: ${settings.epCompletionBonus}`,
+        `Raid reminders: ${settings.raidReminderMinutes > 0 ? `${settings.raidReminderMinutes} min before start` : "off"}`,
+        `Notifications: ${settings.notifyChannelId ? `<#${settings.notifyChannelId}>` : "disabled"}`,
         `Welcome messages: ${settings.welcomeChannelId ? `<#${settings.welcomeChannelId}>` : "disabled"}`,
         `Farewell messages: ${settings.farewellChannelId ? `<#${settings.farewellChannelId}>` : "disabled"}`,
         `Applicant role: ${settings.applicantRoleId ? `<@&${settings.applicantRoleId}>` : "not set"}`,
@@ -123,6 +136,31 @@ export async function executeConfig(interaction: ChatInputCommandInteraction): P
     if (!channel) throw new Error("Provide a channel, or use disable:true to turn logging off.");
     await guildService.updateSettings(context.guildId, { logChannelId: channel.id });
     await interaction.reply({ content: `Logs will post in <#${channel.id}>.`, ephemeral: true });
+    return;
+  }
+
+  if (subcommand === "weekly-report") {
+    const enabled = interaction.options.getBoolean("enabled", true);
+    await guildService.updateSettings(context.guildId, { weeklyReportEnabled: enabled });
+    await interaction.reply({
+      content: enabled
+        ? `Weekly report on. It posts in ${settings.notifyChannelId ? `<#${settings.notifyChannelId}>` : "the notify channel (set one with `/config notify-channel` first)"} within the hour, then every 7 days.`
+        : "Weekly report off.",
+      ephemeral: true
+    });
+    return;
+  }
+
+  if (subcommand === "notify-channel") {
+    if (interaction.options.getBoolean("disable")) {
+      await guildService.updateSettings(context.guildId, { notifyChannelId: null });
+      await interaction.reply({ content: "Announcements disabled.", ephemeral: true });
+      return;
+    }
+    const channel = interaction.options.getChannel("channel");
+    if (!channel) throw new Error("Provide a channel, or use disable:true to turn announcements off.");
+    await guildService.updateSettings(context.guildId, { notifyChannelId: channel.id });
+    await interaction.reply({ content: `Raid, boss, loot, and EPGP announcements will post in <#${channel.id}>.`, ephemeral: true });
     return;
   }
 

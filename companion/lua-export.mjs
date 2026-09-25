@@ -62,8 +62,15 @@ export async function readAddonExport(path, realm) {
   const ledger = database.epgp ?? database.dkp ?? {};
   for (const [character, account] of Object.entries(ledger)) {
     for (const [index, entry] of Object.entries(account.ledger ?? {})) {
-      const sourceRef = `qg:${entry.raid ?? "manual"}:${index}`;
-      const reason = String(entry.reason ?? "Quebec Gold addon ledger");
+      // Every export carries the whole ledger, so this ref must be stable
+      // across exports: the bot skips refs it already imported. Addon v1.2+
+      // stamps a unique id on each entry; older entries fall back to
+      // character + timestamp + position (the addon never trims the ledger).
+      const sourceRef = entry.id
+        ? `qg:${entry.id}`
+        : `qg:${character}:${entry.at ?? "unknown"}:${entry.by ?? "unknown"}:${index}`;
+      let reason = String(entry.reason ?? "").trim();
+      if (reason.length < 3) reason = `Quebec Gold addon ledger${reason ? `: ${reason}` : ""}`;
       if (usingEpgpLedger) {
         epgpTransactions.push({
           character,
@@ -131,7 +138,30 @@ export async function readAddonExport(path, realm) {
     };
   });
 
-  const exportKeys = Object.keys(database.exports ?? {});
+  // Finished in-game raids: explicit attendance marks plus everyone the addon
+  // saw in the raid group (db.presence). Still-running raids wait for /qg end.
+  const raids = [];
+  for (const raid of Object.values(database.raids ?? {})) {
+    if (!raid?.id || !raid.startedAt || !raid.endedAt) continue;
+    const marked = database.attendance?.[raid.id] ?? {};
+    const seen = database.presence?.[raid.id] ?? {};
+    const names = new Set([...Object.keys(marked), ...Object.keys(seen)]);
+    raids.push({
+      ref: raid.id,
+      title: String(raid.title || "Raid"),
+      startedAt: raid.startedAt,
+      endedAt: raid.endedAt,
+      players: [...names].sort().map((character) => ({
+        character,
+        realm,
+        ...(marked[character]?.status ? { status: marked[character].status } : {}),
+        seen: character in seen
+      }))
+    });
+  }
+
+  // SavedVariables key order is arbitrary; the ISO timestamps sort correctly.
+  const exportKeys = Object.keys(database.exports ?? {}).sort();
   const exportedAt = exportKeys.at(-1) ?? new Date().toISOString();
   return {
     source: "QuebecGold",
@@ -142,6 +172,7 @@ export async function readAddonExport(path, realm) {
       ...Object.values(database.readiness ?? {}).map((entry) => ({ ...entry, realm })),
       ...peerReadiness
     ],
-    attunements
+    attunements,
+    raids
   };
 }

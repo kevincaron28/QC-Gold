@@ -7,6 +7,8 @@ export interface CreateAuctionInput {
   bidIncrement: number;
   durationSeconds: number;
   createdBy: string;
+  raidId?: string | undefined;
+  bossName?: string | undefined;
 }
 
 export function createLootService(database: PrismaClient) {
@@ -23,7 +25,9 @@ export function createLootService(database: PrismaClient) {
           minimumBid: input.minimumBid,
           bidIncrement: input.bidIncrement,
           closesAt: new Date(Date.now() + input.durationSeconds * 1000),
-          createdBy: input.createdBy
+          createdBy: input.createdBy,
+          raidId: input.raidId?.trim() || null,
+          bossName: input.bossName?.trim() || null
         }
       });
     },
@@ -62,6 +66,11 @@ export function createLootService(database: PrismaClient) {
         });
         if (updated.count !== 1) throw new Error("Auction was already closed");
         if (!winner) return { auction, award: null };
+        // Snapshot the winner's totals before the GP lands, for loot history.
+        const before = await tx.epgpTransaction.aggregate({
+          where: { memberId: winner.memberId },
+          _sum: { epAmount: true, gpAmount: true }
+        });
         const transaction = await tx.epgpTransaction.create({
           data: {
             guildId: auction.guildId,
@@ -80,8 +89,14 @@ export function createLootService(database: PrismaClient) {
             auctionId,
             memberId: winner.memberId,
             itemName: auction.itemName,
-            amount: winner.amount
-          }
+            amount: winner.amount,
+            raidId: auction.raidId,
+            bossName: auction.bossName,
+            awardedBy: closedBy,
+            epBefore: before._sum.epAmount ?? 0,
+            gpBefore: before._sum.gpAmount ?? 0
+          },
+          include: { member: true }
         });
         return { auction: { ...auction, status: AuctionStatus.CLOSED }, award, transaction };
       });

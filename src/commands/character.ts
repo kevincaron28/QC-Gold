@@ -12,7 +12,8 @@ export const characterCommand = new SlashCommandBuilder()
     .addStringOption((option) => option.setName("class").setDescription("Class").setRequired(true))
     .addBooleanOption((option) => option.setName("main").setDescription("Set as your main character").setRequired(true))
     .addStringOption((option) => option.setName("spec").setDescription("Specialization"))
-    .addIntegerOption((option) => option.setName("level").setDescription("Character level").setMinValue(1).setMaxValue(100)))
+    .addIntegerOption((option) => option.setName("level").setDescription("Character level").setMinValue(1).setMaxValue(100))
+    .addStringOption((option) => option.setName("race").setDescription("Race, e.g. Dwarf")))
   .addSubcommand((subcommand) => subcommand
     .setName("list")
     .setDescription("List your linked characters."));
@@ -26,7 +27,7 @@ export async function executeCharacter(interaction: ChatInputCommandInteraction)
     await interaction.reply({
       content: characters.length === 0
         ? "You have no linked characters."
-        : characters.map((character) => `${character.isMain ? "⭐" : "•"} ${character.name} — ${character.className}${character.spec ? ` (${character.spec})` : ""}`).join("\n"),
+        : characters.map((character) => `${character.isMain ? "⭐" : "•"} ${character.name} — ${character.race ? `${character.race} ` : ""}${character.className}${character.spec ? ` (${character.spec})` : ""}${character.lastSeenAt ? ` · last seen <t:${Math.floor(character.lastSeenAt.getTime() / 1000)}:R>` : ""}`).join("\n"),
       ephemeral: true
     });
     return;
@@ -41,10 +42,12 @@ export async function executeCharacter(interaction: ChatInputCommandInteraction)
   };
   const spec = interaction.options.getString("spec");
   const level = interaction.options.getInteger("level");
+  const race = interaction.options.getString("race");
   const character = await guildService.addCharacter({
     ...characterInput,
     ...(spec === null ? {} : { spec }),
-    ...(level === null ? {} : { level })
+    ...(level === null ? {} : { level }),
+    ...(race === null ? {} : { race })
   });
   await interaction.reply({ content: `Linked ${character.name} as ${character.isMain ? "your main character" : "an alt"}.`, ephemeral: true });
 }

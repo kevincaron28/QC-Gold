@@ -37,6 +37,7 @@ export function createGuildService(database: PrismaClient) {
       className: string;
       spec?: string;
       level?: number;
+      race?: string;
       isMain: boolean;
     }) {
       if (input.isMain) {
@@ -53,6 +54,7 @@ export function createGuildService(database: PrismaClient) {
           className: input.className,
           spec: input.spec ?? null,
           level: input.level ?? null,
+          race: input.race?.trim() || null,
           isMain: input.isMain
         }
       });
@@ -78,6 +80,11 @@ export function createGuildService(database: PrismaClient) {
       bidIncrement?: number;
       auctionDurationSec?: number;
       epgpDecayPercent?: number;
+      baseGp?: number;
+      raidReminderMinutes?: number;
+      epCompletionBonus?: number;
+      notifyChannelId?: string | null;
+      weeklyReportEnabled?: boolean;
       welcomeChannelId?: string | null;
       welcomeMessageTemplate?: string | null;
       farewellChannelId?: string | null;

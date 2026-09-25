@@ -73,6 +73,8 @@ enum RaidStatus {
 enum RaidSignupStatus {
   SIGNED_UP
   CANCELLED
+  MAYBE
+  WAITLISTED
 }
 
 enum RaidRole {
@@ -122,6 +124,7 @@ model Guild {
   applications     Application[]
   lootAwards       LootAward[]
   tags             Tag[]
+  bankRequests     BankRequest[]
 }
 
 model Member {
@@ -142,6 +145,7 @@ model Member {
   bids               AuctionBid[]
   lootAwards         LootAward[]
   applications       Application[]
+  bankRequests       BankRequest[]
 
   @@unique([guildId, discordUserId])
   @@index([guildId, status])
@@ -156,6 +160,8 @@ model Character {
   spec               String?
   level              Int?
   isMain             Boolean                      @default(false)
+  race               String?
+  lastSeenAt         DateTime?
   createdAt          DateTime                     @default(now())
   updatedAt          DateTime                     @updatedAt
   member             Member                       @relation(fields: [memberId], references: [id], onDelete: Cascade)
@@ -243,6 +249,9 @@ model Auction {
   closesAt     DateTime
   createdBy    String
   closedAt     DateTime?
+  // Optional context so loot history can show where an item came from.
+  raidId       String?
+  bossName     String?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   guild        Guild         @relation(fields: [guildId], references: [id], onDelete: Cascade)
@@ -274,6 +283,11 @@ model LootAward {
   memberId  String
   itemName  String
   amount    Int
+  raidId    String?
+  bossName  String?
+  awardedBy String?
+  epBefore  Int?
+  gpBefore  Int?
   awardedAt DateTime @default(now())
   guild     Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
   auction   Auction  @relation(fields: [auctionId], references: [id], onDelete: Cascade)
@@ -333,33 +347,44 @@ model AddonImport {
 }
 
 model GuildSettings {
-  id                     String   @id @default(cuid())
-  guildId                String   @unique
-  attendanceDkp          Int      @default(10)
-  lateAttendanceDkp      Int      @default(5)
-  bossKillDkp            Int      @default(5)
-  minimumBid             Int      @default(10)
-  bidIncrement           Int      @default(5)
-  auctionDurationSec     Int      @default(60)
-  epgpDecayPercent       Float    @default(0.1)
-  epgpDecayIntervalHours Int      @default(168)
-  epgpEnabled            Boolean  @default(true)
-  welcomeChannelId       String?
-  welcomeMessageTemplate String?
-  farewellChannelId      String?
-  farewellMessageTemplate String?
-  applicantRoleId        String?
-  memberRoleId           String?
-  raidSignupChannelId    String?
-  logChannelId           String?
-  meritEnabled           Boolean  @default(false)
-  recruitmentChannelId   String?
-  recruitmentMessage     String?
+  id                       String    @id @default(cuid())
+  guildId                  String    @unique
+  attendanceDkp            Int       @default(10)
+  lateAttendanceDkp        Int       @default(5)
+  bossKillDkp              Int       @default(5)
+  minimumBid               Int       @default(10)
+  bidIncrement             Int       @default(5)
+  auctionDurationSec       Int       @default(60)
+  epgpDecayPercent         Float     @default(0.1)
+  epgpDecayIntervalHours   Int       @default(168)
+  epgpEnabled              Boolean   @default(true)
+  welcomeChannelId         String?
+  welcomeMessageTemplate   String?
+  farewellChannelId        String?
+  farewellMessageTemplate  String?
+  applicantRoleId          String?
+  memberRoleId             String?
+  raidSignupChannelId      String?
+  logChannelId             String?
+  meritEnabled             Boolean   @default(false)
+  recruitmentChannelId     String?
+  recruitmentMessage       String?
   recruitmentIntervalHours Int?
-  recruitmentLastPostedAt DateTime?
-  createdAt              DateTime @default(now())
-  updatedAt              DateTime @updatedAt
-  guild                  Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  recruitmentLastPostedAt  DateTime?
+  // EPGP: PR = EP / (GP + baseGp), so a new player with almost no GP does not top the list.
+  baseGp                   Int       @default(0)
+  // Channel for raid/boss/loot/EPGP announcements.
+  notifyChannelId          String?
+  // Ping signed-up members this many minutes before a raid (0 = off).
+  raidReminderMinutes      Int       @default(60)
+  // Extra EP proposed when every planned boss of a raid dies.
+  epCompletionBonus        Int       @default(0)
+  // Weekly guild report posted to the notify channel.
+  weeklyReportEnabled      Boolean   @default(false)
+  weeklyReportLastAt       DateTime?
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
+  guild                    Guild     @relation(fields: [guildId], references: [id], onDelete: Cascade)
 }
 
 model InspectedCharacterSnapshot {
@@ -450,6 +475,8 @@ model Raid {
   guild           Guild            @relation(fields: [guildId], references: [id], onDelete: Cascade)
   signups         RaidSignup[]
   attendance      RaidAttendance[]
+  notes           RaidNote[]
+  reminderSentAt  DateTime?
   bosses          RaidBoss[]
 
   @@index([guildId, scheduledAt])
@@ -524,4 +551,46 @@ model WishlistEntry {
 
   @@unique([characterId, itemKey])
   @@index([itemKey])
+}
+
+// Officer notes on a raid: general, per boss, or "improve next time".
+model RaidNote {
+  id        String   @id @default(cuid())
+  raidId    String
+  bossName  String?
+  body      String
+  createdBy String
+  createdAt DateTime @default(now())
+  raid      Raid     @relation(fields: [raidId], references: [id], onDelete: Cascade)
+
+  @@index([raidId, createdAt])
+}
+
+enum BankRequestStatus {
+  PENDING
+  APPROVED
+  FULFILLED
+  DENIED
+  CANCELLED
+}
+
+// A member asking the guild bank for an item; officers approve, fulfil, or deny.
+model BankRequest {
+  id        String            @id @default(cuid())
+  guildId   String
+  memberId  String
+  item      String
+  quantity  Int               @default(1)
+  note      String?
+  status    BankRequestStatus @default(PENDING)
+  handledBy String?
+  handledAt DateTime?
+  reply     String?
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  guild     Guild             @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  member    Member            @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([guildId, status, createdAt])
+  @@index([memberId, createdAt])
 }

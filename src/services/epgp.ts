@@ -25,6 +25,13 @@ function validateAmount(value: number | undefined, name: string): number {
   return amount;
 }
 
+// PR = EP / (GP + base GP). The base GP (guild setting, standard in EPGP)
+// keeps someone with 1 GP from topping the list on a tiny denominator.
+export function priority(ep: number, gp: number, baseGp = 0): number {
+  const denominator = gp + Math.max(0, baseGp);
+  return denominator > 0 ? ep / denominator : 0;
+}
+
 export function createEpgpService(database: PrismaClient) {
   const createTransaction = async (input: CreateEpgpTransaction) => {
     const epAmount = validateAmount(input.epAmount, "EP amount");
@@ -52,14 +59,14 @@ export function createEpgpService(database: PrismaClient) {
     });
   };
 
-  const getStanding = async (memberId: string): Promise<EpgpStanding> => {
+  const getStanding = async (memberId: string, baseGp = 0): Promise<EpgpStanding> => {
     const result = await database.epgpTransaction.aggregate({
       where: { memberId },
       _sum: { epAmount: true, gpAmount: true }
     });
     const ep = result._sum.epAmount ?? 0;
     const gp = result._sum.gpAmount ?? 0;
-    return { ep, gp, pr: gp > 0 ? ep / gp : 0 };
+    return { ep, gp, pr: priority(ep, gp, baseGp) };
   };
 
   return {
@@ -74,6 +81,29 @@ export function createEpgpService(database: PrismaClient) {
     },
 
     getStanding,
+
+    // One row per linked character, carrying its member's EP/GP/PR, so the
+    // addon can look standings up by the character name it sees in game.
+    async getGuildStandings(guildId: string, baseGp = 0) {
+      const [sums, characters] = await Promise.all([
+        database.epgpTransaction.groupBy({
+          by: ["memberId"],
+          where: { guildId },
+          _sum: { epAmount: true, gpAmount: true }
+        }),
+        database.character.findMany({
+          where: { member: { guildId, status: "ACTIVE" } },
+          select: { name: true, memberId: true, isMain: true }
+        })
+      ]);
+      const byMember = new Map(sums.map((row) => [row.memberId, row._sum]));
+      return characters.map((character) => {
+        const sum = byMember.get(character.memberId);
+        const ep = sum?.epAmount ?? 0;
+        const gp = sum?.gpAmount ?? 0;
+        return { character: character.name, main: character.isMain, ep, gp, pr: priority(ep, gp, baseGp) };
+      });
+    },
 
     async getHistory(memberId: string, limit = 10) {
       return database.epgpTransaction.findMany({
@@ -111,16 +141,25 @@ export function createEpgpService(database: PrismaClient) {
       return Promise.all(transactions);
     },
 
-    async reverseTransaction(transactionId: string, createdBy: string, reason: string) {
+    async reverseTransaction(transactionId: string, createdBy: string, reason: string, guildId?: string) {
       const original = await database.epgpTransaction.findUnique({ where: { id: transactionId } });
-      if (!original) {
+      if (!original || (guildId && original.guildId !== guildId)) {
         throw new Error("EPGP transaction not found");
+      }
+      // A correction is itself a ledger entry; undo a mistaken correction
+      // with a new award rather than stacking reversals.
+      if (original.type === EpgpTransactionType.REVERSAL) {
+        throw new Error("That entry is already a reversal and can't be reversed again.");
+      }
+      const existing = await database.epgpTransaction.findFirst({ where: { sourceRef: `reversal:${original.id}` } });
+      if (existing) {
+        throw new Error("That entry has already been reversed.");
       }
       return createTransaction({
         guildId: original.guildId,
         memberId: original.memberId,
-        epAmount: -original.epAmount,
-        gpAmount: -original.gpAmount,
+        epAmount: -original.epAmount || 0,
+        gpAmount: -original.gpAmount || 0,
         type: EpgpTransactionType.REVERSAL,
         reason,
         createdBy,

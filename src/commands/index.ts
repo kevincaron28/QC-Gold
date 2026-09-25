@@ -16,6 +16,9 @@ import { moderationCommand } from "./moderation.js";
 import { tagCommand } from "./tag.js";
 import { wishlistCommand } from "./wishlist.js";
 import { selfRolesCommand } from "./selfroles.js";
+import { whoCommand } from "./who.js";
+import { statsCommand } from "./stats.js";
+import { bankCommand } from "./bank.js";
 
 export const commands = [
   healthCommand,
@@ -37,6 +40,9 @@ export const commands = [
   , tagCommand
   , wishlistCommand
   , selfRolesCommand
+  , whoCommand
+  , statsCommand
+  , bankCommand
 ];
 
 const commandNames = commands.map((command) => command.name);

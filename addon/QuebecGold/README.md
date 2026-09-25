@@ -1,7 +1,8 @@
 # Quebec Gold WoW addon
 
-This is a self-contained, library-free WoW Classic/Vanilla-style addon for interface
-`11200`. It maintains an officer-controlled raid, attendance, boss, EPGP, loot, and
+This is a self-contained, library-free addon for WoW Forever (interface
+`16001`, which uses the modern Mainline addon API and its Midnight-era
+restrictions). It maintains an officer-controlled raid, attendance, boss, EPGP, loot, and
 event journal in the `QuebecGoldDB` SavedVariables table.
 
 ## Install
@@ -14,6 +15,35 @@ World of Warcraft\Interface\AddOns\QuebecGold\
 
 Enable **Load out of date AddOns** if the client requests it. The addon does not
 require the Quebec Gold Discord bot or any external library.
+
+## Minimap button and tools panel
+
+A gold coin button sits on the minimap edge. Left-click opens the tools
+window, right-click checks your gear, drag moves it. Each rank sees only
+what it can use: members get Me, Standings, and Tools; officers also get
+Raid, EPGP, Casino, and the officer tools (rank is re-checked each time the
+window opens). A shared **Player** box sits at the top: targeting a
+player fills it in, and **Me** / **Group...** (clickable raid/party list, or
+online guildmates when solo) fill it on demand. Amounts, wagers, and
+attunements have preset buttons; shift-click an item into the EPGP tab's
+Item box to award loot. Whole-group actions and ending a raid need a second
+click to confirm. Every button runs the same `/qg` command you could type,
+so the permission checks are the same. The casino is officer-run from the
+Casino tab; players join from chat (see `Modules/README.md`). `/qg menu` opens the window from chat, and
+`/qg minimap show|hide|reset` controls the button.
+
+## Standings, version check, and attendance
+
+- **Attendance from raid presence:** while a raid is active, everyone who is
+  in the raid group at any point is recorded (`QuebecGoldDB.presence`).
+  `/qg attendance seen` (or the Raid tab button) marks them all PRESENT
+  without overwriting anything already marked by hand.
+- **Standings:** the companion writes `Standings.lua` (the bot's EP/GP per
+  linked character) into this folder. After a `/reload` an officer's client
+  shares it with the guild over the `QuebecGoldSync` addon channel; members
+  only accept standings sent by an officer. `/qg standings [player]`.
+- **Version check:** each client announces its version at login, and anyone
+  running an older build gets told a newer one exists.
 
 ## In-game use
 
@@ -43,16 +73,29 @@ known professions and skill levels (via the client's own profession API)
 alongside gear - this is self-reported data, the same trust level as the
 rest of `/qg inspect`, not something inferred about other players.
 
-`/qg status`, `/qg roster`, and `/qg help` are available to everyone. Change
-`QuebecGoldDB.settings.officerRanks` or add names to
-`QuebecGoldDB.settings.officers` in the SavedVariables file if your guild uses a
-different rank layout. SavedVariables are written on logout/reload.
+`/qg status`, `/qg roster`, `/qg inspect`, `/qg diag`, and `/qg help` are
+available to everyone. If your guild's officer ranks are not rank index 0
+and 1, the guild master can change it in game: `/qg officer rank 2 on`, or
+`/qg officer add <name>` for one person (`/qg officer list` shows the current
+setup). SavedVariables are written on logout/reload.
+
+An active raid survives `/reload` and disconnects; `/qg end` closes it.
+Player names are normalized ("bob", "Bob-Realm" -> "Bob"), so the same
+character never ends up with two ledgers. `/qg inspect` reports READY, PARTIAL
+(e.g. no off-hand with a two-hander, or durability under 20%), or NOT_READY,
+and names the empty slots it counted.
+
+Every EPGP ledger entry gets a permanent id. Each export carries the whole
+ledger, and the bot uses those ids to skip entries it already imported, so
+importing every week never double-counts.
 
 ## Detection and communication
 
-Login and guild roster updates are captured. Loot chat and combat-log events are
-stored as **hints** where supported; they are not treated as authoritative boss
-kills, attendance, or loot awards. Officers should use the manual commands.
+Login and guild roster updates are captured. Loot chat is stored as a **hint**;
+it is not treated as an authoritative loot award. The combat log is not
+captured at all: since patch 12.0.0 addons cannot register combat log events,
+and WoW Forever inherits that restriction. Boss kills and attendance are
+manual, so officers use the manual commands.
 
 When the client provides `RegisterAddonMessagePrefix`, the addon registers
 `QuebecGold` and broadcasts manual raid, attendance, boss, EPGP, and loot changes
@@ -72,7 +115,7 @@ consumables) is broadcast to the **guild** chat channel automatically:
 This is self-reported data - the same trust level as running `/qg inspect`
 yourself, just automatic - not something inferred about other players, so it
 doesn't conflict with the "hints, not proof" rule above, which is specifically
-about combat log and loot chat. Any other online client with this addon
+about loot chat. Any other online client with this addon
 receives these digests and stores them in `QuebecGoldDB.peerRoster`, keyed by
 character name. This means **one officer's `/qg export`, run while others are
 online, carries a live readiness/profession summary for the whole online

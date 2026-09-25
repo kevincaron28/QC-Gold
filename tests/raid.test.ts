@@ -22,14 +22,42 @@ describe("raid service", () => {
     })).rejects.toThrow("Raid time must be in the future.");
   });
 
-  it("rejects a signup once the role cap is reached", async () => {
+  it("waitlists a signup once the role cap is reached", async () => {
     const raid = { id: "raid1", guildId: "guild", status: "PLANNED", tankLimit: 1, healerLimit: null, dpsLimit: null };
+    const upsert = vi.fn().mockImplementation(async ({ create }) => create);
     const database = {
       raid: { findFirst: vi.fn().mockResolvedValue(raid) },
-      raidSignup: { count: vi.fn().mockResolvedValue(1), upsert: vi.fn() }
+      raidSignup: { count: vi.fn().mockResolvedValue(1), upsert }
     } as never;
     const service = createRaidService(database);
-    await expect(service.signup("raid1", "guild", "member2", "TANK")).rejects.toThrow("full (1/1)");
+    await expect(service.signup("raid1", "guild", "member2", "TANK")).resolves.toMatchObject({ status: "WAITLISTED" });
+  });
+
+  it("records a maybe without using a slot", async () => {
+    const raid = { id: "raid1", guildId: "guild", status: "PLANNED", tankLimit: 1, healerLimit: null, dpsLimit: null };
+    const raidSignup = { count: vi.fn(), upsert: vi.fn().mockImplementation(async ({ create }) => create) };
+    const service = createRaidService({ raid: { findFirst: vi.fn().mockResolvedValue(raid) }, raidSignup } as never);
+    await expect(service.signup("raid1", "guild", "member2", "TANK", "MAYBE")).resolves.toMatchObject({ status: "MAYBE" });
+    expect(raidSignup.count).not.toHaveBeenCalled();
+  });
+
+  it("promotes the earliest waitlisted player when a slot opens", async () => {
+    const raid = { id: "raid1", guildId: "guild", status: "PLANNED", tankLimit: 1, healerLimit: null, dpsLimit: null };
+    const update = vi.fn().mockImplementation(async ({ where, data }) => ({ id: where.id, ...data }));
+    const database = {
+      raid: { findFirst: vi.fn().mockResolvedValue(raid), findUnique: vi.fn().mockResolvedValue(raid) },
+      raidSignup: {
+        findUnique: vi.fn().mockResolvedValue({ id: "s1", status: "SIGNED_UP", role: "TANK" }),
+        update,
+        findMany: vi.fn().mockImplementation(async ({ where }) => where.role === "TANK"
+          ? [{ id: "s2", memberId: "early", member: { displayName: "Early" } }, { id: "s3", memberId: "late", member: { displayName: "Late" } }]
+          : []),
+        count: vi.fn().mockResolvedValue(0)
+      }
+    } as never;
+    const result = await createRaidService(database).cancelSignup("raid1", "guild", "member1");
+    expect(result.promoted.map((signup) => signup.memberId)).toEqual(["early"]);
+    expect(update).toHaveBeenCalledWith({ where: { id: "s2" }, data: { status: "SIGNED_UP" } });
   });
 
   it("allows a signup when under the role cap, excluding the requester's own existing slot", async () => {

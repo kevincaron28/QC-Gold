@@ -7,6 +7,8 @@ The bot is intentionally split into two boundaries:
 - **Quebec Gold** owns guild profiles, raids, signups, applications, permissions, announcements, and audit history.
 - **QuebecGold** is the in-game EPGP/readiness authority. The addon exports data through a validated companion import adapter.
 
+Every in-game and Discord command, and who can run it, is listed in [COMMANDS.md](COMMANDS.md).
+
 ## Development status
 
 Phase 1 provides:

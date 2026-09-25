@@ -18,6 +18,7 @@ QuebecGoldDB = {
       ep = 10, gp = 0,
       ledger = {
         [1] = { epAmount = 10, gpAmount = 0, type = "EP_AWARD", reason = "Raid attendance", at = "2026-09-24T00:00:00Z", by = "Kevin" },
+        [2] = { id = "Kevin-1790000000-7", epAmount = 5, gpAmount = 0, type = "EP_AWARD", reason = "", at = "2026-09-25T00:00:00Z", by = "Kevin" },
       },
     },
   },
@@ -86,7 +87,17 @@ describe("readAddonExport (real WoW SavedVariables array syntax)", () => {
     const result = await readAddonExport(file, "WoW Forever");
     const snapshot = normalizeAddonSnapshot(parseAddonSnapshot(result));
     expect(snapshot.readiness.map((entry) => entry.character).sort()).toEqual(["Bob", "Kevin"]);
-    expect(snapshot.epgpTransactions).toHaveLength(1);
+    expect(snapshot.epgpTransactions).toHaveLength(2);
     expect(snapshot.attunements).toHaveLength(1);
+  });
+
+  it("gives every ledger entry a ref that stays the same across exports", async () => {
+    const first = await readAddonExport(file, "WoW Forever");
+    const second = await readAddonExport(file, "WoW Forever");
+    const refs = first.epgpTransactions.map((entry: { sourceRef: string }) => entry.sourceRef);
+    expect(refs).toEqual(second.epgpTransactions.map((entry: { sourceRef: string }) => entry.sourceRef));
+    expect(refs).toEqual(["qg:Kevin:2026-09-24T00:00:00Z:Kevin:0", "qg:Kevin-1790000000-7"]);
+    // An empty reason would fail the bot's 3-character minimum.
+    expect(first.epgpTransactions[1]?.reason.length).toBeGreaterThanOrEqual(3);
   });
 });

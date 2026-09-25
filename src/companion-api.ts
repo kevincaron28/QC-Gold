@@ -3,8 +3,10 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { config } from "./config.js";
 import { prisma } from "./database.js";
 import { createAddonImportService } from "./services/addon-import.js";
+import { createEpgpService } from "./services/epgp.js";
 
 const importService = createAddonImportService(prisma);
+const epgpService = createEpgpService(prisma);
 
 function json(response: ServerResponse, status: number, body: unknown): void {
   response.writeHead(status, { "content-type": "application/json; charset=utf-8" });
@@ -35,12 +37,27 @@ export function startCompanionApi(): ReturnType<typeof createServer> {
         json(response, 200, { ok: true });
         return;
       }
-      if (request.method !== "POST" || request.url !== "/api/v1/addon-imports") {
+      const url = new URL(request.url ?? "/", "http://localhost");
+      const isImport = request.method === "POST" && url.pathname === "/api/v1/addon-imports";
+      const isStandings = request.method === "GET" && url.pathname === "/api/v1/standings";
+      if (!isImport && !isStandings) {
         json(response, 404, { error: "Not found" });
         return;
       }
       if (!authorized(request)) {
         json(response, 401, { error: "Unauthorized" });
+        return;
+      }
+      if (isStandings) {
+        // Read-only EP/GP/PR per linked character. The companion writes it
+        // into the addon folder so /qg standings shows the bot's numbers.
+        const guild = await prisma.guild.findUnique({ where: { discordId: url.searchParams.get("guild") ?? "" } });
+        if (!guild) {
+          json(response, 404, { error: "Guild is not initialized" });
+          return;
+        }
+        const baseGp = (await prisma.guildSettings.findUnique({ where: { guildId: guild.id } }))?.baseGp ?? 0;
+        json(response, 200, { updatedAt: new Date().toISOString(), baseGp, standings: await epgpService.getGuildStandings(guild.id, baseGp) });
         return;
       }
       const payload = await readBody(request);

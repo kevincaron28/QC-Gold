@@ -6,7 +6,8 @@ import { join } from "node:path";
 const root = new URL(".", import.meta.url);
 const rootPath = fileURLToPath(root);
 const toc = readFileSync(new URL("QuebecGold.toc", root), "utf8");
-if (!toc.includes("## Interface: 11200") || !toc.includes("## SavedVariables:")) {
+// 16001 is WoW Forever's interface number (from /dump select(4, GetBuildInfo())).
+if (!toc.includes("## Interface: 16001") || !toc.includes("## SavedVariables:")) {
   throw new Error("TOC is missing interface or SavedVariables metadata");
 }
 
@@ -29,8 +30,17 @@ for (const file of walk(rootPath)) {
 
 const core = readFileSync(new URL("Core.lua", root), "utf8");
 for (const required of ["PLAYER_LOGIN", "GUILD_ROSTER_UPDATE", "CHAT_MSG_LOOT",
-  "COMBAT_LOG_EVENT_UNFILTERED", "SendAddonMessage", "SlashCmdList"]) {
+  "SendAddonMessage", "SlashCmdList"]) {
   if (!core.includes(required)) throw new Error(`Missing ${required} in Core.lua`);
+}
+// Since patch 12.0.0 (inherited by WoW Forever) addons cannot register the
+// combat log event; attempting it triggers a "blocked from an action only
+// available to the Blizzard UI" popup on load.
+for (const file of ["Core.lua", "Modules/Casino.lua"]) {
+  const source = readFileSync(new URL(file, root), "utf8");
+  if (/RegisterEvent\(\s*"COMBAT_LOG_EVENT/.test(source)) {
+    throw new Error(`${file} registers a combat log event, which addons are blocked from doing`);
+  }
 }
 if (!core.includes("QuebecGoldDB")) {
   throw new Error("Core.lua does not reference its SavedVariables database");
@@ -42,6 +52,26 @@ if (!casino.includes("QuebecGoldCasinoDB")) {
 }
 if (!casino.includes("commandHandlers")) {
   throw new Error("Casino.lua does not register into Core.lua's command extension point");
+}
+
+const addonFiles = ["Core.lua", "Standings.lua", "Modules/Casino.lua", "Modules/Sync.lua", "Modules/Minimap.lua"];
+for (const file of addonFiles) {
+  const source = readFileSync(new URL(file, root), "utf8");
+  if (/RegisterEvent\(\s*"COMBAT_LOG_EVENT/.test(source)) {
+    throw new Error(`${file} registers a combat log event, which addons are blocked from doing`);
+  }
+}
+// Addon message prefixes are limited to 16 characters.
+for (const file of addonFiles) {
+  const source = readFileSync(new URL(file, root), "utf8");
+  for (const match of source.matchAll(/PREFIX = "([^"]+)"/g)) {
+    if (match[1].length > 16) throw new Error(`${file}: addon message prefix "${match[1]}" is over 16 characters`);
+  }
+}
+
+for (const file of addonFiles) {
+  const name = file.replace("/", "\\");
+  if (!toc.includes(name)) throw new Error(`${file} is not listed in QuebecGold.toc, so the game would never load it`);
 }
 
 console.log("QuebecGold addon static validation passed.");

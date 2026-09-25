@@ -1,32 +1,44 @@
--- Casino module: six /roll-driven minigames plus a persistent gold ledger.
+-- Casino: officer-hosted /roll games that anyone in the group can play,
+-- with or without the addon.
 --
--- Hard constraint that shapes everything below: no WoW addon API can move
--- gold between players. Every "payout" here is a tracked ledger entry (who
--- owes whom, or what the guild vault owes/is owed), settled by hand via
--- trade - never an automatic transfer. The safety features below (public
--- announcements, a persistent debt ledger, officer-assisted debt clearing)
--- exist to keep that manual settlement honest and disputable, not to
--- guarantee payment.
+-- How it works:
+--   * Only officers run games. The officer's client is the table: it posts
+--     the announcements in party/raid chat, reads players' /roll results and
+--     chat replies, and keeps the ledger.
+--   * Players (guildies or pugs, addon or not) join a group game by typing 1
+--     in party/raid chat, and play by typing /roll. In blackjack they type
+--     "stand" to stay.
+--   * No addon can move gold. Every result is a ledger entry (who owes whom),
+--     paid by trade. Trades with the officer settle ledger debts automatically.
 --
--- Group games (Difference Roll, Pot Sweepstakes, Elimination Deathroll) are
--- host-adjudicated: only the host's client parses and acts on participants'
--- /roll results, because WoW roll messages are only visible to players in
--- the same party/raid (or in local visual range) as the roller. The host
--- must be grouped with every participant for this to work. Solo house games
--- (Blackjack, Over/Under 50, Goblin Roulette) are self-adjudicated instead -
--- each player's own client resolves their own bet against their own roll,
--- so no host or grouping is required for those.
+-- Chat volume: each game posts one line to open, one to call the roll, and
+-- one result (deathroll: one per round; blackjack: one per card). Joins are
+-- never announced one by one. Lines queued close together are merged into a
+-- single chat message and sends are spaced out, so the table never floods
+-- chat or trips the server's chat throttle.
+--
+-- Wagers accept gold and silver: 10 or 10g (gold), 50s (silver), 1g50s.
 local addonName, ns = ...
 ns = ns or {}
 
 local CASINO_PREFIX = "QuebecGoldCasino"
 local GOLD = 10000
 local SILVER = 100
+local MAX_WAGER = 100000 * GOLD
+local CHAT_MAX = 240
+local CHAT_GAP_SECONDS = 1.5
+
+local JOIN_WORDS = { ["1"] = true, ["join"] = true, ["in"] = true }
+local LEAVE_WORDS = { ["leave"] = true, ["out"] = true }
+local STAND_WORDS = { ["stand"] = true, ["stay"] = true }
+local GROUP_CHAT_EVENTS = {
+  "CHAT_MSG_PARTY", "CHAT_MSG_PARTY_LEADER", "CHAT_MSG_RAID", "CHAT_MSG_RAID_LEADER",
+  "CHAT_MSG_INSTANCE_CHAT", "CHAT_MSG_INSTANCE_CHAT_LEADER"
+}
 
 local casino = {
-  session = nil,          -- active group game (see startDiff/startPot/startDeathroll)
-  pendingSolo = {},        -- [playerName] = { kind = "OVERUNDER"|"ROULETTE", ... }
-  blackjackHands = {}      -- [playerName] = { wager, playerCards, dealerCards, phase }
+  session = nil,   -- the group game this officer is hosting
+  houseBets = {}   -- [player] = one-on-one game vs the house (this officer)
 }
 ns.casino = casino
 
@@ -34,7 +46,118 @@ local db
 local combatLocked = false
 
 -- ---------------------------------------------------------------------
--- Utility helpers
+-- Money
+-- ---------------------------------------------------------------------
+
+-- "10" or "10g" = gold, "50s" = silver, "1g50s", "1.5g". Returns copper.
+local function parseMoney(text)
+  if text == nil then return nil end
+  text = string.lower((string.gsub(tostring(text), "%s+", "")))
+  if text == "" then return nil end
+  local copper, found = 0, false
+  local rest = string.gsub(text, "(%d+%.?%d*)([gs])", function(number, unit)
+    copper = copper + math.floor(tonumber(number) * (unit == "g" and GOLD or SILVER) + 0.5)
+    found = true
+    return ""
+  end)
+  if rest ~= "" then
+    local number = tonumber(rest)
+    if found or not number then return nil end
+    copper = math.floor(number * GOLD + 0.5)
+  end
+  if copper < SILVER or copper > MAX_WAGER then return nil end
+  return copper
+end
+
+local function formatMoney(copper)
+  copper = math.floor((copper or 0) + 0.5)
+  local negative = copper < 0
+  copper = math.abs(copper)
+  local gold = math.floor(copper / GOLD)
+  local silver = math.floor((copper % GOLD) / SILVER)
+  local text
+  if gold > 0 and silver > 0 then text = gold .. "g " .. silver .. "s"
+  elseif gold > 0 then text = gold .. "g"
+  else text = silver .. "s" end
+  return negative and ("-" .. text) or text
+end
+
+-- ---------------------------------------------------------------------
+-- Chat output: queued, merged, and paced
+-- ---------------------------------------------------------------------
+
+local function groupChannel()
+  if IsInRaid and IsInRaid() then return "RAID" end
+  if IsInGroup and IsInGroup() then return "PARTY" end
+  return nil
+end
+
+local function clock()
+  return GetTime and GetTime() or time()
+end
+
+local queue = {}
+local flushScheduled = false
+local lastChatAt = 0
+
+local function sendChat(text, channel)
+  pcall(function()
+    if C_ChatInfo and C_ChatInfo.SendChatMessage then
+      C_ChatInfo.SendChatMessage(text, channel)
+    elseif SendChatMessage then
+      SendChatMessage(text, channel)
+    end
+  end)
+end
+
+local scheduleFlush
+
+local function flush()
+  flushScheduled = false
+  if #queue == 0 then return end
+  local line = table.remove(queue, 1)
+  -- Merge whatever else is waiting into the same chat line when it fits.
+  while queue[1] and string.len(line) + 3 + string.len(queue[1]) <= CHAT_MAX do
+    line = line .. " | " .. table.remove(queue, 1)
+  end
+  local channel = groupChannel()
+  if channel then sendChat("[QG] " .. line, channel) end
+  lastChatAt = clock()
+  if #queue > 0 then scheduleFlush() end
+end
+
+scheduleFlush = function()
+  if flushScheduled then return end
+  flushScheduled = true
+  local wait = math.max(0.2, CHAT_GAP_SECONDS - (clock() - lastChatAt))
+  if C_Timer and C_Timer.After then C_Timer.After(wait, flush) else flush() end
+end
+
+-- Public line in party/raid chat (also echoed to the officer's chat frame).
+local function announce(text)
+  ns.message(text)
+  table.insert(queue, string.sub(text, 1, CHAT_MAX))
+  scheduleFlush()
+end
+
+-- Private line for the hosting officer only.
+local function tell(text)
+  ns.message(text)
+end
+
+local function sendAddon(text)
+  pcall(function()
+    local channel = "GUILD"
+    if C_ChatInfo and C_ChatInfo.SendAddonMessage then
+      C_ChatInfo.SendAddonMessage(CASINO_PREFIX, string.sub(text, 1, 255), channel)
+    elseif SendAddonMessage then
+      SendAddonMessage(CASINO_PREFIX, string.sub(text, 1, 255), channel)
+    end
+  end)
+end
+
+-- ---------------------------------------------------------------------
+-- Ledger
 -- ---------------------------------------------------------------------
 
 local function ensureDb()
@@ -56,21 +179,53 @@ local function pushHistory(name, entry)
   while #ledger.history > 50 do table.remove(ledger.history, 1) end
 end
 
-local function formatMoney(copper)
-  copper = math.floor((copper or 0) + 0.5)
-  local negative = copper < 0
-  copper = math.abs(copper)
-  local gold = math.floor(copper / GOLD)
-  local silver = math.floor((copper % GOLD) / SILVER)
-  local text = string.format("%dg %ds", gold, silver)
-  return negative and ("-" .. text) or text
+-- Records that `payer` owes `payee`. Other officers' clients keep a copy.
+local function addDebt(payer, payee, amount, reason, mirrored)
+  if payer == payee or amount <= 0 then return end
+  local payerLedger = ensureLedger(payer)
+  payerLedger.lost = payerLedger.lost + amount
+  payerLedger.debts[payee] = (payerLedger.debts[payee] or 0) + amount
+  local payeeLedger = ensureLedger(payee)
+  payeeLedger.won = payeeLedger.won + amount
+  if mirrored then return end
+  pushHistory(payer, { at = ns.now(), type = "LOSS", amount = amount, counterparty = payee, reason = reason })
+  pushHistory(payee, { at = ns.now(), type = "WIN", amount = amount, counterparty = payer, reason = reason })
+  sendAddon(string.format("DEBT|%s|%s|%d|%s", payer, payee, amount, reason))
 end
 
-local function parseAmount(denomination, raw)
-  local n = tonumber(raw)
-  if not n or n <= 0 then return nil end
-  if string.lower(denomination or "gold") == "silver" then return math.floor(n * SILVER) end
-  return math.floor(n * GOLD)
+local function reduceDebt(debtor, creditor, amount, reason, mirrored)
+  local ledger = db.ledger[debtor]
+  local owed = ledger and ledger.debts[creditor] or 0
+  if owed <= 0 or amount <= 0 then return 0 end
+  local paid = math.min(owed, amount)
+  ledger.debts[creditor] = owed - paid
+  if not mirrored then
+    pushHistory(debtor, { at = ns.now(), type = "SETTLED", amount = paid, counterparty = creditor, reason = reason })
+    sendAddon(string.format("CLEAR|%s|%s|%d", debtor, creditor, paid))
+  end
+  return paid
+end
+
+-- ---------------------------------------------------------------------
+-- Guards
+-- ---------------------------------------------------------------------
+
+local function isHostOfficer()
+  if not ns.isOfficer() then
+    ns.message("Only officers can run casino games.")
+    return false
+  end
+  return true
+end
+
+local function canHost()
+  if not isHostOfficer() then return false end
+  if combatLocked then tell("Casino games are paused while you are in combat."); return false end
+  if not groupChannel() then
+    tell("Form a party or raid first: players must be grouped with you so you can see their chat and rolls.")
+    return false
+  end
+  return true
 end
 
 local function countKeys(t)
@@ -79,631 +234,532 @@ local function countKeys(t)
   return n
 end
 
-local function registerPrefix()
-  if C_ChatInfo and C_ChatInfo.RegisterAddonMessagePrefix then
-    C_ChatInfo.RegisterAddonMessagePrefix(CASINO_PREFIX)
-  elseif RegisterAddonMessagePrefix then
-    RegisterAddonMessagePrefix(CASINO_PREFIX)
-  end
-end
-
-local function groupChannel()
-  if IsInRaid and IsInRaid() then return "RAID" end
-  if GetNumRaidMembers and GetNumRaidMembers() > 0 then return "RAID" end
-  if IsInGroup and IsInGroup() then return "PARTY" end
-  if GetNumPartyMembers and GetNumPartyMembers() > 0 then return "PARTY" end
-  return nil
-end
-
-local function sendCasino(text)
-  local target = groupChannel() or "GUILD"
-  if C_ChatInfo and C_ChatInfo.SendAddonMessage then
-    C_ChatInfo.SendAddonMessage(CASINO_PREFIX, text, target)
-  elseif SendAddonMessage then
-    SendAddonMessage(CASINO_PREFIX, text, target)
-  end
-end
-
--- Public, human-readable announcement (game start/finish only - intermediate
--- state passes silently over the addon channel above, per spec, to avoid
--- cluttering /raid or /guild chat with anything but clean summaries).
-local function announce(text)
-  local channel = groupChannel()
-  if channel and SendChatMessage then
-    SendChatMessage(text, channel)
-  end
-  ns.message(text)
-end
-
-local function guardCombat()
-  if combatLocked then
-    ns.message("Casino games are disabled while in combat.")
-    return true
-  end
-  return false
+local function sortedNames(set)
+  local names = {}
+  for name in pairs(set) do table.insert(names, name) end
+  table.sort(names)
+  return names
 end
 
 -- ---------------------------------------------------------------------
--- Ledger mutation (authoritative - records locally AND broadcasts so every
--- online client's own ledger copy stays consistent, the same
--- eventually-consistent pattern Core.lua uses for peer readiness sync).
+-- Group games: Pot, Elimination Deathroll, Difference Roll
 -- ---------------------------------------------------------------------
 
-local function applyDebt(payer, payee, amount, reason)
-  local payerLedger = ensureLedger(payer)
-  payerLedger.lost = payerLedger.lost + amount
-  payerLedger.debts[payee] = (payerLedger.debts[payee] or 0) + amount
-  pushHistory(payer, { at = ns.now(), type = "LOSS", amount = amount, counterparty = payee, reason = reason })
+local GAME_NAMES = { POT = "Pot Sweepstakes", DEATHROLL = "Elimination Deathroll", DIFF = "Difference Roll" }
 
-  local payeeLedger = ensureLedger(payee)
-  payeeLedger.won = payeeLedger.won + amount
-  pushHistory(payee, { at = ns.now(), type = "WIN", amount = amount, counterparty = payer, reason = reason })
-
-  sendCasino(string.format("DEBT|%s|%s|%d|%s", payer, payee, amount, reason))
-end
-
--- won=true: the player wins `amount` out of the guild vault. won=false: the
--- player loses `amount` into it. The vault balance is a tracked tally, not a
--- real bankroll - see the file header.
-local function applyHouseResult(name, amount, won, reason)
-  local ledger = ensureLedger(name)
-  if won then
-    ledger.won = ledger.won + amount
-    db.vault = db.vault - amount
+local function startGroupGame(game, moneyText)
+  if not canHost() then return end
+  if casino.session then tell("A group game is already running. Roll, or cancel it first."); return end
+  local wager = parseMoney(moneyText)
+  if not wager then tell("Enter a wager like 10g, 50s, or 1g50s."); return end
+  local session = { game = game, host = ns.playerName(), phase = "JOINING", wager = wager, players = {}, rolls = {} }
+  if game == "DIFF" then
+    -- The wager is the roll ceiling, counted in gold or in silver.
+    session.unit = (wager % GOLD == 0) and GOLD or SILVER
+    session.maxRoll = math.floor(wager / session.unit)
+    if session.maxRoll < 2 or session.maxRoll > 100000 then tell("Difference Roll needs a wager of at least 2 (2g or 2s)."); return end
+    announce(string.format("Difference Roll up to %s! Lowest roll pays the highest the difference. Type 1 to join.", formatMoney(wager)))
+  elseif game == "POT" then
+    session.maxRoll = 100
+    announce(string.format("Pot Sweepstakes! Entry %s, highest roll takes the pot (%d%% guild cut). Type 1 to join.",
+      formatMoney(wager), math.floor(db.guildCut * 100)))
   else
-    ledger.lost = ledger.lost + amount
-    db.vault = db.vault + amount
+    session.maxRoll = 1000
+    session.round = 1
+    session.eliminated = {}
+    announce(string.format("Elimination Deathroll! Every loser pays the last survivor %s. Type 1 to join.", formatMoney(wager)))
   end
-  pushHistory(name, { at = ns.now(), type = won and "WIN" or "LOSS", amount = amount, counterparty = "House", reason = reason })
-  sendCasino(string.format("HOUSE|%s|%d|%s|%s", name, amount, won and "WIN" or "LOSS", reason))
+  casino.session = session
 end
 
--- Non-authoritative mirror applied when receiving another client's broadcast
--- of a result it already resolved. Does not re-broadcast or duplicate
--- history - the originating client already logged that.
-local function applyMirroredDebt(payer, payee, amount)
-  local payerLedger = ensureLedger(payer)
-  payerLedger.lost = payerLedger.lost + amount
-  payerLedger.debts[payee] = (payerLedger.debts[payee] or 0) + amount
-  local payeeLedger = ensureLedger(payee)
-  payeeLedger.won = payeeLedger.won + amount
-end
-
-local function applyMirroredHouse(name, amount, result)
-  local ledger = ensureLedger(name)
-  if result == "WIN" then
-    ledger.won = ledger.won + amount
-    db.vault = db.vault - amount
-  else
-    ledger.lost = ledger.lost + amount
-    db.vault = db.vault + amount
-  end
-end
-
--- ---------------------------------------------------------------------
--- Roll parsing
--- ---------------------------------------------------------------------
-
-local function parseRoll(text)
-  local roller, value, minValue, maxValue = string.match(text, "^(.-) rolls (%d+) %((%d+)%-(%d+)%)$")
-  if not roller then return nil end
-  roller = string.match(roller, "^([^%-]+)") or roller
-  return roller, tonumber(value), tonumber(minValue), tonumber(maxValue)
-end
-
--- ---------------------------------------------------------------------
--- Group games: Difference Roll, Pot Sweepstakes, Elimination Deathroll
--- ---------------------------------------------------------------------
-
-local function startDiff(args)
-  if guardCombat() then return end
-  if casino.session then ns.message("A casino game is already active."); return end
-  local denomination = string.lower(args[1] or "")
-  if denomination ~= "gold" and denomination ~= "silver" then
-    ns.message("Usage: /qg casino diff <gold|silver> <maxWager>"); return
-  end
-  local maxWager = tonumber(args[2])
-  if not maxWager or maxWager <= 0 then
-    ns.message("Usage: /qg casino diff <gold|silver> <maxWager>"); return
-  end
-  casino.session = {
-    game = "DIFF", host = ns.playerName(), phase = "JOINING",
-    denomination = denomination, maxRoll = math.floor(maxWager),
-    participants = { [ns.playerName()] = true }, rolls = {}
-  }
-  announce(string.format("Difference Roll started by %s! Max wager: %d %s. /qg casino join to enter, then the host runs /qg casino roll.",
-    ns.playerName(), math.floor(maxWager), denomination))
-end
-
-local function startPot(args)
-  if guardCombat() then return end
-  if casino.session then ns.message("A casino game is already active."); return end
-  local amount = parseAmount("gold", args[1])
-  if not amount then ns.message("Usage: /qg casino pot <entryFeeGold>"); return end
-  casino.session = {
-    game = "POT", host = ns.playerName(), phase = "JOINING",
-    entryFee = amount, maxRoll = 100,
-    participants = { [ns.playerName()] = true }, rolls = {}
-  }
-  announce(string.format("Pot Sweepstakes started by %s! Entry fee: %s. /qg casino join to enter, then the host runs /qg casino roll.",
-    ns.playerName(), formatMoney(amount)))
-end
-
-local function startDeathroll(args)
-  if guardCombat() then return end
-  if casino.session then ns.message("A casino game is already active."); return end
-  local amount = parseAmount("gold", args[1])
-  if not amount then ns.message("Usage: /qg casino deathroll <baseWagerGold>"); return end
-  casino.session = {
-    game = "DEATHROLL", host = ns.playerName(), phase = "JOINING",
-    wager = amount, maxRoll = 10000, round = 1,
-    participants = { [ns.playerName()] = true }, rolls = {}, eliminated = {}
-  }
-  announce(string.format("Elimination Deathroll started by %s! Base wager: %s. /qg casino join to enter, then the host runs /qg casino roll.",
-    ns.playerName(), formatMoney(amount)))
-end
-
-local function joinSession()
+local function addPlayer(name, byHost)
   local session = casino.session
-  if not session then ns.message("No casino game is open to join."); return end
-  if session.phase ~= "JOINING" then ns.message("This game is no longer accepting joins."); return end
-  session.participants[ns.playerName()] = true
-  ns.message("Joined the " .. session.game .. " game.")
+  if not session or session.phase ~= "JOINING" or not name then return end
+  if session.players[name] then return end
+  session.players[name] = true
+  tell(string.format("%s joined %s (%d player%s).", name, GAME_NAMES[session.game], countKeys(session.players),
+    countKeys(session.players) == 1 and "" or "s"))
+  if byHost and ns.onCasinoChange then ns.onCasinoChange() end
+end
+
+local function removePlayer(name)
+  local session = casino.session
+  if not session or session.phase ~= "JOINING" or not session.players[name] then return end
+  session.players[name] = nil
+  tell(name .. " left the game.")
+end
+
+local function waitingOn()
+  local session = casino.session
+  local names = {}
+  for _, name in ipairs(sortedNames(session.players)) do
+    if not session.rolls[name] then table.insert(names, name) end
+  end
+  return names
+end
+
+local function callRoll(prefix)
+  local session = casino.session
+  session.phase = "ROLLING"
+  session.rolls = {}
+  local names = sortedNames(session.players)
+  announce(string.format("%s/roll %d now: %s", prefix or "", session.maxRoll, table.concat(names, ", ")))
 end
 
 local function beginRolling()
   local session = casino.session
-  if not session then ns.message("No casino game is open."); return end
-  if ns.playerName() ~= session.host then ns.message("Only the host can start rolling."); return end
-  if session.phase ~= "JOINING" then ns.message("This game is already rolling."); return end
-  session.phase = "ROLLING"
-  session.rolls = {}
-  if session.game == "POT" then
-    session.pot = session.entryFee * countKeys(session.participants)
-  end
-  announce(string.format("Roll now! /roll %d (%d player(s))", session.maxRoll, countKeys(session.participants)))
+  if not isHostOfficer() then return end
+  if not session then tell("No group game is open."); return end
+  if session.phase ~= "JOINING" then tell("Already rolling. Use Remind to nudge players."); return end
+  if countKeys(session.players) < 2 then tell("Need at least 2 players. Players type 1 in chat, or add them with the Player box."); return end
+  -- Everyone who paid in, kept even if a tie narrows the players to a roll-off.
+  session.entrants = sortedNames(session.players)
+  callRoll()
 end
 
-local function cancelSession()
+local function remind()
   local session = casino.session
-  if not session then ns.message("No active casino game."); return end
-  if ns.playerName() ~= session.host and not ns.isOfficer() then
-    ns.message("Only the host or an officer can cancel this game."); return
-  end
-  announce("Casino game cancelled by " .. ns.playerName() .. ". No payouts.")
-  casino.session = nil
+  if not session or session.phase ~= "ROLLING" then tell("Nobody is being waited on."); return end
+  announce(string.format("Waiting on %s: /roll %d", table.concat(waitingOn(), ", "), session.maxRoll))
 end
 
-local function resolveDiff()
-  local session = casino.session
+local function resolveDiff(session)
   local highName, highVal, lowName, lowVal
-  for name, val in pairs(session.rolls) do
-    if not highVal or val > highVal then highName, highVal = name, val end
-    if not lowVal or val < lowVal then lowName, lowVal = name, val end
-  end
-  if highName == lowName then
-    announce("Difference Roll: only one roll recorded. No payout.")
-    casino.session = nil
-    return
+  for _, name in ipairs(sortedNames(session.rolls)) do
+    local value = session.rolls[name]
+    if not highVal or value > highVal then highName, highVal = name, value end
+    if not lowVal or value < lowVal then lowName, lowVal = name, value end
   end
   if highVal == lowVal then
-    announce(string.format("Difference Roll: tied at %d. No payout.", highVal))
-    casino.session = nil
-    return
+    announce(string.format("Difference Roll: everyone tied at %d. No payout.", highVal))
+  else
+    local amount = (highVal - lowVal) * session.unit
+    addDebt(lowName, highName, amount, "Difference Roll")
+    announce(string.format("Difference Roll: %s (%d) pays %s (%d) %s.", lowName, lowVal, highName, highVal, formatMoney(amount)))
   end
-  local amount = parseAmount(session.denomination, highVal - lowVal)
-  applyDebt(lowName, highName, amount, "Difference Roll")
-  announce(string.format("Difference Roll: %s (%d) pays %s (%d) %s.", lowName, lowVal, highName, highVal, formatMoney(amount)))
   casino.session = nil
 end
 
-local function resolvePot()
-  local session = casino.session
-  local highVal
-  local highNames = {}
-  for name, val in pairs(session.rolls) do
-    if not highVal or val > highVal then
-      highVal, highNames = val, { name }
-    elseif val == highVal then
-      table.insert(highNames, name)
-    end
+local function resolvePot(session)
+  local best, winners = nil, {}
+  for name, value in pairs(session.rolls) do
+    if not best or value > best then best, winners = value, { name }
+    elseif value == best then table.insert(winners, name) end
   end
-  if #highNames > 1 then
-    announce(string.format("Pot Sweepstakes: tie at %d between %s - roll-off! /roll 100", highVal, table.concat(highNames, ", ")))
-    session.participants = {}
-    for _, name in ipairs(highNames) do session.participants[name] = true end
-    session.rolls = {}
-    session.phase = "ROLLING"
-    session.maxRoll = 100
+  if #winners > 1 then
+    table.sort(winners)
+    session.players = {}
+    for _, name in ipairs(winners) do session.players[name] = true end
+    callRoll(string.format("Tie at %d! Roll-off: ", best))
     return
   end
-  local winner = highNames[1]
-  local cut = math.floor(session.pot * db.guildCut)
-  local payout = session.pot - cut
+  local entrants = session.entrants
+  local winner = winners[1]
+  local pot = session.wager * #entrants
+  local cut = math.floor(pot * db.guildCut)
+  local payout = pot - cut
   db.vault = db.vault + cut
-  -- The host is the presumed real-world collector of everyone's entry fee,
-  -- so the payout is recorded as a debt from host to winner unless the host
-  -- won their own pot, in which case they already hold the money.
-  if winner == session.host then
-    local ledger = ensureLedger(winner)
-    ledger.won = ledger.won + payout
-    pushHistory(winner, { at = ns.now(), type = "WIN", amount = payout, counterparty = "Pot", reason = "Pot Sweepstakes" })
-    sendCasino(string.format("HOUSE|%s|%d|WIN|%s", winner, payout, "Pot Sweepstakes"))
-  else
-    applyDebt(session.host, winner, payout, "Pot Sweepstakes")
-  end
-  announce(string.format("Pot Sweepstakes: %s wins %s (guild cut %d%%: %s)!", winner, formatMoney(payout), math.floor(db.guildCut * 100), formatMoney(cut)))
+  -- Entry fees are owed to the hosting officer, who pays the winner.
+  for _, name in ipairs(entrants) do addDebt(name, session.host, session.wager, "Pot entry") end
+  addDebt(session.host, winner, payout, "Pot Sweepstakes win")
+  announce(string.format("Pot Sweepstakes: %s wins %s (pot %s, guild cut %s). Settle up by trade with %s.",
+    winner, formatMoney(payout), formatMoney(pot), formatMoney(cut), session.host))
   casino.session = nil
 end
 
-local function resolveDeathroll()
-  local session = casino.session
-  local lowVal
-  for _, val in pairs(session.rolls) do
-    if not lowVal or val < lowVal then lowVal = val end
+local function resolveDeathroll(session)
+  local low, lows = nil, {}
+  for name, value in pairs(session.rolls) do
+    if not low or value < low then low, lows = value, { name }
+    elseif value == low then table.insert(lows, name) end
   end
-  local lowNames = {}
-  for name, val in pairs(session.rolls) do
-    if val == lowVal then table.insert(lowNames, name) end
-  end
-  -- A multi-way tie at the floor value would otherwise deadlock the game
-  -- (everyone would keep re-rolling an ever-shrinking max forever); break it
-  -- by eliminating exactly one of the tied players at random each round.
-  local lowName = lowNames[math.random(#lowNames)]
-  if #lowNames > 1 then
-    announce(string.format("Elimination Deathroll: %d players tied at the lowest roll (%d) - %s is eliminated by random tie-break.", #lowNames, lowVal, lowName))
-  end
-  table.insert(session.eliminated, lowName)
-  session.participants[lowName] = nil
-  announce(string.format("Elimination Deathroll: %s rolled the lowest (%d) and is eliminated!", lowName, lowVal))
-
-  local remaining = countKeys(session.participants)
-  if remaining <= 1 then
-    local survivor
-    for name in pairs(session.participants) do survivor = name end
-    if not survivor then
-      announce("Elimination Deathroll: no survivor could be determined. No payouts.")
-    else
-      for _, loser in ipairs(session.eliminated) do
-        applyDebt(loser, survivor, session.wager, "Elimination Deathroll")
-      end
-      announce(string.format("Elimination Deathroll: %s is the last survivor and wins %s from each of %d player(s)!",
-        survivor, formatMoney(session.wager), #session.eliminated))
-    end
+  table.sort(lows)
+  local out = lows[math.random(#lows)]
+  table.insert(session.eliminated, out)
+  session.players[out] = nil
+  local tieNote = #lows > 1 and " (tie, picked at random)" or ""
+  if countKeys(session.players) <= 1 then
+    local survivor = next(session.players)
+    for _, loser in ipairs(session.eliminated) do addDebt(loser, survivor, session.wager, "Elimination Deathroll") end
+    announce(string.format("Deathroll: %s is out%s. %s survives! Each of %d losers owes %s %s.",
+      out, tieNote, survivor, #session.eliminated, survivor, formatMoney(session.wager)))
     casino.session = nil
     return
   end
-
-  session.maxRoll = lowVal
-  session.rolls = {}
-  session.phase = "ROLLING"
   session.round = session.round + 1
-  announce(string.format("Round %d: %d players remain. Roll now! /roll %d", session.round, remaining, lowVal))
+  session.maxRoll = math.max(low, 2)
+  -- Elimination and the next roll call share one chat line.
+  callRoll(string.format("Round %d - %s is out%s. ", session.round, out, tieNote))
 end
 
-local function resolveSession()
+local function onGroupRoll(name, value, maxRoll)
   local session = casino.session
-  if session.game == "DIFF" then resolveDiff()
-  elseif session.game == "POT" then resolvePot()
-  elseif session.game == "DEATHROLL" then resolveDeathroll()
-  end
-end
-
-local function handleSessionRoll(name, value, minValue, maxValue)
-  local session = casino.session
-  if not session or session.phase ~= "ROLLING" then return end
-  if not session.participants[name] then return end
-  if maxValue ~= session.maxRoll or minValue ~= (session.game == "DEATHROLL" and 1 or 1) then return end
-  if session.rolls[name] then return end
+  if not session or session.phase ~= "ROLLING" or not session.players[name] then return end
+  if maxRoll ~= session.maxRoll or session.rolls[name] then return end
   session.rolls[name] = value
-  if countKeys(session.rolls) >= countKeys(session.participants) then
-    resolveSession()
-  end
+  if #waitingOn() > 0 then return end
+  if session.game == "DIFF" then resolveDiff(session)
+  elseif session.game == "POT" then resolvePot(session)
+  else resolveDeathroll(session) end
+end
+
+local function cancelGroupGame()
+  if not isHostOfficer() then return end
+  if not casino.session then tell("No group game to cancel."); return end
+  announce(GAME_NAMES[casino.session.game] .. " cancelled. No payouts.")
+  casino.session = nil
 end
 
 -- ---------------------------------------------------------------------
--- Solo house games: Blackjack, Over/Under 50, Goblin Roulette
+-- House games: one player vs the hosting officer
 -- ---------------------------------------------------------------------
-
-local function cardLabel(roll)
-  if roll == 1 then return "Ace" end
-  if roll == 11 then return "Jack" end
-  if roll == 12 then return "Queen" end
-  if roll == 13 then return "King" end
-  return tostring(roll)
-end
-
--- Returns (value, isAce). Aces count as 11 initially; handTotal() downgrades
--- them to 1 as needed to avoid busting, same as real blackjack.
-local function cardValue(roll)
-  if roll == 1 then return 11, true end
-  if roll >= 11 then return 10, false end
-  return roll, false
-end
-
-local function handTotal(cards)
-  local total, aces = 0, 0
-  for _, card in ipairs(cards) do
-    local value, isAce = cardValue(card)
-    total = total + value
-    if isAce then aces = aces + 1 end
-  end
-  while total > 21 and aces > 0 do
-    total = total - 10
-    aces = aces - 1
-  end
-  return total
-end
-
-local function startBlackjack(args)
-  if guardCombat() then return end
-  local name = ns.playerName()
-  if casino.blackjackHands[name] then
-    ns.message("You already have an active blackjack hand. Roll /roll 13 to hit, or /qg casino stand."); return
-  end
-  local amount = parseAmount("gold", args[1])
-  if not amount then ns.message("Usage: /qg casino blackjack <goldWager>"); return end
-  casino.blackjackHands[name] = { wager = amount, playerCards = {}, dealerCards = { math.random(1, 13) }, phase = "PLAYER" }
-  ns.message(string.format("Blackjack started, wager %s. Roll /roll 13 to draw your first card.", formatMoney(amount)))
-end
-
-local function handleBlackjackRoll(name, value)
-  local hand = casino.blackjackHands[name]
-  if not hand or hand.phase ~= "PLAYER" then return end
-  table.insert(hand.playerCards, value)
-  local total = handTotal(hand.playerCards)
-  if total > 21 then
-    applyHouseResult(name, hand.wager, false, "Blackjack bust")
-    ns.message(string.format("You drew a %s - bust at %d! You lose %s.", cardLabel(value), total, formatMoney(hand.wager)))
-    casino.blackjackHands[name] = nil
-    return
-  end
-  ns.message(string.format("You drew a %s (total %d). Roll /roll 13 to hit again, or /qg casino stand.", cardLabel(value), total))
-end
-
-local function blackjackStand()
-  local name = ns.playerName()
-  local hand = casino.blackjackHands[name]
-  if not hand or hand.phase ~= "PLAYER" then ns.message("You have no active blackjack hand."); return end
-  hand.phase = "DEALER"
-  -- The dealer has no addon to /roll with, so its draws are simulated
-  -- locally via math.random using the same 1-13 card mapping, following
-  -- standard house rules: hit on 16, stand on 17.
-  while handTotal(hand.dealerCards) < 17 do
-    table.insert(hand.dealerCards, math.random(1, 13))
-  end
-  local playerTotal = handTotal(hand.playerCards)
-  local dealerTotal = handTotal(hand.dealerCards)
-  if dealerTotal > 21 or playerTotal > dealerTotal then
-    applyHouseResult(name, hand.wager, true, "Blackjack win")
-    ns.message(string.format("Dealer has %d. You win with %d! You win %s.", dealerTotal, playerTotal, formatMoney(hand.wager)))
-  elseif playerTotal < dealerTotal then
-    applyHouseResult(name, hand.wager, false, "Blackjack loss")
-    ns.message(string.format("Dealer has %d, beating your %d. You lose %s.", dealerTotal, playerTotal, formatMoney(hand.wager)))
-  else
-    ns.message(string.format("Push! Both you and the dealer have %d. No change.", playerTotal))
-  end
-  casino.blackjackHands[name] = nil
-end
-
-local function startOverUnder(args)
-  if guardCombat() then return end
-  local name = ns.playerName()
-  if casino.pendingSolo[name] then ns.message("You already have a pending casino bet."); return end
-  local choice = string.lower(args[1] or "")
-  if choice ~= "over" and choice ~= "under" then
-    ns.message("Usage: /qg casino overunder <over|under> <goldWager>"); return
-  end
-  local amount = parseAmount("gold", args[2])
-  if not amount then ns.message("Usage: /qg casino overunder <over|under> <goldWager>"); return end
-  casino.pendingSolo[name] = { kind = "OVERUNDER", choice = choice, wager = amount }
-  ns.message(string.format("Over/Under 50 - bet %s on %s. Roll /roll 100 now.", formatMoney(amount), choice))
-end
-
-local function handleOverUnderRoll(name, value)
-  local bet = casino.pendingSolo[name]
-  casino.pendingSolo[name] = nil
-  if value == 50 then
-    applyHouseResult(name, bet.wager, false, "Over/Under 50 - exact 50, house edge")
-    ns.message(string.format("Rolled exactly 50 - house edge! You lose %s to the guild vault.", formatMoney(bet.wager)))
-    return
-  end
-  local won = (value > 50 and bet.choice == "over") or (value < 50 and bet.choice == "under")
-  applyHouseResult(name, bet.wager, won, "Over/Under 50")
-  if won then
-    ns.message(string.format("Rolled %d - you win %s!", value, formatMoney(bet.wager)))
-  else
-    ns.message(string.format("Rolled %d - you lose %s.", value, formatMoney(bet.wager)))
-  end
-end
 
 local ROULETTE_RED = {
   [1] = true, [3] = true, [5] = true, [7] = true, [9] = true, [12] = true, [14] = true, [16] = true, [18] = true,
   [19] = true, [21] = true, [23] = true, [25] = true, [27] = true, [30] = true, [32] = true, [34] = true, [36] = true
 }
 
-local function rouletteColor(number)
-  if number == 37 or number == 38 then return "GREEN" end
-  return ROULETTE_RED[number] and "RED" or "BLACK"
+local function cardName(roll)
+  if roll == 1 then return "A" end
+  if roll == 11 then return "J" end
+  if roll == 12 then return "Q" end
+  if roll == 13 then return "K" end
+  return tostring(roll)
 end
 
-local function startRoulette(args)
-  if guardCombat() then return end
-  local name = ns.playerName()
-  if casino.pendingSolo[name] then ns.message("You already have a pending casino bet."); return end
-  local betType = string.lower(args[1] or "")
-  local number, wagerRaw
-  if betType == "straight" then
-    number = tonumber(args[2])
-    wagerRaw = args[3]
-    if not number or number < 1 or number > 36 then
-      ns.message("Usage: /qg casino roulette straight <1-36> <goldWager>"); return
-    end
-  elseif betType == "red" or betType == "black" or betType == "even" or betType == "odd" then
-    wagerRaw = args[2]
-  else
-    ns.message("Usage: /qg casino roulette <straight <1-36>|red|black|even|odd> <goldWager>"); return
+local function handTotal(cards)
+  local total, aces = 0, 0
+  for _, card in ipairs(cards) do
+    if card == 1 then total, aces = total + 11, aces + 1
+    elseif card >= 10 then total = total + 10
+    else total = total + card end
   end
-  local amount = parseAmount("gold", wagerRaw)
-  if not amount then ns.message("Invalid wager."); return end
-  casino.pendingSolo[name] = { kind = "ROULETTE", betType = betType, number = number, wager = amount }
-  local label = betType == "straight" and ("straight on " .. number) or betType
-  ns.message(string.format("Goblin Roulette - %s bet %s. Roll /roll 38 now.", label, formatMoney(amount)))
+  while total > 21 and aces > 0 do total, aces = total - 10, aces - 1 end
+  return total
 end
 
-local function handleRouletteRoll(name, value)
-  local bet = casino.pendingSolo[name]
-  casino.pendingSolo[name] = nil
-  local color = rouletteColor(value)
-  local label = value == 37 and "0" or (value == 38 and "00" or tostring(value))
-  local won, payout
-  if bet.betType == "straight" then
-    won = (value == bet.number)
-    payout = bet.wager * 35
-  elseif bet.betType == "red" or bet.betType == "black" then
-    won = (color == string.upper(bet.betType))
-    payout = bet.wager
-  else -- even / odd; 0 and 00 are neither and always lose
-    won = color ~= "GREEN" and ((bet.betType == "even") == (value % 2 == 0))
-    payout = bet.wager
-  end
+local function handText(cards)
+  local names = {}
+  for _, card in ipairs(cards) do table.insert(names, cardName(card)) end
+  return table.concat(names, "+")
+end
+
+-- Settles a house game: the player owes the officer, or the officer owes
+-- the player. The vault tally tracks the house's running result.
+local function settleHouse(player, won, amount, reason)
+  local host = ns.playerName()
   if won then
-    applyHouseResult(name, payout, true, "Goblin Roulette win")
-    ns.message(string.format("Ball lands on %s (%s)! You win %s!", label, color, formatMoney(payout)))
+    db.vault = db.vault - amount
+    addDebt(host, player, amount, reason)
   else
-    applyHouseResult(name, bet.wager, false, "Goblin Roulette loss")
-    ns.message(string.format("Ball lands on %s (%s). You lose %s.", label, color, formatMoney(bet.wager)))
+    db.vault = db.vault + amount
+    addDebt(player, host, amount, reason)
+  end
+  casino.houseBets[player] = nil
+end
+
+local function startHouseGame(kind, player, args)
+  if not canHost() then return end
+  player = ns.normalizeName(player)
+  if not player then tell("Pick the player first (target them or use the Player box)."); return end
+  if casino.houseBets[player] then tell(player .. " already has a game going. Finish or cancel it first."); return end
+  if kind == "BLACKJACK" then
+    local wager = parseMoney(args[1])
+    if not wager then tell("Enter a wager like 10g, 50s, or 1g50s."); return end
+    local dealer = { math.random(1, 13) }
+    casino.houseBets[player] = { kind = kind, wager = wager, cards = {}, dealer = dealer }
+    announce(string.format("Blackjack %s for %s. Dealer shows %s. %s: /roll 13 to draw, type stand to stay.",
+      formatMoney(wager), player, cardName(dealer[1]), player))
+  elseif kind == "OVERUNDER" then
+    local choice = string.lower(args[1] or "")
+    local wager = parseMoney(args[2])
+    if (choice ~= "over" and choice ~= "under") or not wager then tell("Usage: overunder <player> <over|under> <wager>"); return end
+    casino.houseBets[player] = { kind = kind, wager = wager, choice = choice }
+    announce(string.format("Over/Under 50: %s bets %s on %s. /roll 100 (exactly 50 = house wins).", player, formatMoney(wager), choice))
+  else
+    local bet = string.lower(args[1] or "")
+    local number = tonumber(bet)
+    if bet == "straight" then number = tonumber(args[2]); table.remove(args, 1) end
+    local wager = parseMoney(args[2])
+    local valid = bet == "red" or bet == "black" or bet == "even" or bet == "odd" or (number and number >= 1 and number <= 36)
+    if not valid or not wager then tell("Usage: roulette <player> <red|black|even|odd|1-36> <wager>"); return end
+    casino.houseBets[player] = { kind = kind, wager = wager, bet = number and "number" or bet, number = number }
+    announce(string.format("Roulette: %s bets %s on %s. /roll 38 (37 = 0, 38 = 00).", player, formatMoney(wager),
+      number and tostring(number) or bet))
   end
 end
 
+local function finishBlackjack(player, bet)
+  while handTotal(bet.dealer) < 17 do table.insert(bet.dealer, math.random(1, 13)) end
+  local mine, dealer = handTotal(bet.cards), handTotal(bet.dealer)
+  local head = string.format("Blackjack: %s %d vs dealer %d (%s)", player, mine, dealer, handText(bet.dealer))
+  if dealer > 21 or mine > dealer then
+    settleHouse(player, true, bet.wager, "Blackjack")
+    announce(head .. string.format(" - %s wins %s.", player, formatMoney(bet.wager)))
+  elseif mine < dealer then
+    settleHouse(player, false, bet.wager, "Blackjack")
+    announce(head .. string.format(" - house wins %s.", formatMoney(bet.wager)))
+  else
+    casino.houseBets[player] = nil
+    announce(head .. " - push, no payout.")
+  end
+end
+
+local function onHouseRoll(player, value, maxRoll)
+  local bet = casino.houseBets[player]
+  if not bet then return end
+  if bet.kind == "BLACKJACK" and maxRoll == 13 then
+    table.insert(bet.cards, value)
+    local total = handTotal(bet.cards)
+    if total > 21 then
+      settleHouse(player, false, bet.wager, "Blackjack bust")
+      announce(string.format("Blackjack: %s busts with %s = %d - house wins %s.", player, handText(bet.cards), total, formatMoney(bet.wager)))
+    elseif total == 21 then
+      finishBlackjack(player, bet)
+    else
+      announce(string.format("%s: %s = %d. /roll 13 or type stand.", player, handText(bet.cards), total))
+    end
+  elseif bet.kind == "OVERUNDER" and maxRoll == 100 then
+    local won = value ~= 50 and ((value > 50) == (bet.choice == "over"))
+    settleHouse(player, won, bet.wager, "Over/Under 50")
+    announce(string.format("Over/Under: %s rolled %d - %s %s.", player, value, won and "wins" or "loses", formatMoney(bet.wager)))
+  elseif bet.kind == "ROULETTE" and maxRoll == 38 then
+    local label = value == 37 and "0" or value == 38 and "00" or tostring(value)
+    local color = (value >= 37) and "green" or (ROULETTE_RED[value] and "red" or "black")
+    local won, payout
+    if bet.bet == "number" then
+      won, payout = value == bet.number, bet.wager * 35
+    elseif bet.bet == "red" or bet.bet == "black" then
+      won, payout = color == bet.bet, bet.wager
+    else
+      won, payout = value <= 36 and ((value % 2 == 0) == (bet.bet == "even")), bet.wager
+    end
+    settleHouse(player, won, won and payout or bet.wager, "Roulette")
+    announce(string.format("Roulette: %s (%s) - %s %s %s.", label, color, player, won and "wins" or "loses",
+      formatMoney(won and payout or bet.wager)))
+  end
+end
+
+local function stand(player)
+  local bet = casino.houseBets[player]
+  if not bet or bet.kind ~= "BLACKJACK" then return end
+  if #bet.cards == 0 then tell(player .. " needs to draw a card (/roll 13) before standing."); return end
+  finishBlackjack(player, bet)
+end
+
+local function cancelHouseGame(player)
+  if not isHostOfficer() then return end
+  player = ns.normalizeName(player)
+  if not player or not casino.houseBets[player] then tell("That player has no game going."); return end
+  casino.houseBets[player] = nil
+  tell(player .. "'s game cancelled, no payout.")
+end
+
 -- ---------------------------------------------------------------------
--- Ledger / debt commands
+-- Status (for the tools window), ledger, trade settlement
 -- ---------------------------------------------------------------------
+
+-- Short description of what this officer's table is doing right now.
+function casino.statusText()
+  local lines = {}
+  local session = casino.session
+  if session then
+    local players = sortedNames(session.players)
+    if session.phase == "JOINING" then
+      table.insert(lines, string.format("%s (%s): %d joined - %s", GAME_NAMES[session.game], formatMoney(session.wager),
+        #players, #players > 0 and table.concat(players, ", ") or "waiting for players to type 1"))
+    else
+      table.insert(lines, string.format("%s: waiting on %s", GAME_NAMES[session.game], table.concat(waitingOn(), ", ")))
+    end
+  end
+  for player, bet in pairs(casino.houseBets) do
+    table.insert(lines, string.format("%s: %s %s", player, string.lower(bet.kind), formatMoney(bet.wager)))
+  end
+  return #lines > 0 and table.concat(lines, "\n") or "No games running."
+end
 
 local function showLedger(args)
-  local target = args[1] or ns.playerName()
-  local ledger = db.ledger[target]
-  if not ledger then
-    ns.message(target .. " has no casino history. Guild vault balance: " .. formatMoney(db.vault))
+  local target = ns.normalizeName(args[1])
+  if not target then
+    local owedToMe, iOwe = {}, {}
+    local me = ns.playerName()
+    for name, ledger in pairs(db.ledger) do
+      if (ledger.debts[me] or 0) > 0 then table.insert(owedToMe, name .. " " .. formatMoney(ledger.debts[me])) end
+    end
+    for name, amount in pairs((db.ledger[me] or { debts = {} }).debts) do
+      if amount > 0 then table.insert(iOwe, name .. " " .. formatMoney(amount)) end
+    end
+    table.sort(owedToMe)
+    table.sort(iOwe)
+    tell("Owed to you: " .. (#owedToMe > 0 and table.concat(owedToMe, ", ") or "nothing"))
+    tell("You owe: " .. (#iOwe > 0 and table.concat(iOwe, ", ") or "nothing"))
+    tell("House result (guild cut + house games): " .. formatMoney(db.vault))
     return
   end
-  ns.message(string.format("%s - Won: %s | Lost: %s | Net: %s", target, formatMoney(ledger.won), formatMoney(ledger.lost), formatMoney(ledger.won - ledger.lost)))
-  local any = false
-  for owedTo, amount in pairs(ledger.debts) do
-    if amount and amount > 0 then
-      ns.message(string.format("  Owes %s: %s", owedTo, formatMoney(amount)))
-      any = true
-    end
+  local ledger = db.ledger[target]
+  if not ledger then tell(target .. " has no casino history."); return end
+  tell(string.format("%s - won %s, lost %s, net %s", target, formatMoney(ledger.won), formatMoney(ledger.lost), formatMoney(ledger.won - ledger.lost)))
+  for creditor, amount in pairs(ledger.debts) do
+    if amount > 0 then tell("  owes " .. creditor .. " " .. formatMoney(amount)) end
   end
-  if not any then ns.message("  No outstanding debts.") end
-  ns.message("Guild vault balance: " .. formatMoney(db.vault))
 end
 
 local function clearDebt(debtor, creditor)
-  creditor = creditor or ns.playerName()
-  if not debtor then ns.message("Usage: /qg casino debt clear <player> [owed-to, default you]"); return end
-  local ledger = db.ledger[debtor]
-  local amount = ledger and ledger.debts[creditor]
-  if not amount or amount <= 0 then
-    ns.message(debtor .. " owes " .. creditor .. " nothing on record."); return
+  debtor = ns.normalizeName(debtor)
+  creditor = ns.normalizeName(creditor) or ns.playerName()
+  if not debtor then tell("Usage: /qg casino debt clear <player> [owed-to]"); return end
+  local paid = reduceDebt(debtor, creditor, math.huge, "Cleared by " .. ns.playerName())
+  if paid > 0 then tell(string.format("Cleared %s's debt of %s to %s.", debtor, formatMoney(paid), creditor))
+  else tell(debtor .. " owes " .. creditor .. " nothing on record.") end
+end
+
+-- Trades with the officer settle casino debts automatically: gold received
+-- from someone pays down what they owe you, gold given pays down what you
+-- owe them. The amounts are read when both sides accept, and applied only
+-- when the game reports the trade completed.
+local trade = {}
+
+local function snapshotTrade()
+  if GetPlayerTradeMoney and GetTargetTradeMoney then
+    trade.given = GetPlayerTradeMoney() or 0
+    trade.received = GetTargetTradeMoney() or 0
   end
-  if creditor ~= ns.playerName() and not ns.isOfficer() then
-    ns.message("Only the creditor or an officer can clear this debt."); return
+end
+
+local function settleTrade()
+  local partner = trade.partner
+  if not partner or not db then return end
+  local me = ns.playerName()
+  local fromThem = reduceDebt(partner, me, trade.received or 0, "Paid by trade")
+  local fromMe = reduceDebt(me, partner, trade.given or 0, "Paid by trade")
+  if fromThem > 0 then
+    tell(string.format("Trade: %s paid %s toward their casino debt (%s left).", partner, formatMoney(fromThem),
+      formatMoney(db.ledger[partner].debts[me] or 0)))
   end
-  ledger.debts[creditor] = 0
-  pushHistory(debtor, { at = ns.now(), type = "SETTLED", amount = amount, counterparty = creditor, reason = "Debt cleared" })
-  sendCasino(string.format("CLEAR|%s|%s|%d", debtor, creditor, amount))
-  ns.message(string.format("Cleared %s's debt of %s to %s.", debtor, formatMoney(amount), creditor))
+  if fromMe > 0 then
+    tell(string.format("Trade: you paid %s %s of casino winnings (%s left).", partner, formatMoney(fromMe),
+      formatMoney(db.ledger[me].debts[partner] or 0)))
+  end
 end
 
 -- ---------------------------------------------------------------------
--- Command router (registered into Core.lua's extension point)
+-- Commands (officers only)
 -- ---------------------------------------------------------------------
 
+local function showHelp()
+  tell("Group games (players type 1 in chat to join): /qg casino pot|deathroll|diff <wager>")
+  tell("  then: roll | remind | cancel | add <player> | remove <player>")
+  tell("House games: /qg casino blackjack <player> <wager> | overunder <player> <over|under> <wager>")
+  tell("  roulette <player> <red|black|even|odd|1-36> <wager> | stand <player> | cancel <player>")
+  tell("/qg casino status | ledger [player] | debt clear <player> [owed-to]. Wagers: 10g, 50s, 1g50s.")
+end
+
 local function casinoCommand(args)
+  if not isHostOfficer() then return end
   local action = string.lower(args[1] or "")
   table.remove(args, 1)
-  if action == "diff" then startDiff(args)
-  elseif action == "pot" then startPot(args)
-  elseif action == "deathroll" then startDeathroll(args)
-  elseif action == "blackjack" then startBlackjack(args)
-  elseif action == "overunder" then startOverUnder(args)
-  elseif action == "roulette" then startRoulette(args)
-  elseif action == "join" then joinSession()
+  if action == "pot" then startGroupGame("POT", args[1])
+  elseif action == "deathroll" then startGroupGame("DEATHROLL", args[1])
+  elseif action == "diff" then startGroupGame("DIFF", args[1])
+  elseif action == "add" then addPlayer(ns.normalizeName(args[1]), true)
+  elseif action == "remove" then removePlayer(ns.normalizeName(args[1]))
   elseif action == "roll" then beginRolling()
-  elseif action == "cancel" then cancelSession()
-  elseif action == "hit" then ns.message("Roll /roll 13 to hit.")
-  elseif action == "stand" then blackjackStand()
+  elseif action == "remind" then remind()
+  elseif action == "cancel" then
+    if args[1] then cancelHouseGame(args[1]) else cancelGroupGame() end
+  elseif action == "blackjack" then local player = table.remove(args, 1); startHouseGame("BLACKJACK", player, args)
+  elseif action == "overunder" then local player = table.remove(args, 1); startHouseGame("OVERUNDER", player, args)
+  elseif action == "roulette" then local player = table.remove(args, 1); startHouseGame("ROULETTE", player, args)
+  elseif action == "stand" then stand(ns.normalizeName(args[1]))
+  elseif action == "status" then tell(casino.statusText())
   elseif action == "ledger" then showLedger(args)
-  elseif action == "debt" then
-    if string.lower(args[1] or "") == "clear" then clearDebt(args[2], args[3])
-    else ns.message("Usage: /qg casino debt clear <player> [owed-to]") end
-  else
-    ns.message("/qg casino diff <gold|silver> <maxWager> | pot <entryFee> | deathroll <wager> | blackjack <wager>")
-    ns.message("/qg casino overunder <over|under> <wager> | roulette <straight N|red|black|even|odd> <wager>")
-    ns.message("/qg casino join | roll | cancel | stand | ledger [player] | debt clear <player> [owed-to]")
-  end
+  elseif action == "debt" and string.lower(args[1] or "") == "clear" then clearDebt(args[2], args[3])
+  else showHelp() end
+  if ns.onCasinoChange then ns.onCasinoChange() end
 end
 
 ns.commandHandlers = ns.commandHandlers or {}
 ns.commandHandlers["casino"] = casinoCommand
 ns.commandHelp = ns.commandHelp or {}
-table.insert(ns.commandHelp, "/qg casino diff|pot|deathroll|blackjack|overunder|roulette|join|roll|cancel|stand|ledger|debt")
+table.insert(ns.commandHelp, { officer = true, text = "/qg casino - officer-run casino (players join by typing 1 and /roll)" })
+casino.parseMoney = parseMoney
+casino.formatMoney = formatMoney
 
 -- ---------------------------------------------------------------------
 -- Events
 -- ---------------------------------------------------------------------
 
-local frame = CreateFrame("Frame")
-frame:RegisterEvent("PLAYER_LOGIN")
-frame:RegisterEvent("PLAYER_REGEN_DISABLED")
-frame:RegisterEvent("PLAYER_REGEN_ENABLED")
-frame:RegisterEvent("CHAT_MSG_SYSTEM")
-frame:RegisterEvent("CHAT_MSG_ADDON")
+local function hosting()
+  return casino.session ~= nil or next(casino.houseBets) ~= nil
+end
 
-frame:SetScript("OnEvent", function(_, event, ...)
+local function onEvent(_, event, ...)
   if event == "PLAYER_LOGIN" then
     ensureDb()
-    registerPrefix()
+    if C_ChatInfo and C_ChatInfo.RegisterAddonMessagePrefix then
+      C_ChatInfo.RegisterAddonMessagePrefix(CASINO_PREFIX)
+    elseif RegisterAddonMessagePrefix then
+      RegisterAddonMessagePrefix(CASINO_PREFIX)
+    end
   elseif event == "PLAYER_REGEN_DISABLED" then
-    -- Freezes all new game starts/joins/rolls until combat ends; see
-    -- guardCombat(). There's no visible UI window to hide (this module is
-    -- chat/slash-command driven), so "disabling casino UI" manifests as
-    -- blocking these actions rather than hiding a frame.
     combatLocked = true
   elseif event == "PLAYER_REGEN_ENABLED" then
     combatLocked = false
   elseif event == "CHAT_MSG_SYSTEM" then
+    if not hosting() then return end
     local text = ...
-    local roller, value, minValue, maxValue = parseRoll(text)
-    if not roller then return end
-    if casino.session and ns.playerName() == casino.session.host then
-      handleSessionRoll(roller, value, minValue, maxValue)
-    end
-    if roller == ns.playerName() then
-      if minValue == 1 and maxValue == 13 then handleBlackjackRoll(roller, value)
-      elseif minValue == 1 and maxValue == 100 and casino.pendingSolo[roller] and casino.pendingSolo[roller].kind == "OVERUNDER" then
-        handleOverUnderRoll(roller, value)
-      elseif minValue == 1 and maxValue == 38 and casino.pendingSolo[roller] and casino.pendingSolo[roller].kind == "ROULETTE" then
-        handleRouletteRoll(roller, value)
-      end
-    end
+    local roller, value, minValue, maxValue = ns.parseRoll(text)
+    if not roller or minValue ~= 1 then return end
+    onGroupRoll(roller, value, maxValue)
+    onHouseRoll(roller, value, maxValue)
+    if ns.onCasinoChange then ns.onCasinoChange() end
   elseif event == "CHAT_MSG_ADDON" then
     local prefix, text, _, sender = ...
-    if prefix ~= CASINO_PREFIX or sender == ns.playerName() then return end
+    if ns.isSecret(prefix) or ns.isSecret(text) or ns.isSecret(sender) or prefix ~= CASINO_PREFIX then return end
+    sender = ns.normalizeName(sender)
+    -- Only other officers' tables are mirrored into this ledger.
+    if not sender or sender == ns.playerName() or not ns.isOfficerName(sender) then return end
     local kind = string.match(text, "^(%u+)|")
     if kind == "DEBT" then
-      local _, payer, payee, amount = string.match(text, "^(%u+)|([^|]+)|([^|]+)|(%d+)|")
-      if payer then applyMirroredDebt(payer, payee, tonumber(amount)) end
-    elseif kind == "HOUSE" then
-      local _, name, amount, result = string.match(text, "^(%u+)|([^|]+)|(%d+)|([^|]+)|")
-      if name then applyMirroredHouse(name, tonumber(amount), result) end
+      local payer, payee, amount = string.match(text, "^DEBT|([^|]+)|([^|]+)|(%d+)|")
+      if payer then addDebt(payer, payee, tonumber(amount), nil, true) end
     elseif kind == "CLEAR" then
-      local _, debtor, creditor, amount = string.match(text, "^(%u+)|([^|]+)|([^|]+)|(%d+)$")
-      if debtor then
-        local ledger = ensureLedger(debtor)
-        ledger.debts[creditor] = math.max(0, (ledger.debts[creditor] or 0) - (tonumber(amount) or 0))
-      end
+      local debtor, creditor, amount = string.match(text, "^CLEAR|([^|]+)|([^|]+)|(%d+)$")
+      if debtor then reduceDebt(debtor, creditor, tonumber(amount), nil, true) end
     end
+  elseif event == "TRADE_SHOW" then
+    trade = { partner = ns.normalizeName(UnitName("NPC")) }
+  elseif event == "TRADE_MONEY_CHANGED" or event == "TRADE_ACCEPT_UPDATE" then
+    snapshotTrade()
+  elseif event == "UI_INFO_MESSAGE" then
+    local _, text = ...
+    if not ns.isSecret(text) and ERR_TRADE_COMPLETE and text == ERR_TRADE_COMPLETE then
+      settleTrade()
+      trade = {}
+      if ns.onCasinoChange then ns.onCasinoChange() end
+    end
+  else
+    -- Party/raid chat: joining group games and standing in blackjack.
+    if not hosting() then return end
+    local text, sender = ...
+    if ns.isSecret(text) or ns.isSecret(sender) then return end
+    local word = string.lower(string.match(text or "", "^%s*(.-)%s*$") or "")
+    local name = ns.normalizeName(sender)
+    if not name then return end
+    if JOIN_WORDS[word] then addPlayer(name)
+    elseif LEAVE_WORDS[word] then removePlayer(name)
+    elseif STAND_WORDS[word] then stand(name) end
+    if ns.onCasinoChange then ns.onCasinoChange() end
   end
+end
+
+local frame = CreateFrame("Frame")
+for _, event in ipairs({ "PLAYER_LOGIN", "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED", "CHAT_MSG_SYSTEM",
+  "CHAT_MSG_ADDON", "TRADE_SHOW", "TRADE_MONEY_CHANGED", "TRADE_ACCEPT_UPDATE", "UI_INFO_MESSAGE" }) do
+  frame:RegisterEvent(event)
+end
+for _, event in ipairs(GROUP_CHAT_EVENTS) do frame:RegisterEvent(event) end
+frame:SetScript("OnEvent", function(...)
+  local ok, err = pcall(onEvent, ...)
+  if not ok then ns.message("Casino error: " .. tostring(err)) end
 end)

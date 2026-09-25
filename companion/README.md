@@ -31,3 +31,13 @@ a normalized JSON export matching the bot import contract:
 For a Lua file, the watcher converts the addon's append-only DKP ledger into
 normalized transactions. Set `realm` in the companion config because the WoW
 SavedVariables file does not reliably contain a realm identifier.
+
+## EPGP standings written into the addon
+
+On start and every 15 minutes the watcher also asks the bot for EPGP
+standings (`GET /api/v1/standings`, same token) and writes them to
+`Interface\AddOns\QuebecGold\Standings.lua`. The path is worked out from
+`watchFile` (the folder that contains `WTF`); if your install is laid out
+differently, add `"standingsFile": "<full path to Standings.lua>"` to
+`companion.config.json`. The game reads it on login or `/reload`, and the
+officer's client then shares it with online guildmates.

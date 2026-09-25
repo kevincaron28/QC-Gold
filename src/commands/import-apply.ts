@@ -1,6 +1,8 @@
 import { SlashCommandBuilder, type ChatInputCommandInteraction } from "discord.js";
 import { createAddonImportService } from "../services/addon-import.js";
 import { createAuditService } from "../services/audit.js";
+import { notifications, notify } from "../services/notify.js";
+import type { RaidImportSummary } from "../services/raid-import.js";
 import { prisma } from "../database.js";
 import { hasPermission } from "../permissions.js";
 import { requireGuildContext } from "./context.js";
@@ -12,6 +14,21 @@ export const importApplyCommand = new SlashCommandBuilder()
   .setName("import-apply")
   .setDescription("Apply a reviewed addon import to the DKP ledger.")
   .addStringOption((option) => option.setName("id").setDescription("Import ID").setRequired(true));
+
+// One short block per in-game raid: which Discord raid it matched, how many
+// attendance rows were written, and signup no-shows / walk-ins.
+function raidReport(raids: RaidImportSummary[]): string {
+  const lines = raids.map((raid) => {
+    if (!raid.matchedRaidTitle) return `• **${raid.title}**: no Discord raid within 4 hours of its start, attendance not recorded.`;
+    const parts = [`• **${raid.title}** → ${raid.matchedRaidTitle}: ${raid.recorded} attendance record(s).`];
+    if (raid.noShows.length > 0) parts.push(`  Signed up but not seen: ${raid.noShows.join(", ")}`);
+    if (raid.walkIns.length > 0) parts.push(`  Came without signing up: ${raid.walkIns.join(", ")}`);
+    return parts.join("\n");
+  });
+  const text = lines.length > 0 ? `\n\n**Raids**\n${lines.join("\n")}` : "";
+  // Discord replies are capped at 2000 characters.
+  return text.length > 1500 ? `${text.slice(0, 1480)}\n…(truncated)` : text;
+}
 
 export async function executeImportApply(interaction: ChatInputCommandInteraction): Promise<void> {
   const context = await requireGuildContext(interaction);
@@ -31,13 +48,20 @@ export async function executeImportApply(interaction: ChatInputCommandInteractio
       transactionCount: result.transactions.length,
       epgpTransactionCount: result.epgpTransactions.length,
       readinessSnapshotCount: result.readinessSnapshots.length,
-      attunementCount: result.attunements.length
+      attunementCount: result.attunements.length,
+      skippedAlreadyImported: result.skipped
     }
   });
   await interaction.reply({
     content: `Applied import \`${importId}\`: ${result.transactions.length} DKP transaction(s), `
       + `${result.epgpTransactions.length} EPGP transaction(s), ${result.readinessSnapshots.length} `
-      + `readiness snapshot(s), and ${result.attunements.length} attunement update(s) recorded.`,
+      + `readiness snapshot(s), and ${result.attunements.length} attunement update(s) recorded. `
+      + `${result.skipped} ledger entr${result.skipped === 1 ? "y was" : "ies were"} already imported and skipped.`
+      + raidReport(result.raids),
     ephemeral: true
   });
+  const matchedRaids = result.raids.filter((raid) => raid.matchedRaidTitle).length;
+  if (result.epgpTransactions.length > 0 || matchedRaids > 0) {
+    await notify(interaction.guild, notifications.importApplied(result.epgpTransactions.length, matchedRaids));
+  }
 }

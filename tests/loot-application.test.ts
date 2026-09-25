@@ -49,7 +49,10 @@ describe("loot and application validation", () => {
         }),
         updateMany: vi.fn().mockResolvedValue({ count: 1 })
       },
-      epgpTransaction: { create: vi.fn().mockResolvedValue({ id: "tx1" }) },
+      epgpTransaction: {
+        create: vi.fn().mockResolvedValue({ id: "tx1" }),
+        aggregate: vi.fn().mockResolvedValue({ _sum: { epAmount: 100, gpAmount: 40 } })
+      },
       lootAward: { create: vi.fn().mockResolvedValue(award) }
     };
     const database = { $transaction: vi.fn((callback: (tx: unknown) => unknown) => callback(tx)) } as never;
@@ -58,6 +61,10 @@ describe("loot and application validation", () => {
     expect(result.award).toEqual(award);
     expect(tx.epgpTransaction.create).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({ gpAmount: 20 })
+    }));
+    // Loot history keeps the winner's totals from before the award and who closed it.
+    expect(tx.lootAward.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ epBefore: 100, gpBefore: 40, awardedBy: "officer" })
     }));
   });
 
