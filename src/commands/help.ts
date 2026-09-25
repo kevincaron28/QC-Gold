@@ -12,7 +12,7 @@ export const helpCommand = new SlashCommandBuilder()
 const LINES: Record<"everyone" | "raidLeader" | "dkpOfficer" | "officer", Record<Lang, string[]>> = {
   everyone: {
     en: [
-      "`/character add` — link your WoW character (do this first), or `/character import` with the line `/qg character` shows in game",
+      "`/character add` — link your WoW character (do this first), or `/character import` with the line `/qg character` shows in game, or `/character sync` with `/qg share`",
       "Raid posts have buttons to sign up (or use `/raid signup`)",
       "`/epgp balance` · `/epgp leaderboard` · `/profile` · `/who <name>`",
       "`/raid progress` · `/raid report` · `/stats` · `/loot history`",
@@ -24,7 +24,7 @@ const LINES: Record<"everyone" | "raidLeader" | "dkpOfficer" | "officer", Record
       "`/apply` — apply to the guild"
     ],
     fr: [
-      "`/character add` — liez votre personnage WoW (à faire en premier), ou `/character import` avec la ligne de `/qg character` en jeu",
+      "`/character add` — liez votre personnage WoW (à faire en premier), ou `/character import` avec la ligne de `/qg character` en jeu, ou `/character sync` avec `/qg share`",
       "Les annonces de raid ont des boutons pour s'inscrire (ou `/raid signup`)",
       "`/epgp balance` · `/epgp leaderboard` · `/profile` · `/who <nom>`",
       "`/raid progress` · `/raid report` · `/stats` · `/loot history`",
@@ -61,7 +61,8 @@ const LINES: Record<"everyone" | "raidLeader" | "dkpOfficer" | "officer", Record
       "`/testraid start` — fake raid to try everything, `/testraid cleanup` after",
       "`/dungeon-admin` — invalidate a run, award points, rules, target times, new season",
       "`/bank list` / `handle` · `/application list` · `/mod` · `/tag set` · `/selfroles`",
-      "`/wcl report url:` — pull a Warcraft Logs report into the raid history"
+      "`/wcl report url:` — pull a Warcraft Logs report into the raid history",
+      "`/inactive` · `/export` · `/guildhealth` · `/poll create` · `/loot award` (loot council)"
     ],
     fr: [
       "`/setup` — configuration guidée et liste de vérification · `/config` — tous les réglages",
@@ -69,7 +70,8 @@ const LINES: Record<"everyone" | "raidLeader" | "dkpOfficer" | "officer", Record
       "`/testraid start` — faux raid pour tout essayer, puis `/testraid cleanup`",
       "`/dungeon-admin` — annuler un donjon, donner des points, règles, temps cibles, nouvelle saison",
       "`/bank list` / `handle` · `/application list` · `/mod` · `/tag set` · `/selfroles`",
-      "`/wcl report url:` — importer un rapport Warcraft Logs dans l'historique des raids"
+      "`/wcl report url:` — importer un rapport Warcraft Logs dans l'historique des raids",
+      "`/inactive` · `/export` · `/guildhealth` · `/poll create` · `/loot award` (conseil de loot)"
     ]
   }
 };

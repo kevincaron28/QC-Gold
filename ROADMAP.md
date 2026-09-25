@@ -13,7 +13,7 @@ priority (P0 = do first) · **S/M/L** = rough size
 
 ## ⏸ Where we are — resume here (updated 2026-09-26, v2 push)
 
-**Goal: ship v2.0.0 (addon + bot) tonight for testing, with everything that
+**Goal (reached 2026-09-27): v2.0.0 (addon + bot) ready for testing, with everything that
 can be built without live data or a decision from the user built.** Items
 are grouped below; the progress log at the end of this section is updated
 after each commit so a session that hits a limit can resume from it.
@@ -39,18 +39,18 @@ each item's notes.
 - [x] **A9 (VG1, VG2)** Casino ban list and session stats. *(done; `/qg casino ban|unban|bans|resetbans|stats`)*
 
 **Bot (Discord)**
-- [ ] **B1 (GO3)** Readiness aggregator: one status per member, sorted most actionable first, enchants and attunement target.
-- [ ] **B2 (GK2)** `/inactive`: members inactive for N days (read-only report).
-- [ ] **B3 (GP4)** `/export`: CSV of roster, attendance or loot for officers.
-- [ ] **B4 (IR4, GK4)** Composition (class, race, level ranges) in `/stats`.
-- [ ] **B5 (RF4)** Bench credit: a BENCHED attendance status that counts as present for EP and rates.
-- [ ] **B6 (GO2)** Loot council mode: points shown but bidding buttons hidden.
-- [ ] **B7 (GO7)** `/poll`: officers create polls, members vote with buttons.
-- [ ] **B8 (GP10)** Retention cohorts (30/60/90 days) in `/stats`.
-- [ ] **B9 (#46 prep)** One `BRAND` constant for the product name used in embeds, so the public rename is a one-line change.
+- [x] **B1 (GO3)** Readiness aggregator: one status per member, sorted most actionable first, enchants and attunement target. *(done; summary line, most actionable first, `/readiness raid attunement:`)*
+- [x] **B2 (GK2)** `/inactive`: members inactive for N days (read-only report). *(done; `/inactive`)*
+- [x] **B3 (GP4)** `/export`: CSV of roster, attendance or loot for officers. *(done; `/export` roster, attendance, loot, EPGP ledger)*
+- [x] **B4 (IR4, GK4)** Composition (class, race, level ranges) in `/stats`. *(done as `/guildhealth`)*
+- [x] **B5 (RF4)** Bench credit: a BENCHED attendance status that counts as present for EP and rates. *(done; BENCHED status, attendance EP only, full attendance credit)*
+- [x] **B6 (GO2)** Loot council mode: points shown but bidding buttons hidden. *(done; `/config loot-mode`, `/loot award`)*
+- [x] **B7 (GO7)** `/poll`: officers create polls, members vote with buttons. *(done; `/poll create|close` with buttons (in-game polls not built))*
+- [x] **B8 (GP10)** Retention cohorts (30/60/90 days) in `/stats`. *(done inside `/guildhealth`)*
+- [x] **B9 (#46 prep)** One `BRAND` constant for the product name used in embeds, so the public rename is a one-line change. *(done; `src/brand.ts`)*
 
 **Release**
-- [ ] **R1** Addon 2.0.0 (TOC, zip), README/COMMANDS, launch checklist sections for everything new, roadmap final status.
+- [x] **R1** Addon 2.0.0 (TOC, zip), README/COMMANDS, launch checklist sections for everything new, roadmap final status. *(done; addon and package 2.0.0, `dist/QuebecGold-v2.0.0.zip`, docs, checklist sections 12-13)*
 
 ### Not in v2 (why)
 
@@ -72,6 +72,7 @@ each item's notes.
 
 - 2026-09-26 14:40 A1 done: fengari harness; Consumables.lua and Core.lua (`/qg character`) verified against the mocked game.
 - 2026-09-26 16:10 A2-A9 done (addon side complete, 60 Lua tests through the harness). Next: bot items B1-B9, then release.
+- 2026-09-27 01:30 B1-B9 and R1 done. **v2.0.0 is complete: addon 2.0.0 zip in `dist/`, 232 tests green, migrations applied to the live database through `20260927010000_polls`.** Next: the user runs checklist sections 0-13, then push and release.
 
 ## History — where we were on 2026-09-24 (kept for reference)
 
@@ -734,10 +735,10 @@ through Forever). Overlaps our `/craft` and `/profession`.
 
 **vGambler** (roll-off gold gambling: lowest roller pays the highest). Same
 idea as our Casino module, which is a superset (pot, blackjack, ledger).
-- **VG1. [ ] S — Player ban list in the Casino module** (`/qg casino ban|unban|
+- **VG1. [x] S — Player ban list in the Casino module** (`/qg casino ban|unban|
   bans`): host can exclude people; persists in the SavedVariables. vGambler has
   it, we don't.
-- **VG2. [ ] S — Session statistics** (`/qg casino stats`): games, biggest win,
+- **VG2. [x] S — Session statistics** (`/qg casino stats`): games, biggest win,
   net per player for the session. We keep a ledger already; this is a view.
 - **VG3. [ ] S — Default stake and a "1 to join" prompt line** matching
   vGambler's flow so players who know it feel at home. Only if guildmates ask.
@@ -758,7 +759,7 @@ attendance, bench credit).
 - **RF3. [ ] M — Assignments** (interrupts, soulstones, tranq rotations, CC) as
   a note synced between officers and answerable by whisper (`!assign`).
   Overlaps `/raid note`; start by syncing that note in game.
-- **RF4. [ ] S — Bench credit:** benched players keep full attendance. A
+- **RF4. [x] S — Bench credit:** benched players keep full attendance. A
   "BENCHED" attendance status that counts as present for `/epgp leaderboard`
   and EP proposals. Small change in `raid-import` and the attendance rates.
 - **RF5. [ ] S — Attendance without a button:** we already sample presence;
@@ -775,7 +776,7 @@ The closest thing to us; it's a competitor to watch, not to copy.
   officer sees responses next to PR. Fits `Bidding.lua` and loot history.
 - **ID2. [ ] M — Ready check with consumables** (same as G2): flask/food/buffs
   shown on the ready-check reply, exported to `/readiness raid`.
-- **ID3. [ ] S — Attendance snapshots:** an officer button/`/qg snapshot` that
+- **ID3. [x] S — Attendance snapshots:** an officer button/`/qg snapshot` that
   records who's in the raid *now* with a label ("pre-pull", "after Ragnaros").
   Complements our automatic presence sampling; useful for disputes.
 - **ID4. [ ] S/M — Auto-marking profiles** (`/qg mark <profile>`): set raid
@@ -796,7 +797,7 @@ list, backups, TSV export; Retail and Forever).
 - **GP3. [ ] S — Alt/main tagging with nicknames and aliases,** shown in chat
   hints and `/who`. Our Discord link already gives main/alts; add an in-game
   read of it (same source as G9).
-- **GP4. [ ] S — TSV/CSV export** of roster, attendance and loot (`/export`),
+- **GP4. [x] S — TSV/CSV export** of roster, attendance and loot (`/export`),
   for officers who live in spreadsheets. We have backups; this is readable.
 - **GP5. [ ] S — Backup and restore in the addon** (before risky operations
   like a season reset), with confirmation for destructive actions.
@@ -821,7 +822,7 @@ bridge to IRC or Discord despite the name.
   character with a one-time code typed in a guild note or `/qg verify <code>`
   (bot-issued). This is the safe way to do #40's auto-linking and stops people
   claiming someone else's character.
-- **IR4. [ ] S — Guild statistics view** (class/race distribution, level
+- **IR4. [x] S — Guild statistics view** (class/race distribution, level
   ranges, activity) in the weekly report. We have `/stats`; add the
   distribution numbers once the roster is exported.
 - **Skip:** guild map, server-wide guild directory/leaderboard, racial chat
@@ -833,12 +834,12 @@ auto-invite phrase, ban list, purge tools; Retail/Classic/Forever).
   invite) with optional level/class/race gates and an officer on/off switch.
   Pairs with the recruitment work in G8/GP6. Guild invites are protected in
   combat only; fine out of combat.
-- **GK2. [ ] M — Inactivity report and purge helper:** list members inactive for
+- **GK2. [x] M — Inactivity report and purge helper:** list members inactive for
   N days (from last-seen data we already export) with rank and note filters.
   **Read-only in Discord/addon output**; kicking stays a human action.
 - **GK3. [ ] S — Activity feed with notification filters** (level-ups, joins,
   rank changes) as an in-game panel; same event stream as GP1.
-- **GK4. [ ] S — Composition charts** (class/level/rank/race/zone) in the addon
+- **GK4. [x] S — Composition charts** (class/level/rank/race/zone) in the addon
   and in `/stats`; same data as IR4.
 
 **Common themes to prioritise**
@@ -904,22 +905,22 @@ everything below is an idea to build ourselves, never code to copy.
   loot rules, attendance penalty weights and point pool. Our cores (#43) only
   give signup priority. Add per-core EPGP pool/decay, attendance rules and
   class-default roles (tank/healer/melee/ranged).
-- **GO2. [ ] M: points modes:** DKP, EPGP or **loot council** (points shown but
+- **GO2. [x] M: points modes:** DKP, EPGP or **loot council** (points shown but
   not enforced). We are EPGP-only; council mode is a setting plus hiding the
   bid buttons.
-- **GO3. [ ] M: readiness aggregator:** one status per member (ready / warn /
+- **GO3. [x] M: readiness aggregator:** one status per member (ready / warn /
   not ready / no data) from attunement + enchants + item level + consumables,
   sorted most-actionable first, optionally against a *target raid* ("not attuned
   for BWL"). We have gear + consumables; add attunements and sorting to
   `/readiness raid` and the readiness board.
 - **GO4. [ ] S: attendance penalty for missing consumables** (100% base, minus
   a configurable step per issue), as an opt-in rule tied to GO1.
-- **GO5. [ ] M: enchant summary** (which equipped slots lack an enchant) in the
+- **GO5. [x] M: enchant summary** (which equipped slots lack an enchant) in the
   snapshot and board; "four slots unenchanted" is more useful than an item level.
 - **GO6. [ ] S: pug inspector:** on joining a group, classify members against
   our own data (Discord ban list from `/mod`, guild roster, alt links, notes).
   Read-only, no new sync.
-- **GO7. [ ] S: polls:** officers create a poll, members vote (in game and in
+- **GO7. [x] S: polls:** officers create a poll, members vote (in game and in
   Discord), one result. Simple and popular.
 - **GO8. [ ] M: SoftRes import (softres.it / Gargul export)** into the wishlist and
   bidding popup. Guilds using soft reserves won't retype them (see also G13 TMB).
@@ -930,12 +931,12 @@ everything below is an idea to build ourselves, never code to copy.
   adopt it; low priority next to PM1.
 
 **From Guild Paragon** (`GP`, adds to GP1 to GP7)
-- **GP8. [ ] S: public read-only API with a version number** and an explicit
+- **GP8. [x] S: public read-only API with a version number** and an explicit
   "no write methods" rule, because writes would bypass permission, sync and
   logging paths (= X6). Their `API.md` is a good template.
 - **GP9. [ ] S: rate-limit full-state requests between peers** (they cap sessions
   with a request limit, back-off and lease). Matters once #40 sends more data.
-- **GP10. [ ] M: guild health dashboard for officers:** retention cohorts at 30, 60
+- **GP10. [x] M: guild health dashboard for officers:** retention cohorts at 30, 60
   and 90 days, attention signals with severity (critical/warning/info), new-member
   watch. Fits the bot's `/stats` and weekly report better than the addon.
 - **GP11. [ ] S: attribute guild events using the native guild log** (who invited or
@@ -958,7 +959,7 @@ everything below is an idea to build ourselves, never code to copy.
 - **IR7. [ ] M: identity store per guild:** characters, former members and
   "missing counts" (how many rosters a name has been absent from) to tell a
   departure from a temporary absence. Feeds GP1 and GK2.
-- **IR8. [ ] S: standalone Lua tests** (= X3): their tests load the addon file with
+- **IR8. [x] S: standalone Lua tests** (= X3): their tests load the addon file with
   a mocked `GetBuildInfo`, `UnitName`, `GetRealmName`, frames and `LibStub`, and
   `assert` the behaviour. The same technique works for Consumables.lua and Core.lua.
 
@@ -974,18 +975,18 @@ everything below is an idea to build ourselves, never code to copy.
 - vGambler: ban list and session stats for the casino (VG1, VG2).
 
 **Cross-cutting items (new)**
-- **X1. [ ] S: player identity on Forever:** a single `ns.compat.playerKey()` /
+- **X1. [x] S: player identity on Forever:** a single `ns.compat.playerKey()` /
   `ns.compat.normalizeName()` that knows Forever (no realm, hyphenated names) and
   is used by the consumable scan, `/qg character`, roster, the companion and the
   bot's character matching. `/qg diag` prints the raw values.
-- **X2. [ ] M: `QGEXP1:` paste export + `/import code:`** (compressed, print-safe;
+- **X2. [x] M: `QGEXP1:` paste export + `/import code:`** (compressed, print-safe;
   needs either bundled LibDeflate or a small pure-Lua compressor, decision
   needed). Uses the existing import path, so no new trust model.
-- **X3. [ ] M: Lua test suite in the repo + CI.**
-- **X4. [ ] M: versioned message envelope** (`v`, `id`, addon version, payload
+- **X3. [x] M: Lua test suite in the repo + CI.**
+- **X4. [x] M: versioned message envelope** (`v`, `id`, addon version, payload
   version) with accept-old/send-new during transition.
-- **X5. [ ] S: login digest.**
-- **X6. [ ] S: `QuebecGoldAPI` read-only v1.**
+- **X5. [x] S: login digest.**
+- **X6. [x] S: `QuebecGoldAPI` read-only v1.**
 
 ---
 

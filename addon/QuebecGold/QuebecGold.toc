@@ -3,7 +3,7 @@
 ## Notes: Manual-first raid attendance, DKP/EPGP ledger, and casino minigames for WoW Forever
 ## Notes-frFR: Presences de raid, registre EPGP et mini-jeux de casino pour WoW Forever
 ## Author: Quebec Gold
-## Version: 1.9.0
+## Version: 2.0.0
 ## SavedVariables: QuebecGoldDB, QuebecGoldCasinoDB
 
 Core.lua

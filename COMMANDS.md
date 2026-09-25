@@ -28,6 +28,13 @@ typed command. Names are case-insensitive (`bob` = `Bob`).
 | `/qg attune <key> clear` | Mark it not done |
 | `/qg diag` | Show recent addon errors / blocked actions (send this when reporting a bug) |
 | `/qg menu` | Open the tools window |
+| `/qg share` | One paste with your character, latest gear check, consumables and attunements (a box to copy). In Discord: `/character sync` |
+| `/qg character` | One line with your character (name, class, race, level, spec, professions) for `/character import` |
+| `/qg enchants [on/off/level <n>]` | Show or change the missing-enchant check (which slots, from what level) |
+| `/qg consumes` / `/qg consumes me` | Officers: who in the group lacks a flask/elixir or food. Anyone: your own active consumables |
+| `/qg digest [on/off]` | What changed since your last login (also shown once at login) |
+| `/qg peers` | Which guildmates run which addon version this session |
+| `/qg snapshot [label]` / `/qg snapshot list` | Officers: record who is in the group right now (also counts as presence for the active raid) |
 | `/qg calendar check` | Checks whether the in-game guild calendar can be synced (send the result to an officer) |
 | `/qg lang en` / `fr` / `auto` | Language of your window and bid popup (auto = same as your game client) |
 | `/qg standings [player]` | EPGP standings from Discord (top 10, or one player) |
@@ -235,6 +242,12 @@ Approve, and a raid can never be paid twice.
 
 | Command | What it does |
 | --- | --- |
+| `/inactive [days]` | Members not seen in game for N days (default 30): a read-only report, nobody is changed |
+| `/export <what>` | CSV file of the roster, raid attendance, loot history or the EPGP ledger (only you see it) |
+| `/guildhealth` | Class / race / level mix, retention at 30 / 60 / 90 days, and what needs attention |
+| `/poll create <question> <option1> <option2> [option3-5] [closes]` / `/poll close <poll>` | Poll answered with buttons; one vote each, changeable; the result bars update live |
+| `/loot award <item> <player> [gp] [boss] [raid]` | Give an item straight to a player (loot council or manual); GP is charged only if you give a price; lands in `/loot history` |
+| `/config loot-mode <EPGP\|Council>` | Council mode turns `/loot auction` and `/loot bid` off; officers decide with `/loot award` |
 | `/setup` | **Start here.** Guided setup: roles, channels (core, dungeon, extras; one button makes the whole WoW section under a "Quebec Gold" category), welcome, EPGP values. `/setup status:true` shows the checklist |
 | `/wcl report <url> [raid] [post]` | Pull a Warcraft Logs report (link or code): zone, duration, boss kills and wipes, player list. Saved, posted to the raid logs channel, and linked to a Discord raid if you give its id. Needs `WCL_CLIENT_ID` / `WCL_CLIENT_SECRET` in `.env.local` |
 | `/testraid start [raiders] [starts_in] [realm]` | Fake `[TEST]` raid with fake raiders signed up (hits role caps, Maybe, waitlist) |
