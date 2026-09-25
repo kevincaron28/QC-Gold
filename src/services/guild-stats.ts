@@ -38,7 +38,8 @@ export async function guildStats(database: Db, guildId: string, since: Date): Pr
   for (const raid of raids) {
     for (const row of raid.attendance) {
       if (row.status === "ABSENT") continue;
-      raiderTotal++;
+      // Benched players earn attendance credit but weren't in the raid.
+      if (row.status !== "BENCHED") raiderTotal++;
       const entry = attended.get(row.memberId) ?? { name: row.member.displayName, raids: 0 };
       entry.raids++;
       attended.set(row.memberId, entry);

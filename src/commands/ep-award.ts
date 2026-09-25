@@ -21,7 +21,7 @@ const auditService = createAuditService(prisma);
 function proposalEmbed(proposal: EpProposal): EmbedBuilder {
   let lines = "";
   for (const row of proposal.rows) {
-    const line = `${row.name} — **${row.ep} EP**${row.status === "LATE" ? " (late)" : ""}\n`;
+    const line = `${row.name} — **${row.ep} EP**${row.status === "LATE" ? " (late)" : row.status === "BENCHED" ? " (bench)" : ""}\n`;
     if (lines.length + line.length > 3800) { lines += "…"; break; }
     lines += line;
   }

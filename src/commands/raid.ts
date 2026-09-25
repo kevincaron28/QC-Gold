@@ -89,6 +89,7 @@ export const raidCommand = new SlashCommandBuilder()
       .addChoices(
         { name: "Present", value: "PRESENT" },
         { name: "Late", value: "LATE" },
+        { name: "Benched (full credit, attendance EP only)", value: "BENCHED" },
         { name: "Absent", value: "ABSENT" }
       ))
     .addStringOption((o) => o.setName("notes").setDescription("Optional notes")));

@@ -88,6 +88,9 @@ enum RaidAttendanceStatus {
   PRESENT
   LATE
   ABSENT
+  // On the bench by the raid leader's choice: full attendance credit and the
+  // attendance EP, but not the per-boss or full-clear EP.
+  BENCHED
 }
 
 enum RaidBossStatus {

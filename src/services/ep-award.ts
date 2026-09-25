@@ -5,7 +5,7 @@ import { EpgpTransactionType, type PrismaClient } from "@prisma/client";
 export interface EpProposalRow {
   memberId: string;
   name: string;
-  status: "PRESENT" | "LATE";
+  status: "PRESENT" | "LATE" | "BENCHED";
   ep: number;
 }
 
@@ -40,12 +40,13 @@ export async function computeRaidEpProposal(database: Db, guildId: string, raidI
   const completionBonus = fullClear ? settings?.epCompletionBonus ?? 0 : 0;
 
   const rows: EpProposalRow[] = raid.attendance
-    .filter((row) => row.status === "PRESENT" || row.status === "LATE")
+    .filter((row) => row.status === "PRESENT" || row.status === "LATE" || row.status === "BENCHED")
     .map((row) => ({
       memberId: row.memberId,
       name: row.member.displayName,
-      status: row.status as "PRESENT" | "LATE",
-      ep: (row.status === "PRESENT" ? presentEp : lateEp) + bossesKilled * perBoss + completionBonus
+      status: row.status as "PRESENT" | "LATE" | "BENCHED",
+      // Bench credit: the attendance EP only, no boss or full-clear EP.
+      ep: row.status === "BENCHED" ? presentEp : (row.status === "PRESENT" ? presentEp : lateEp) + bossesKilled * perBoss + completionBonus
     }))
     .filter((row) => row.ep > 0)
     .sort((a, b) => b.ep - a.ep || a.name.localeCompare(b.name));
@@ -74,7 +75,7 @@ export async function applyRaidEpProposal(database: Db, guildId: string, raidId:
         epAmount: row.ep,
         gpAmount: 0,
         type: EpgpTransactionType.EP_AWARD,
-        reason: `Raid: ${proposal.title} (${row.status === "LATE" ? "late" : "present"}, ${proposal.bossesKilled} boss kill${proposal.bossesKilled === 1 ? "" : "s"})`,
+        reason: `Raid: ${proposal.title} (${row.status === "LATE" ? "late" : row.status === "BENCHED" ? "benched" : "present"}, ${proposal.bossesKilled} boss kill${proposal.bossesKilled === 1 ? "" : "s"})`,
         createdBy,
         sourceRef
       }

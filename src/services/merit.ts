@@ -1,7 +1,8 @@
 import type { PrismaClient } from "@prisma/client";
 
-// LATE counts as half credit; ABSENT (or no record) counts as none.
-const CREDIT: Record<string, number> = { PRESENT: 1, LATE: 0.5 };
+// LATE counts as half credit, BENCHED (asked to sit out) as full credit;
+// ABSENT (or no record) counts as none.
+const CREDIT: Record<string, number> = { PRESENT: 1, LATE: 0.5, BENCHED: 1 };
 
 export function attendanceRate(statuses: readonly string[], totalRaids: number): number {
   if (totalRaids <= 0) return 0;
