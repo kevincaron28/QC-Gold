@@ -1,7 +1,10 @@
 import { SlashCommandBuilder, type ChatInputCommandInteraction, type GuildMember } from "discord.js";
 import { prisma } from "../database.js";
 import { hasPermission } from "../permissions.js";
-import { cleanupTestRaids, finishTestRaid, SIM_CHARACTERS, startTestRaid } from "../services/simulation.js";
+import { dungeonAnnouncement } from "../services/dungeon-announce.js";
+import { notifyDungeon } from "../services/notify.js";
+import { cleanupTestRaids, finishTestRaid, SIM_CHARACTERS, simulateDungeonRun, startTestRaid } from "../services/simulation.js";
+import { dungeonReport } from "./import-apply.js";
 import { requireGuildContext } from "./context.js";
 import { showEpProposal } from "./ep-award.js";
 import { syncSignupEmbed } from "./raid.js";
@@ -16,7 +19,11 @@ export const testRaidCommand = new SlashCommandBuilder()
   .addSubcommand((sub) => sub.setName("finish").setDescription("Play the test raid: attendance, boss kills, loot, then end it and propose EP.")
     .addStringOption((o) => o.setName("raid").setDescription("Test raid (pick from the list)").setAutocomplete(true).setRequired(true))
     .addBooleanOption((o) => o.setName("via_addon").setDescription("Send attendance as an addon import to /import-apply instead")))
-  .addSubcommand((sub) => sub.setName("cleanup").setDescription("Delete every test raid, fake raider, and their EPGP/loot."));
+  .addSubcommand((sub) => sub.setName("dungeon").setDescription("Fake dungeon run by 5 test characters: points, records, announcement.")
+    .addNumberOption((o) => o.setName("minutes").setDescription("How long the run took (default 20-30)").setMinValue(1).setMaxValue(300))
+    .addBooleanOption((o) => o.setName("deaths").setDescription("Give one player 2 deaths"))
+    .addStringOption((o) => o.setName("realm").setDescription("Realm for the fake characters (default: your main's realm)")))
+  .addSubcommand((sub) => sub.setName("cleanup").setDescription("Delete every test raid, test dungeon run, fake raider, and their points/loot."));
 
 async function defaultRealm(memberId: string): Promise<string> {
   const main = await prisma.character.findFirst({ where: { memberId }, orderBy: { isMain: "desc" }, select: { realm: true } });
@@ -35,13 +42,32 @@ export async function executeTestRaid(interaction: ChatInputCommandInteraction):
   if (subcommand === "cleanup") {
     const removed = await cleanupTestRaids(prisma, context.guildId);
     await interaction.reply({
-      content: `Removed ${removed.raids} test raid(s), ${removed.members} fake raider(s) with their EPGP and loot, ${removed.auctions} test auction(s), and ${removed.imports} simulated import(s). Real data was not touched. (Delete any old test signup embeds by hand.)`,
+      content: `Removed ${removed.raids} test raid(s), ${removed.dungeonRuns} test dungeon run(s), ${removed.members} fake raider(s) with their EPGP, points and loot, ${removed.auctions} test auction(s), and ${removed.imports} simulated import(s). Real data was not touched. (Delete any old test signup embeds by hand.)`,
       ephemeral: true
     });
     return;
   }
 
   const realm = interaction.options.getString("realm") ?? await defaultRealm(context.memberId);
+
+  if (subcommand === "dungeon") {
+    const minutes = interaction.options.getNumber("minutes");
+    const result = await simulateDungeonRun(prisma, {
+      guildId: context.guildId, realm, officerId: interaction.user.id,
+      ...(minutes !== null ? { minutes } : {}), deaths: interaction.options.getBoolean("deaths") ?? false
+    });
+    const post = dungeonAnnouncement(result.dungeons, "en");
+    const posted = post ? await notifyDungeon(interaction.guild, (lang) => dungeonAnnouncement(result.dungeons, lang) ?? post) : false;
+    await interaction.reply({
+      content: `Simulated a **Test Dungeon** run through the real import.${dungeonReport(result.dungeons)}
+
+`
+        + `${posted ? "The run was announced in the dungeon channel (marked [TEST])." : "No dungeon or notify channel is set, so nothing was announced."} `
+        + "Try `/dungeon leaderboard`, `/dungeon records`, `/dungeon-admin invalidate`. Run it again for the weekly repeat share; `/testraid cleanup` removes it all.",
+      ephemeral: true
+    });
+    return;
+  }
 
   if (subcommand === "start") {
     const result = await startTestRaid(prisma, {

@@ -80,7 +80,8 @@ one for the winner.
 | `/qg sim start` | Start a `[TEST]` raid with fake raiders (Testalpha, Testbravo, ...) in the group |
 | `/qg sim bids` | Fake raiders bid on the open item |
 | `/qg sim end` | Kill 3 test bosses, mark attendance, give a test item, end it |
-| `/qg sim clear` | Remove every test raid and the EP/GP it recorded |
+| `/qg sim dungeon [minutes]` | Save a finished fake dungeon run (you + 4 fake players) to test the export, points and records |
+| `/qg sim clear` | Remove every test raid and the EP/GP it recorded, and test dungeon runs |
 
 ### Guild master only
 
@@ -219,7 +220,8 @@ Approve, and a raid can never be paid twice.
 | `/setup` | **Start here.** Guided setup: roles, channels, welcome, EPGP values. `/setup status:true` shows the checklist |
 | `/testraid start [raiders] [starts_in] [realm]` | Fake `[TEST]` raid with fake raiders signed up (hits role caps, Maybe, waitlist) |
 | `/testraid finish <raid> [via_addon]` | Play it: attendance (late, no-show, walk-in), boss kills, loot, end, EP proposal. `via_addon` sends attendance through `/import-apply` instead |
-| `/testraid cleanup` | Delete every test raid and fake raider with their EPGP and loot. Real data is untouched |
+| `/testraid dungeon [minutes] [deaths]` | Fake dungeon run by 5 test characters through the real import: points, records, `[TEST]` announcement. Run twice to see the weekly repeat share |
+| `/testraid cleanup` | Delete every test raid, test dungeon run and fake raider with their EPGP, points and loot. Real data is untouched |
 | `/loot auction <item> <minimum> <increment> <duration> [boss] [raid]` / `/loot close <auction>` | Run a GP auction (boss/raid show up in loot history) |
 | `/import <file>` then `/import-apply <id>` | Preview then apply an addon export. Entries already imported are skipped; in-game raids fill Discord attendance and list no-shows and walk-ins |
 | `/dungeon-admin invalidate <run> <reason>` | A run stops counting and its points are taken back (records update by themselves) |

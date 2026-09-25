@@ -12,9 +12,10 @@ const MAX_RUNS = 12;
 export function dungeonAnnouncement(summary: DungeonImportSummary, lang: Lang): EmbedBuilder | null {
   const done = summary.results.filter((run) => run.valid && run.state === "COMPLETED" && run.durationSec !== null);
   if (done.length === 0) return null;
-  const label = (run: { dungeonName: string; difficultyId: number }) => {
+  const label = (run: { runRef: string; dungeonName: string; difficultyId: number }) => {
     const difficulty = difficultyName(run.difficultyId);
-    return difficulty ? `${run.dungeonName} (${difficulty})` : run.dungeonName;
+    const test = run.runRef.startsWith("SIM-") ? "[TEST] " : "";
+    return difficulty ? `${test}${run.dungeonName} (${difficulty})` : `${test}${run.dungeonName}`;
   };
   const lines = done.slice(0, MAX_RUNS).map((run) => {
     const deaths = run.deaths === null ? "" : ` · ${run.deaths === 0 ? t(lang, "dungeon.post.flawless") : t(lang, "dungeon.deaths", { count: run.deaths })}`;

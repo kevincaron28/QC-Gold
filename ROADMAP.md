@@ -347,7 +347,7 @@ D8. [ ] **M — Achievements**: First Blood, No One Dies, Speed Demon
     Squad, Season Champion — rules in config, permanent.
 D9. [ ] **S — In-game view**: a Dungeons tab (current run, timer,
     Start / Complete / Abandon buttons, recent runs, your points).
-D10. [ ] **S — Test path**: `/qg sim dungeon` and `/testraid`-style bot
+D10. [x] **S — Test path** *(Done 2026-09-25: /testraid dungeon through the real import, /qg sim dungeon in game; SIM- runs in a made-up "Test Dungeon", removed by /testraid cleanup and /qg sim clear.)*: `/qg sim dungeon` and `/testraid`-style bot
     fixtures that play a full run (including reload, duplicate
     submission, disconnect) so this can be tested before release.
 

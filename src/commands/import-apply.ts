@@ -19,7 +19,7 @@ export const importApplyCommand = new SlashCommandBuilder()
   .addStringOption((option) => option.setName("id").setDescription("Import (pick from the list)").setAutocomplete(true).setRequired(true));
 
 // Dungeon runs in this import: accepted, points, records, rejections.
-function dungeonReport(summary: DungeonImportSummary): string {
+export function dungeonReport(summary: DungeonImportSummary): string {
   if (summary.results.length === 0 && summary.duplicates === 0 && summary.malformed === 0) return "";
   const lines = summary.results.map((run) => {
     if (!run.valid) return `• ${run.dungeonName}: **not counted** (${run.invalidReason})`;

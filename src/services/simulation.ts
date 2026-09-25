@@ -19,6 +19,11 @@ export const SIM_CHARACTERS = [
 const SIM_CLASSES = ["Warrior", "Paladin", "Priest", "Druid", "Shaman", "Mage", "Rogue", "Hunter", "Warlock"];
 export const SIM_BOSSES = ["Test Boss One", "Test Boss Two", "Test Boss Three"];
 export const SIM_IMPORT_SOURCE = "QuebecGold-Simulation";
+// Dungeon runs from /testraid dungeon and the addon's /qg sim dungeon: a
+// made-up dungeon so they never mix with real records, and a SIM- run id
+// so /testraid cleanup can find them.
+export const SIM_DUNGEON = { instanceId: 999001, name: "Test Dungeon" };
+export const SIM_RUN_PREFIX = "SIM-";
 
 export interface SimStartInput {
   guildId: string;
@@ -31,24 +36,29 @@ export interface SimStartInput {
 
 // Creates (or reuses) the test members and characters, a [TEST] raid with
 // role caps small enough to force a waitlist, and a mix of signups.
-export async function startTestRaid(database: PrismaClient, input: SimStartInput) {
-  const raidService = createRaidService(database);
-  const raiders = Math.min(Math.max(input.raiders, 6), SIM_CHARACTERS.length);
+async function ensureTestMembers(database: PrismaClient, guildId: string, realm: string, count: number) {
   const members = [];
-  for (let i = 0; i < raiders; i++) {
+  for (let i = 0; i < count; i++) {
     const name = SIM_CHARACTERS[i] ?? `Test${i}`;
     const member = await database.member.upsert({
-      where: { guildId_discordUserId: { guildId: input.guildId, discordUserId: `sim-${i + 1}` } },
-      create: { guildId: input.guildId, discordUserId: `sim-${i + 1}`, displayName: `${name} (test)`, isTest: true },
+      where: { guildId_discordUserId: { guildId, discordUserId: `sim-${i + 1}` } },
+      create: { guildId, discordUserId: `sim-${i + 1}`, displayName: `${name} (test)`, isTest: true },
       update: { isTest: true, status: "ACTIVE" }
     });
     await database.character.upsert({
-      where: { realm_name: { realm: input.realm, name } },
-      create: { memberId: member.id, name, realm: input.realm, className: SIM_CLASSES[i % SIM_CLASSES.length] ?? "Warrior", isMain: true, level: 60 },
+      where: { realm_name: { realm, name } },
+      create: { memberId: member.id, name, realm, className: SIM_CLASSES[i % SIM_CLASSES.length] ?? "Warrior", isMain: true, level: 60 },
       update: {}
     });
     members.push(member);
   }
+  return members;
+}
+
+export async function startTestRaid(database: PrismaClient, input: SimStartInput) {
+  const raidService = createRaidService(database);
+  const raiders = Math.min(Math.max(input.raiders, 6), SIM_CHARACTERS.length);
+  const members = await ensureTestMembers(database, input.guildId, input.realm, raiders);
 
   // Caps: 2 tanks, 3 healers, and DPS one short of the rest, so the last
   // DPS lands on the waitlist.
@@ -188,5 +198,45 @@ export async function cleanupTestRaids(database: PrismaClient, guildId: string) 
   const raidRows = await database.raid.deleteMany({ where: { guildId, isTest: true } });
   const members = await database.member.deleteMany({ where: { guildId, isTest: true } });
   const imports = await database.addonImport.deleteMany({ where: { guildId, source: SIM_IMPORT_SOURCE } });
-  return { raids: raidRows.count, members: members.count, auctions: auctions.count, imports: imports.count };
+  // Test dungeon runs, and the points they gave (an officer in an in-game
+  // test run is a real member, so those points must go too).
+  await database.dungeonPointTransaction.deleteMany({ where: { guildId, run: { runRef: { startsWith: SIM_RUN_PREFIX } } } });
+  const dungeonRuns = await database.dungeonRun.deleteMany({ where: { guildId, runRef: { startsWith: SIM_RUN_PREFIX } } });
+  return { raids: raidRows.count, members: members.count, auctions: auctions.count, imports: imports.count, dungeonRuns: dungeonRuns.count };
+}
+
+// A fake completed dungeon run by five test characters, sent through the
+// real addon import (validation, dedupe, points, records). Run it twice to
+// see the weekly repeat share and a new record.
+export async function simulateDungeonRun(database: PrismaClient, input: { guildId: string; realm: string; officerId: string; minutes?: number; deaths?: boolean; now?: Date }) {
+  const members = await ensureTestMembers(database, input.guildId, input.realm, 5);
+  const now = Math.floor((input.now ?? new Date()).getTime() / 1000);
+  const durationSec = Math.round((input.minutes ?? 20 + Math.random() * 10) * 60);
+  const roles = ["TANK", "HEALER", "DPS", "DPS", "DPS"];
+  const run = {
+    id: `${SIM_RUN_PREFIX}${now}-${Math.random().toString(36).slice(2, 7)}`,
+    protocolVersion: 1,
+    state: "COMPLETED",
+    instanceId: SIM_DUNGEON.instanceId,
+    name: SIM_DUNGEON.name,
+    difficultyId: 1,
+    startedAt: now - durationSec,
+    endedAt: now,
+    completedBy: "boss",
+    reporters: 2,
+    players: members.map((_, i) => ({
+      character: SIM_CHARACTERS[i] ?? `Test${i}`,
+      realm: input.realm,
+      role: roles[i] ?? "DPS",
+      // One untracked player (no addon): no death bonus, never assumed 0.
+      deaths: i === 4 ? null : input.deaths && i === 2 ? 2 : 0,
+      presentSec: durationSec,
+      inGuild: true
+    }))
+  };
+  const importService = createAddonImportService(database);
+  const snapshot = importService.parse({ source: SIM_IMPORT_SOURCE, exportedAt: new Date(now * 1000).toISOString(), dungeonRuns: [run] });
+  const checksum = `sim-dungeon-${run.id}`;
+  const record = await importService.record(input.guildId, snapshot, checksum, input.officerId);
+  return importService.apply(input.guildId, record.id, input.officerId);
 }

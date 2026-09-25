@@ -30,3 +30,10 @@ describe("dungeonAnnouncement", () => {
     expect(embed?.fields?.[0]?.value).toContain("Record personnel dans Deadmines (Normal) : Kev");
   });
 });
+
+describe("test dungeon runs", () => {
+  it("are marked [TEST] in the channel", () => {
+    const embed = dungeonAnnouncement({ results: [result({ runRef: "SIM-1790000000-abcde", dungeonName: "Test Dungeon" })], duplicates: 0, malformed: 0 }, "en");
+    expect(embed?.toJSON().description).toContain("**[TEST] Test Dungeon (Normal)**");
+  });
+});
