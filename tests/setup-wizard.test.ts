@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 
 const settings = {
   notifyChannelId: "c1", raidSignupChannelId: null, logChannelId: null, welcomeChannelId: null,
@@ -27,9 +27,15 @@ const guild = {
   members: { me: { id: "bot", permissions: { has: () => true }, roles: { highest: { comparePositionTo: () => 1 } } } }
 };
 
+// Loading the command module (discord.js builders) can take a few seconds
+// on a busy machine; do it once, with room, so no single test times out.
+let renderStep: typeof import("../src/commands/setup.js").renderStep;
+beforeAll(async () => {
+  ({ renderStep } = await import("../src/commands/setup.js"));
+}, 30_000);
+
 describe("setup wizard screens", () => {
   it("every step builds a payload Discord will accept", async () => {
-    const { renderStep } = await import("../src/commands/setup.js");
     for (let step = 0; step <= 6; step++) {
       const screen = await renderStep(step, guild as never, "g1", step === 2 ? "Saved <#c1>." : "");
       expect(screen.components.length).toBeLessThanOrEqual(5);
@@ -52,14 +58,12 @@ describe("setup wizard screens", () => {
   });
 
   it("step 1 offers to create exactly the missing required roles", async () => {
-    const { renderStep } = await import("../src/commands/setup.js");
     const screen = await renderStep(1, guild as never, "g1", "");
     const labels = screen.components.flatMap((row) => row.toJSON().components.map((c) => (c as { label?: string }).label));
     expect(labels).toContain("Create missing roles (3)");
   });
 
   it("the checklist step lists what's missing with a fix", async () => {
-    const { renderStep } = await import("../src/commands/setup.js");
     const text = (await renderStep(6, guild as never, "g1", "")).embeds[0]!.toJSON().description ?? "";
     expect(text).toContain("❌ Raid signups channel");
     expect(text).toContain("Run /setup, step 2");
