@@ -38,6 +38,7 @@ import { executeHelp } from "./commands/help.js";
 import { prisma } from "./database.js";
 import { runRecruitmentPosts } from "./services/recruitment.js";
 import { runRaidReminders } from "./services/reminders.js";
+import { runBackup } from "./services/backup.js";
 import { config } from "./config.js";
 import { startCompanionApi } from "./companion-api.js";
 import { handleMemberJoin, handleMemberLeave } from "./services/housekeeping.js";
@@ -78,6 +79,13 @@ handlers.set("help", executeHelp);
 client.once(Events.ClientReady, (readyClient) => {
   console.info(`Logged in as ${readyClient.user.tag}`);
   logSetupStatus(readyClient.guilds.cache.values()).catch(() => undefined);
+  // Daily database backup to backups/ (keeps 14 days). Runs now if today's
+  // file is missing, then checks hourly.
+  const backup = () => runBackup(prisma)
+    .then((result) => { if (result) console.info(`Backup saved: backups/${result.file} (${result.rows} rows).`); })
+    .catch((error: unknown) => console.warn(`Backup skipped, will retry in an hour: ${error instanceof Error ? error.message : String(error)}`));
+  void backup();
+  setInterval(() => void backup(), 60 * 60 * 1000);
   // Scheduled recruitment posts: checked every 10 minutes while the bot is running.
   setInterval(() => {
     // Background job: a failed check just waits for the next one, so log a
