@@ -429,6 +429,28 @@ local function groupAttendance(status)
   message(string.format("Marked %d group member(s) %s.", count, string.upper(status or "PRESENT")))
 end
 
+-- /qg snapshot [label]: a named "who is here right now" (pre-pull, after a
+-- boss...). It also records presence for the active raid, so it counts toward
+-- attendance, and is kept (last 50) for disputes: /qg snapshot list.
+local function takeSnapshot(label)
+  local names = groupMembers()
+  db.snapshots = db.snapshots or {}
+  table.insert(db.snapshots, { at = now(), label = label or "", raid = activeRaid and activeRaid.id or nil, names = names })
+  while #db.snapshots > 50 do table.remove(db.snapshots, 1) end
+  if activeRaid then recordPresence() end
+  message(string.format("Snapshot%s: %d player(s)%s.", (label and label ~= "") and (" '" .. label .. "'") or "", #names,
+    activeRaid and (" in raid '" .. activeRaid.title .. "'") or " (no raid running, so not counted for attendance)"))
+end
+
+local function listSnapshots()
+  local list = db.snapshots or {}
+  if #list == 0 then message("No snapshots yet. /qg snapshot [label]"); return end
+  for i = math.max(1, #list - 4), #list do
+    local entry = list[i]
+    message(string.format("%s  %s  %d player(s)", entry.at, entry.label ~= "" and entry.label or "(no label)", #entry.names))
+  end
+end
+
 -- /qg award group <amount> [reason]: EP to everyone in the group.
 local function groupAward(rawAmount, reason)
   local names = groupMembers()
@@ -848,6 +870,7 @@ local function showHelp()
   local officer = isOfficer()
   message("/qg menu (or click the minimap coin) | inspect | status | roster | standings [player] | diag | version")
   message("/qg attune <key> [clear] - mark your own attunement")
+  message("/qg snapshot [label] | list - record who is in the group right now (officers)")
   message("/qg enchants - show or change the missing-enchant check (on/off, starting level)")
   message("/qg share - one paste with your character, gear check, consumables and attunements (Discord: /character sync)")
   message("/qg character - copy a line to link this character in Discord (/character import)")
@@ -1008,6 +1031,9 @@ local function command(text)
     for name in pairs(db.roster) do table.insert(names, name) end
     table.sort(names)
     message(#names .. " known character(s): " .. table.concat(names, ", "))
+  elseif action == "snapshot" then
+    if string.lower(args[2] or "") == "list" then listSnapshots()
+    elseif requireOfficer() then takeSnapshot(table.concat(args, " ", 2)) end
   elseif action == "enchants" then
     local sub = string.lower(args[2] or "")
     if sub == "on" or sub == "off" then

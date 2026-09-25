@@ -166,6 +166,8 @@ local function ensureDb()
   db.guildCut = db.guildCut or 0.05
   db.vault = db.vault or 0
   db.ledger = db.ledger or {}
+  db.bans = db.bans or {}   -- players the host won't play with: name -> { reason, at }
+  db.games = db.games or 0  -- games started, for /qg casino stats
 end
 
 local function ensureLedger(name)
@@ -252,6 +254,7 @@ local function startGroupGame(game, moneyText)
   if casino.session then tell("A group game is already running. Roll, or cancel it first."); return end
   local wager = parseMoney(moneyText)
   if not wager then tell("Enter a wager like 10g, 50s, or 1g50s."); return end
+  db.games = (db.games or 0) + 1
   local session = { game = game, host = ns.playerName(), phase = "JOINING", wager = wager, players = {}, rolls = {} }
   if game == "DIFF" then
     -- The wager is the roll ceiling, counted in gold or in silver.
@@ -276,6 +279,10 @@ local function addPlayer(name, byHost)
   local session = casino.session
   if not session or session.phase ~= "JOINING" or not name then return end
   if session.players[name] then return end
+  if db and db.bans and db.bans[name] then
+    tell(name .. " is on your casino ban list and was not added. (/qg casino unban " .. name .. ")")
+    return
+  end
   session.players[name] = true
   tell(string.format("%s joined %s (%d player%s).", name, GAME_NAMES[session.game], countKeys(session.players),
     countKeys(session.players) == 1 and "" or "s"))
@@ -463,6 +470,8 @@ local function startHouseGame(kind, player, args)
   player = ns.normalizeName(player)
   if not player then tell("Pick the player first (target them or use the Player box)."); return end
   if casino.houseBets[player] then tell(player .. " already has a game going. Finish or cancel it first."); return end
+  if db and db.bans and db.bans[player] then tell(player .. " is on your casino ban list. (/qg casino unban " .. player .. ")"); return end
+  db.games = (db.games or 0) + 1
   if kind == "BLACKJACK" then
     local wager = parseMoney(args[1])
     if not wager then tell("Enter a wager like 10g, 50s, or 1g50s."); return end
@@ -651,7 +660,61 @@ local function showHelp()
   tell("  then: roll | remind | cancel | add <player> | remove <player>")
   tell("House games: /qg casino blackjack <player> <wager> | overunder <player> <over|under> <wager>")
   tell("  roulette <player> <red|black|even|odd|1-36> <wager> | stand <player> | cancel <player>")
-  tell("/qg casino status | ledger [player] | debt clear <player> [owed-to]. Wagers: 10g, 50s, 1g50s.")
+  tell("/qg casino status | stats | ledger [player] | debt clear <player> [owed-to]. Wagers: 10g, 50s, 1g50s.")
+  tell("  ban <player> [reason] | unban <player> | bans | resetbans - players you won't play with")
+end
+
+-- Ban list: players the host won't play with (e.g. sore losers). Stored with
+-- the casino ledger, per host.
+local function banCommand(action, args)
+  local player = ns.normalizeName(args[1])
+  if action == "bans" then
+    local names = sortedNames(db.bans)
+    if #names == 0 then tell("Your casino ban list is empty."); return end
+    local parts = {}
+    for _, name in ipairs(names) do
+      local reason = db.bans[name].reason
+      table.insert(parts, name .. (reason and reason ~= "" and (" (" .. reason .. ")") or ""))
+    end
+    tell("Casino ban list: " .. table.concat(parts, ", "))
+  elseif action == "resetbans" then
+    db.bans = {}
+    tell("Casino ban list cleared.")
+  elseif not player then
+    tell("Usage: /qg casino " .. action .. " <player>" .. (action == "ban" and " [reason]" or ""))
+  elseif action == "ban" then
+    local reason = table.concat(args, " ", 2)
+    db.bans[player] = { reason = reason, at = ns.now() }
+    tell(player .. " banned from your casino games" .. (reason ~= "" and (": " .. reason) or "") .. ".")
+    -- Drop them from a game that is still taking players.
+    local session = casino.session
+    if session and session.phase == "JOINING" and session.players[player] then session.players[player] = nil end
+  else
+    db.bans[player] = nil
+    tell(player .. " can play again.")
+  end
+end
+
+-- Totals from the ledger: who is up or down overall, and games hosted.
+local function showStats()
+  local rows = {}
+  for name, ledger in pairs(db.ledger) do
+    if (ledger.won or 0) + (ledger.lost or 0) > 0 then
+      table.insert(rows, { name = name, net = (ledger.won or 0) - (ledger.lost or 0) })
+    end
+  end
+  table.sort(rows, function(a, b) return a.net > b.net end)
+  tell(string.format("Casino: %d game(s) hosted, %d player(s) with results, house %s.", db.games or 0, #rows, formatMoney(db.vault)))
+  local function line(label, list)
+    local parts = {}
+    for i = 1, math.min(3, #list) do table.insert(parts, list[i].name .. " " .. (list[i].net >= 0 and "+" or "-") .. formatMoney(math.abs(list[i].net))) end
+    tell(label .. (#parts > 0 and table.concat(parts, ", ") or "nobody"))
+  end
+  local winners, losers = {}, {}
+  for _, row in ipairs(rows) do if row.net > 0 then table.insert(winners, row) end end
+  for i = #rows, 1, -1 do if rows[i].net < 0 then table.insert(losers, rows[i]) end end
+  line("Biggest winners: ", winners)
+  line("Biggest losers: ", losers)
 end
 
 local function casinoCommand(args)
@@ -671,6 +734,8 @@ local function casinoCommand(args)
   elseif action == "overunder" then local player = table.remove(args, 1); startHouseGame("OVERUNDER", player, args)
   elseif action == "roulette" then local player = table.remove(args, 1); startHouseGame("ROULETTE", player, args)
   elseif action == "stand" then stand(ns.normalizeName(args[1]))
+  elseif action == "ban" or action == "unban" or action == "bans" or action == "resetbans" then banCommand(action, args)
+  elseif action == "stats" then showStats()
   elseif action == "status" then tell(casino.statusText())
   elseif action == "ledger" then showLedger(args)
   elseif action == "debt" and string.lower(args[1] or "") == "clear" then clearDebt(args[2], args[3])

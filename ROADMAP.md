@@ -29,14 +29,14 @@ each item's notes.
 
 **Addon (Lua), tested with the new fengari harness (`tests/lua/`)**
 - [x] **A1 (X3)** Lua test harness: the real addon files run against a mocked game inside vitest.
-- [ ] **A2 (X1)** Player identity for Forever (`ns.compat.playerKey/normalizeName`) and `/qg diag` identity line.
-- [ ] **A3 (GO5)** Enchant check: which equipped slots lack an enchant, in the snapshot and on the board.
-- [ ] **A4 (X5)** Login digest: "since your last login" summary, `/qg digest`.
-- [ ] **A5 (X6)** `QuebecGoldAPI` read-only v1.
-- [ ] **A6 (X4)** Versioned addon-message envelope (accepts old, sends new).
-- [ ] **A7 (X2)** `QGEXP1:` paste export + `/import code:` for members without the companion.
-- [ ] **A8 (ID3)** Attendance snapshot: `/qg snapshot [label]`.
-- [ ] **A9 (VG1, VG2)** Casino ban list and session stats.
+- [x] **A2 (X1)** Player identity for Forever (`ns.compat.playerKey/normalizeName`) and `/qg diag` identity line. *(done; `compat.identity`, `/qg diag`, realm-tolerant matching in every bot import)*
+- [x] **A3 (GO5)** Enchant check: which equipped slots lack an enchant, in the snapshot and on the board. *(done; per-slot enchant ids, MISSING_ENCHANTS finding, reason flags in the peer digest)*
+- [x] **A4 (X5)** Login digest: "since your last login" summary, `/qg digest`. *(done; Modules/Digest.lua)*
+- [x] **A5 (X6)** `QuebecGoldAPI` read-only v1. *(done; Modules/API.lua)*
+- [x] **A6 (X4)** Versioned addon-message envelope (accepts old, sends new). *(done in a lighter form: protocol rules documented, `/qg peers`; existing messages were already typed KIND|fields)*
+- [x] **A7 (X2)** `QGEXP1:` paste export + `/import code:` for members without the companion. *(done; `/qg share` + `/character sync`, verified Lua-to-TypeScript)*
+- [x] **A8 (ID3)** Attendance snapshot: `/qg snapshot [label]`. *(done; `/qg snapshot [label]`, local only)*
+- [x] **A9 (VG1, VG2)** Casino ban list and session stats. *(done; `/qg casino ban|unban|bans|resetbans|stats`)*
 
 **Bot (Discord)**
 - [ ] **B1 (GO3)** Readiness aggregator: one status per member, sorted most actionable first, enchants and attunement target.
@@ -71,6 +71,7 @@ each item's notes.
 ### Progress log (update after every commit)
 
 - 2026-09-26 14:40 A1 done: fengari harness; Consumables.lua and Core.lua (`/qg character`) verified against the mocked game.
+- 2026-09-26 16:10 A2-A9 done (addon side complete, 60 Lua tests through the harness). Next: bot items B1-B9, then release.
 
 ## History — where we were on 2026-09-24 (kept for reference)
 

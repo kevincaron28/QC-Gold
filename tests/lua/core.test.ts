@@ -106,3 +106,20 @@ describe("gear check: enchants, consumables and the peer digest", () => {
     expect(s.run(`return QuebecGoldDB.peerRoster["Bob"].flags .. "|" .. QuebecGoldDB.peerRoster["Bob"].professions`)).toBe("NOFLASK|Mining:300");
   });
 });
+
+describe("attendance snapshot", () => {
+  it("records who is in the group with a label and keeps only the last 50", () => {
+    const s = loggedIn();
+    s.run(`
+      MOCK_UNITS.party1 = { name = "Amy" }; MOCK_UNITS.party2 = { name = "Bob" }
+      function IsInGroup() return true end
+      NS.isOfficerName = function() return true end
+      QuebecGoldDB.settings.officers = { Tester = true, Kev = true }
+      SlashCmdList["QUEBECGOLD"]("snapshot pre pull")
+    `);
+    expect(s.chat().join("\n")).toMatch(/Snapshot 'pre pull': 3 player\(s\)/);
+    expect(s.run(`return QuebecGoldDB.snapshots[1].label .. "|" .. table.concat(QuebecGoldDB.snapshots[1].names, ",")`)).toBe("pre pull|Kev,Amy,Bob");
+    s.run(`for i = 1, 60 do SlashCmdList["QUEBECGOLD"]("snapshot n" .. i) end`);
+    expect(s.run(`return #QuebecGoldDB.snapshots`)).toBe("50");
+  });
+});
