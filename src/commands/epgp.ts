@@ -28,7 +28,7 @@ export const epgpCommand = new SlashCommandBuilder()
     .addStringOption((o) => o.setName("reason").setDescription("Reason").setMinLength(3).setRequired(true)))
   .addSubcommand((sub) => sub.setName("decay").setDescription("Apply the configured EPGP decay to all active members."))
   .addSubcommand((sub) => sub.setName("reverse").setDescription("Undo a mistaken EPGP entry (adds an opposite entry; history is kept).")
-    .addStringOption((o) => o.setName("entry").setDescription("Entry ID from /epgp history").setRequired(true))
+    .addStringOption((o) => o.setName("entry").setDescription("Entry (start typing a name or reason)").setAutocomplete(true).setRequired(true))
     .addStringOption((o) => o.setName("reason").setDescription("Why it is being reversed").setMinLength(3).setRequired(true)));
 
 function officer(interaction: ChatInputCommandInteraction): boolean {

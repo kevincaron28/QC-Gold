@@ -6,6 +6,7 @@ import { showEpProposal } from "./ep-award.js";
 import { raidReportEmbed } from "./raid-report.js";
 import { buildRaidReport } from "../services/raid-report.js";
 import { bossProgress } from "../services/progress.js";
+import { parseRaidTime } from "../services/raid-time.js";
 import { createRaidService, type SignupAvailability } from "../services/raid.js";
 import { hasPermission } from "../permissions.js";
 import { guildService, requireGuildContext } from "./context.js";
@@ -19,7 +20,7 @@ export const raidCommand = new SlashCommandBuilder()
   .setDescription("Manage guild raids and attendance.")
   .addSubcommand((sub) => sub.setName("create").setDescription("Create a raid.")
     .addStringOption((o) => o.setName("title").setDescription("Raid title").setMinLength(3).setRequired(true))
-    .addStringOption((o) => o.setName("time").setDescription("Start time in ISO-8601 format").setRequired(true))
+    .addStringOption((o) => o.setName("time").setDescription("When, e.g. friday 8pm, tonight 20:00, 2026-10-03 20:00").setRequired(true))
     .addStringOption((o) => o.setName("description").setDescription("Optional description"))
     .addStringOption((o) => o.setName("bosses").setDescription("Comma-separated boss names"))
     .addIntegerOption((o) => o.setName("tanks").setDescription("Tank slot cap").setMinValue(0))
@@ -27,25 +28,25 @@ export const raidCommand = new SlashCommandBuilder()
     .addIntegerOption((o) => o.setName("dps").setDescription("DPS slot cap").setMinValue(0)))
   .addSubcommand((sub) => sub.setName("progress").setDescription("Guild boss progression: first kills, kill counts, latest kill."))
   .addSubcommand((sub) => sub.setName("report").setDescription("Raid summary: duration, raiders, bosses, EP, loot. Posts it for everyone.")
-    .addStringOption((o) => o.setName("raid").setDescription("Raid ID").setRequired(true)))
+    .addStringOption((o) => o.setName("raid").setDescription("Raid (start typing its name)").setAutocomplete(true).setRequired(true)))
   .addSubcommand((sub) => sub.setName("award-ep").setDescription("Propose EP for a raid from attendance and boss kills; approve with a button.")
-    .addStringOption((o) => o.setName("raid").setDescription("Raid ID").setRequired(true)))
+    .addStringOption((o) => o.setName("raid").setDescription("Raid (start typing its name)").setAutocomplete(true).setRequired(true)))
   .addSubcommand((sub) => sub.setName("note").setDescription("Add an officer note to a raid (general, a boss, or what to improve).")
-    .addStringOption((o) => o.setName("raid").setDescription("Raid ID").setRequired(true))
+    .addStringOption((o) => o.setName("raid").setDescription("Raid (start typing its name)").setAutocomplete(true).setRequired(true))
     .addStringOption((o) => o.setName("text").setDescription("The note").setMaxLength(1000).setRequired(true))
     .addStringOption((o) => o.setName("boss").setDescription("Boss this note is about (optional)")))
   .addSubcommand((sub) => sub.setName("edit").setDescription("Edit a planned raid.")
-    .addStringOption((o) => o.setName("raid").setDescription("Raid ID").setRequired(true))
+    .addStringOption((o) => o.setName("raid").setDescription("Raid (start typing its name)").setAutocomplete(true).setRequired(true))
     .addStringOption((o) => o.setName("title").setDescription("New title"))
-    .addStringOption((o) => o.setName("time").setDescription("New ISO-8601 start time"))
+    .addStringOption((o) => o.setName("time").setDescription("New time, e.g. friday 8pm"))
     .addStringOption((o) => o.setName("description").setDescription("New description"))
     .addIntegerOption((o) => o.setName("tanks").setDescription("New tank slot cap").setMinValue(0))
     .addIntegerOption((o) => o.setName("healers").setDescription("New healer slot cap").setMinValue(0))
     .addIntegerOption((o) => o.setName("dps").setDescription("New DPS slot cap").setMinValue(0)))
   .addSubcommand((sub) => sub.setName("cancel").setDescription("Cancel a raid.")
-    .addStringOption((o) => o.setName("raid").setDescription("Raid ID").setRequired(true)))
+    .addStringOption((o) => o.setName("raid").setDescription("Raid (start typing its name)").setAutocomplete(true).setRequired(true)))
   .addSubcommand((sub) => sub.setName("signup").setDescription("Sign up for a raid.")
-    .addStringOption((o) => o.setName("raid").setDescription("Raid ID").setRequired(true))
+    .addStringOption((o) => o.setName("raid").setDescription("Raid (start typing its name)").setAutocomplete(true).setRequired(true))
     .addStringOption((o) => o.setName("role").setDescription("Your role for this raid").setRequired(true)
       .addChoices(
         { name: "Tank", value: "TANK" },
@@ -58,17 +59,17 @@ export const raidCommand = new SlashCommandBuilder()
         { name: "Maybe", value: "MAYBE" }
       )))
   .addSubcommand((sub) => sub.setName("cancel-signup").setDescription("Cancel your raid signup.")
-    .addStringOption((o) => o.setName("raid").setDescription("Raid ID").setRequired(true)))
+    .addStringOption((o) => o.setName("raid").setDescription("Raid (start typing its name)").setAutocomplete(true).setRequired(true)))
   .addSubcommand((sub) => sub.setName("status").setDescription("View raid status.")
-    .addStringOption((o) => o.setName("raid").setDescription("Raid ID").setRequired(true)))
+    .addStringOption((o) => o.setName("raid").setDescription("Raid (start typing its name)").setAutocomplete(true).setRequired(true)))
   .addSubcommand((sub) => sub.setName("roster").setDescription("View the raid roster.")
-    .addStringOption((o) => o.setName("raid").setDescription("Raid ID").setRequired(true)))
+    .addStringOption((o) => o.setName("raid").setDescription("Raid (start typing its name)").setAutocomplete(true).setRequired(true)))
   .addSubcommand((sub) => sub.setName("start").setDescription("Start a raid.")
-    .addStringOption((o) => o.setName("raid").setDescription("Raid ID").setRequired(true)))
+    .addStringOption((o) => o.setName("raid").setDescription("Raid (start typing its name)").setAutocomplete(true).setRequired(true)))
   .addSubcommand((sub) => sub.setName("end").setDescription("End a raid.")
-    .addStringOption((o) => o.setName("raid").setDescription("Raid ID").setRequired(true)))
+    .addStringOption((o) => o.setName("raid").setDescription("Raid (start typing its name)").setAutocomplete(true).setRequired(true)))
   .addSubcommand((sub) => sub.setName("boss").setDescription("Mark a raid boss's kill status.")
-    .addStringOption((o) => o.setName("raid").setDescription("Raid ID").setRequired(true))
+    .addStringOption((o) => o.setName("raid").setDescription("Raid (start typing its name)").setAutocomplete(true).setRequired(true))
     .addStringOption((o) => o.setName("name").setDescription("Boss name").setRequired(true))
     .addStringOption((o) => o.setName("status").setDescription("Boss status").setRequired(true)
       .addChoices(
@@ -76,7 +77,7 @@ export const raidCommand = new SlashCommandBuilder()
         { name: "Pending", value: "PENDING" }
       )))
   .addSubcommand((sub) => sub.setName("attendance").setDescription("Record a member's raid attendance.")
-    .addStringOption((o) => o.setName("raid").setDescription("Raid ID").setRequired(true))
+    .addStringOption((o) => o.setName("raid").setDescription("Raid (start typing its name)").setAutocomplete(true).setRequired(true))
     .addUserOption((o) => o.setName("player").setDescription("Member to record").setRequired(true))
     .addStringOption((o) => o.setName("status").setDescription("Attendance status").setRequired(true)
       .addChoices(
@@ -92,10 +93,10 @@ function requireRaidLeader(interaction: ChatInputCommandInteraction): void {
   }
 }
 
-function parseRaidTime(value: string): Date {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) throw new Error("Raid time must be a valid ISO-8601 date.");
-  return date;
+// "friday 8pm" etc. in the guild's timezone (see services/raid-time.ts).
+async function readRaidTime(guildId: string, value: string): Promise<Date> {
+  const settings = await guildService.getSettings(guildId);
+  return parseRaidTime(value, settings?.timezone ?? "America/Toronto");
 }
 
 export async function syncSignupEmbed(discordGuild: DiscordGuild, guildId: string, raidId: string): Promise<void> {
@@ -181,7 +182,7 @@ export async function executeRaid(interaction: ChatInputCommandInteraction): Pro
     const raid = await raidService.create({
       guildId: context.guildId,
       title: interaction.options.getString("title", true),
-      scheduledAt: parseRaidTime(interaction.options.getString("time", true)),
+      scheduledAt: await readRaidTime(context.guildId, interaction.options.getString("time", true)),
       createdBy: interaction.user.id,
       ...(description === null ? {} : { description }),
       ...(bosses === null ? {} : { bosses: bosses.split(",") }),
@@ -190,7 +191,9 @@ export async function executeRaid(interaction: ChatInputCommandInteraction): Pro
       ...(dps === null ? {} : { dpsLimit: dps })
     });
     if (interaction.guild) await syncSignupEmbed(interaction.guild, context.guildId, raid.id);
-    await interaction.reply({ content: `Created raid **${raid.title}** with ID \`${raid.id}\`.`, ephemeral: true });
+    // Discord shows <t:...> in each reader's own timezone, so this doubles as a check.
+    const when = Math.floor(raid.scheduledAt.getTime() / 1000);
+    await interaction.reply({ content: `Created raid **${raid.title}** for <t:${when}:F> (<t:${when}:R>). If that time looks wrong, fix it with \`/raid edit\`.`, ephemeral: true });
     return;
   }
 
@@ -272,7 +275,7 @@ export async function executeRaid(interaction: ChatInputCommandInteraction): Pro
     const dps = interaction.options.getInteger("dps");
     const raid = await raidService.edit(raidId, context.guildId, {
       ...(title === null ? {} : { title }),
-      ...(time === null ? {} : { scheduledAt: parseRaidTime(time) }),
+      ...(time === null ? {} : { scheduledAt: await readRaidTime(context.guildId, time) }),
       ...(description === null ? {} : { description }),
       ...(tanks === null ? {} : { tankLimit: tanks }),
       ...(healers === null ? {} : { healerLimit: healers }),

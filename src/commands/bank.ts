@@ -17,7 +17,7 @@ export const bankCommand = new SlashCommandBuilder()
     .addStringOption((o) => o.setName("note").setDescription("What it's for").setMaxLength(300)))
   .addSubcommand((sub) => sub.setName("mine").setDescription("Your recent bank requests."))
   .addSubcommand((sub) => sub.setName("cancel").setDescription("Cancel one of your open requests.")
-    .addStringOption((o) => o.setName("id").setDescription("Request ID from /bank mine").setRequired(true)))
+    .addStringOption((o) => o.setName("id").setDescription("Request (start typing the item)").setAutocomplete(true).setRequired(true)))
   .addSubcommand((sub) => sub.setName("list").setDescription("Open requests (officers).")
     .addStringOption((o) => o.setName("status").setDescription("Which requests (default open)")
       .addChoices(
@@ -28,7 +28,7 @@ export const bankCommand = new SlashCommandBuilder()
         { name: "Denied", value: "DENIED" }
       )))
   .addSubcommand((sub) => sub.setName("handle").setDescription("Approve, fulfil, or deny a request (officers).")
-    .addStringOption((o) => o.setName("id").setDescription("Request ID").setRequired(true))
+    .addStringOption((o) => o.setName("id").setDescription("Request (start typing the item)").setAutocomplete(true).setRequired(true))
     .addStringOption((o) => o.setName("action").setDescription("What to do").setRequired(true)
       .addChoices(
         { name: "Approve", value: "APPROVED" },

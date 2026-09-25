@@ -17,12 +17,12 @@ export const lootCommand = new SlashCommandBuilder()
     .addIntegerOption((o) => o.setName("increment").setDescription("Bid increment").setMinValue(1).setRequired(true))
     .addIntegerOption((o) => o.setName("duration").setDescription("Duration in seconds").setMinValue(1).setMaxValue(86400).setRequired(true))
     .addStringOption((o) => o.setName("boss").setDescription("Boss that dropped it (for loot history)"))
-    .addStringOption((o) => o.setName("raid").setDescription("Raid ID (for loot history)")))
+    .addStringOption((o) => o.setName("raid").setDescription("Raid for loot history (start typing its name)").setAutocomplete(true)))
   .addSubcommand((sub) => sub.setName("bid").setDescription("Bid on an active auction.")
-    .addStringOption((o) => o.setName("auction").setDescription("Auction ID").setRequired(true))
+    .addStringOption((o) => o.setName("auction").setDescription("Auction (start typing the item)").setAutocomplete(true).setRequired(true))
     .addIntegerOption((o) => o.setName("amount").setDescription("Bid amount").setMinValue(1).setRequired(true)))
   .addSubcommand((sub) => sub.setName("close").setDescription("Close an auction.")
-    .addStringOption((o) => o.setName("auction").setDescription("Auction ID").setRequired(true)))
+    .addStringOption((o) => o.setName("auction").setDescription("Auction (start typing the item)").setAutocomplete(true).setRequired(true)))
   .addSubcommand((sub) => sub.setName("history").setDescription("View awarded loot."));
 
 function officer(interaction: ChatInputCommandInteraction): boolean {

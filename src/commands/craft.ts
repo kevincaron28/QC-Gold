@@ -9,7 +9,7 @@ import { requireGuildContext } from "./context.js";
 const craftService = createCraftService(prisma);
 
 const idOption = (name: string) => (o: import("discord.js").SlashCommandStringOption) =>
-  o.setName("id").setDescription(`Request ID (${name})`).setRequired(true);
+  o.setName("id").setDescription(`Request, start typing the item (${name})`).setAutocomplete(true).setRequired(true);
 
 export const craftCommand = new SlashCommandBuilder()
   .setName("craft")

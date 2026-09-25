@@ -390,6 +390,16 @@ model GuildSettings {
   // Weekly guild report posted to the notify channel.
   weeklyReportEnabled      Boolean   @default(false)
   weeklyReportLastAt       DateTime?
+  // IANA timezone for typing raid times ("friday 8pm") and showing them.
+  timezone                 String    @default("America/Toronto")
+  // "en" or "fr": language for member-facing bot messages.
+  language                 String    @default("en")
+  // Where the welcome message goes: CHANNEL, DM, or BOTH.
+  welcomeDelivery          String    @default("CHANNEL")
+  // Roles new members can pick with buttons on the welcome message (max 5).
+  welcomeRoleIds           String[]  @default([])
+  // Text above those buttons, e.g. "Which game are you here for?"
+  welcomeRolePrompt        String?
   createdAt                DateTime  @default(now())
   updatedAt                DateTime  @updatedAt
   guild                    Guild     @relation(fields: [guildId], references: [id], onDelete: Cascade)

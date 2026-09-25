@@ -14,7 +14,7 @@ export const testRaidCommand = new SlashCommandBuilder()
     .addIntegerOption((o) => o.setName("starts_in").setDescription("Minutes until it starts (default 70, so the reminder fires)").setMinValue(2).setMaxValue(1440))
     .addStringOption((o) => o.setName("realm").setDescription("Realm for the fake characters (default: your main's realm)")))
   .addSubcommand((sub) => sub.setName("finish").setDescription("Play the test raid: attendance, boss kills, loot, then end it and propose EP.")
-    .addStringOption((o) => o.setName("raid").setDescription("Test raid ID").setRequired(true))
+    .addStringOption((o) => o.setName("raid").setDescription("Test raid (pick from the list)").setAutocomplete(true).setRequired(true))
     .addBooleanOption((o) => o.setName("via_addon").setDescription("Send attendance as an addon import to /import-apply instead")))
   .addSubcommand((sub) => sub.setName("cleanup").setDescription("Delete every test raid, fake raider, and their EPGP/loot."));
 

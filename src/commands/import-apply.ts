@@ -13,7 +13,7 @@ const auditService = createAuditService(prisma);
 export const importApplyCommand = new SlashCommandBuilder()
   .setName("import-apply")
   .setDescription("Apply a reviewed addon import to the DKP ledger.")
-  .addStringOption((option) => option.setName("id").setDescription("Import ID").setRequired(true));
+  .addStringOption((option) => option.setName("id").setDescription("Import (pick from the list)").setAutocomplete(true).setRequired(true));
 
 // One short block per in-game raid: which Discord raid it matched, how many
 // attendance rows were written, and signup no-shows / walk-ins.

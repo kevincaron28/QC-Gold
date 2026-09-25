@@ -35,6 +35,7 @@ import { executeTestRaid } from "./commands/testraid.js";
 import { executeCraft } from "./commands/craft.js";
 import { executeSetup, greetNewGuild, logSetupStatus } from "./commands/setup.js";
 import { executeHelp } from "./commands/help.js";
+import { handleAutocomplete } from "./commands/autocomplete.js";
 import { prisma } from "./database.js";
 import { runRecruitmentPosts } from "./services/recruitment.js";
 import { runRaidReminders } from "./services/reminders.js";
@@ -134,6 +135,10 @@ client.on(Events.GuildMemberRemove, async (member) => {
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {
+  if (interaction.isAutocomplete()) {
+    await handleAutocomplete(interaction);
+    return;
+  }
   if (interaction.isButton() && interaction.customId.startsWith(EP_AWARD_PREFIX)) {
     try {
       await handleEpAwardButton(interaction);

@@ -14,13 +14,13 @@ export const applicationCommand = new SlashCommandBuilder()
     .addStringOption((o) => o.setName("status").setDescription("Filter status")
       .addChoices(...Object.values(ApplicationStatus).map((status) => ({ name: status, value: status })))))
   .addSubcommand((sub) => sub.setName("view").setDescription("View an application.")
-    .addStringOption((o) => o.setName("id").setDescription("Application ID").setRequired(true)))
+    .addStringOption((o) => o.setName("id").setDescription("Application (start typing the character)").setAutocomplete(true).setRequired(true)))
   .addSubcommand((sub) => sub.setName("approve").setDescription("Approve an application.")
-    .addStringOption((o) => o.setName("id").setDescription("Application ID").setRequired(true)))
+    .addStringOption((o) => o.setName("id").setDescription("Application (start typing the character)").setAutocomplete(true).setRequired(true)))
   .addSubcommand((sub) => sub.setName("reject").setDescription("Reject an application.")
-    .addStringOption((o) => o.setName("id").setDescription("Application ID").setRequired(true)))
+    .addStringOption((o) => o.setName("id").setDescription("Application (start typing the character)").setAutocomplete(true).setRequired(true)))
   .addSubcommand((sub) => sub.setName("trial").setDescription("Move an application to trial.")
-    .addStringOption((o) => o.setName("id").setDescription("Application ID").setRequired(true)));
+    .addStringOption((o) => o.setName("id").setDescription("Application (start typing the character)").setAutocomplete(true).setRequired(true)));
 
 export const applyCommand = new SlashCommandBuilder()
   .setName("apply").setDescription("Submit a recruitment application.")
