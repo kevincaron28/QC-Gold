@@ -135,6 +135,7 @@ export const addonConsumeScanSchema = z.object({
 export const addonSnapshotSchema = z.object({
   source: z.string().min(1),
   exportedAt: z.coerce.date(),
+  wowGuild: z.string().optional(),
   character: addonCharacterSchema.optional(),
   consumeScan: addonConsumeScanSchema.optional(),
   transactions: z.array(addonTransactionSchema).default([]),

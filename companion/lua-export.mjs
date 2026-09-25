@@ -221,6 +221,8 @@ export async function readAddonExport(path, realm) {
   return {
     source: "QuebecGold",
     exportedAt,
+    // The WoW guild this saved data belongs to ("Guild Name-Realm").
+    ...(database.guildKey ? { wowGuild: String(database.guildKey) } : {}),
     ...(database.character?.name ? {
       character: {
         name: String(database.character.name),

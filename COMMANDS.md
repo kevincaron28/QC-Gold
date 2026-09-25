@@ -32,6 +32,8 @@ typed command. Names are case-insensitive (`bob` = `Bob`).
 | `/qg character` | One line with your character (name, class, race, level, spec, professions) for `/character import` |
 | `/qg enchants [on/off/level <n>]` | Show or change the missing-enchant check (which slots, from what level) |
 | `/qg consumes` / `/qg consumes me` | Officers: who in the group lacks a flask/elixir or food. Anyone: your own active consumables |
+| `/qg backup` | A box with one code (`QGBKP1:...`) holding this guild's saved data (raids, EPGP ledger, roster, attendance, loot, settings). Copy it somewhere safe |
+| `/qg restore` / `/qg restore undo` | Paste a backup code and press Restore twice (first shows what it holds, then replaces your data). A backup from another guild is refused; `undo` puts back what was there before |
 | `/qg digest [on/off]` | What changed since your last login (also shown once at login) |
 | `/qg peers` | Which guildmates run which addon version this session |
 | `/qg snapshot [label]` / `/qg snapshot list` | Officers: record who is in the group right now (also counts as presence for the active raid) |
@@ -317,8 +319,12 @@ A **raid core** is a named roster (e.g. "Tuesday MC core"); a guild can have sev
 | --- | --- |
 | `/core create <name> [description]` | Create a core (Raid Leaders) |
 | `/core add <core> <player> [role]` / `/core remove <core> <player>` | Manage its players (Raid Leaders); role Tank / Healer / DPS |
-| `/core rules <core> [attendance] [late] [boss] [clear] [reset]` | Give the core its own EP values for its raids (Raid Leaders); anything left empty uses the guild default |
+| `/core rules <core> [attendance] [late] [boss] [clear] [base_gp] [decay] [loot_mode] [pool] [reset]` | The core's point rules. **Every core follows the guild's settings** (`/config`, `/setup`) **unless you change a value here**; with no options it shows the effective rules and which differ. `pool:separate` gives the core its own EP/GP pool (from now on), `loot_mode` can make one core loot council, `reset` goes back to the guild defaults |
 | `/core show <core>` / `/core list` | See a roster / all cores (everyone) |
 | `/core post [core]` | Refresh the roster message(s) in the roster channel |
 | `/core delete <core>` | Delete a core; raids made for it keep their signups |
 | `/raid create ... core:<name>` | Create a raid whose signups give that core priority |
+
+### Point pools
+
+By default everyone has **one guild pool** of EP/GP, whatever raid core they raid with. A core can opt into **its own pool** (`/core rules pool:separate`): from then on its raids pay attendance and boss EP into that pool, GP from its loot auctions and `/loot award` is charged to it, and its standings are separate. Use the `core:` option on `/epgp balance`, `history`, `leaderboard`, `award-ep`, `award-gp` and `decay` to work on a pool; without it you get the guild pool (`/epgp balance` also lists your standing in every separate pool). Decay uses the core's own percentage when set. The in-game standings (`/qg standings`, Standings.lua) show the **guild pool** only. A core that has points in its own pool can't be deleted or switched back to the shared pool.

@@ -46,6 +46,7 @@ new `KIND`, never a changed one.
 | Bidding.lua | `bidding` | QuebecGoldBid | In-game GP bidding on loot |
 | Dungeon.lua | `dungeon` | QuebecGoldDgn | Dungeon run tracking for the Dungeon Challenge |
 | Calendar.lua | `calendar` | (none) | `/qg calendar check` |
+| Backup.lua | `backup` | (none) | `/qg backup` and `/qg restore [undo]`: this guild's saved data as one `QGBKP1:` code |
 | API.lua | always on | (none) | `QuebecGoldAPI` read-only v1 for other addons and WeakAuras (see the file header) |
 | Digest.lua | `digest` | (none) | Login digest: "since your last login" from saved data; `/qg digest [on/off]` |
 | Consumables.lua | `consumables` | (none) | `/qg consumes`: who in the group lacks a flask/elixir or food; your own buffs go into your readiness snapshot |

@@ -72,6 +72,7 @@ each item's notes.
 
 - 2026-09-26 14:40 A1 done: fengari harness; Consumables.lua and Core.lua (`/qg character`) verified against the mocked game.
 - 2026-09-26 16:10 A2-A9 done (addon side complete, 60 Lua tests through the harness). Next: bot items B1-B9, then release.
+- 2026-09-27 05:00 v2.1: per-core point rules and pools (GO1), one saved-data set per WoW guild (G10), `/qg backup` and `/qg restore` (GO9), addon 2.1.0, 245 tests. Not built as asked: in-game polls (dropped by you).
 - 2026-09-27 01:30 B1-B9 and R1 done. **v2.0.0 is complete: addon 2.0.0 zip in `dist/`, 232 tests green, migrations applied to the live database through `20260927010000_polls`.** Next: the user runs checklist sections 0-13, then push and release.
 
 ## History — where we were on 2026-09-24 (kept for reference)
@@ -669,7 +670,7 @@ none is started.
 - **G9. [ ] M — Account-wide alt linking for attunements:** officers link alts
   so one completion counts for all. We link characters to a Discord member,
   so this is mostly reading that link into the addon via Standings.lua.
-- **G10. [ ] S — Per-guild SavedVariables isolation** (guild name + realm)
+- **G10. [x] S — Per-guild SavedVariables isolation** (guild name + realm)
   so one WoW install with alts in two guilds can't mix ledgers. Low risk,
   do it before a public release.
 - **G11. [ ] S — TBC Anniversary support:** GuildOS ships one build for
@@ -901,7 +902,7 @@ everything below is an idea to build ourselves, never code to copy.
    other addons can read standings and readiness without touching saved data.
 
 **From GuildOS** (`GO`)
-- **GO1. [~] M: per-core rules** *(EP values per core built 2026-09-27 as `/core rules`; per-core point pools, decay and loot rules still open)*. Its Core Manager gives each raid core its own
+- **GO1. [x] M: per-core rules** *(built 2026-09-27: `/core rules` with guild defaults for every core, per-core overrides for EP values, base GP, decay and loot mode, optional separate point pool with `core:` on `/epgp`; tests/core-rules.test.ts. Standings.lua shows the guild pool only.)*. Its Core Manager gives each raid core its own
   loot rules, attendance penalty weights and point pool. Our cores (#43) only
   give signup priority. Add per-core EPGP pool/decay, attendance rules and
   class-default roles (tank/healer/melee/ranged).
@@ -924,7 +925,7 @@ everything below is an idea to build ourselves, never code to copy.
   Discord), one result. Simple and popular.
 - **GO8. [ ] M: SoftRes import (softres.it / Gargul export)** into the wishlist and
   bidding popup. Guilds using soft reserves won't retype them (see also G13 TMB).
-- **GO9. [ ] S: backup/restore string** for the addon's SavedVariables ("copy
+- **GO9. [x] S: backup/restore string** for the addon's SavedVariables ("copy
   this before a risky change"), complementing the bot's nightly database backup.
 - **GO10. [ ] S: open crafting-query protocol** (a published addon prefix any
   addon may answer for "who can craft item X?"). Only worth it if other addons

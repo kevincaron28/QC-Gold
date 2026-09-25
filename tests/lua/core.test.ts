@@ -123,3 +123,68 @@ describe("attendance snapshot", () => {
     expect(s.run(`return #QuebecGoldDB.snapshots`)).toBe("50");
   });
 });
+
+describe("one saved-data set per WoW guild", () => {
+  const inGuild = (s: LuaSession, name: string) => s.run(`function GetGuildInfo() return ${JSON.stringify(name)}, "Officer", 1 end`);
+
+  it("claims existing data for the first guild it sees", () => {
+    const s = loggedIn();
+    inGuild(s, "Alpha");
+    s.run(`QuebecGoldDB.roster = { Bob = {} }; fire_event("GUILD_ROSTER_UPDATE")`);
+    expect(s.run(`return QuebecGoldDB.guildKey`)).toBe("Alpha-TestRealm");
+    expect(s.run(`return tostring(QuebecGoldDB.roster.Bob ~= nil)`)).toBe("true");
+  });
+
+  it("parks one guild's data and brings it back, never mixing ledgers", () => {
+    session = newLuaSession();
+    const t = session;
+    // Saved variables from earlier play in guild Alpha.
+    t.run(`
+      QuebecGoldDB = { version = 4, guildKey = "Alpha-TestRealm", epgp = { Bob = { ep = 50, gp = 0, ledger = {} } }, roster = { Bob = {} }, settings = { officers = {} }, raids = { r1 = { id = "r1", title = "MC" } } }
+      NS = {}
+      MOCK_UNITS = { player = { name = "Kev", buffs = {} } }
+      function GetGuildInfo() return "Beta", "Member", 3 end
+    `);
+    const login = () => {
+      // A /reload or new login: the addon files run again, saved variables stay.
+      t.run(`FRAMES = {}; NS = {}`);
+      t.load("Core.lua");
+      t.load("Compat.lua");
+      t.run(`fire_event("PLAYER_LOGIN"); fire_event("GUILD_ROSTER_UPDATE")`);
+    };
+
+    // Login on a character in guild Beta: it starts clean, Alpha's ledger is parked.
+    login();
+    expect(t.run(`return QuebecGoldDB.guildKey`)).toBe("Beta-TestRealm");
+    expect(t.run(`return tostring(next(QuebecGoldDB.epgp)) .. tostring(next(QuebecGoldDB.raids))`)).toBe("nilnil");
+    expect(t.run(`return QuebecGoldDB.otherGuilds["Alpha-TestRealm"].epgp.Bob.ep`)).toBe("50");
+    expect(t.chat().join("\n")).toContain("Guild changed: now using the saved data for Beta-TestRealm (new)");
+
+    // Beta gets its own ledger.
+    t.run(`QuebecGoldDB.epgp = { Bob = { ep = 7, gp = 0, ledger = {} } }`);
+
+    // Later, a character in Alpha logs in: Alpha's data comes back, Beta's is parked.
+    t.run(`function GetGuildInfo() return "Alpha", "Officer", 1 end`);
+    login();
+    expect(t.run(`return QuebecGoldDB.guildKey`)).toBe("Alpha-TestRealm");
+    expect(t.run(`return QuebecGoldDB.epgp.Bob.ep`)).toBe("50");
+    expect(t.run(`return QuebecGoldDB.raids.r1.title`)).toBe("MC");
+    expect(t.run(`return QuebecGoldDB.otherGuilds["Beta-TestRealm"].epgp.Bob.ep`)).toBe("7");
+    expect(t.chat().join("\n")).toContain("(restored)");
+  });
+
+  it("does nothing until the client knows the guild, or when there is no guild", () => {
+    const s = loggedIn();
+    s.run(`function GetGuildInfo() return nil end; fire_event("GUILD_ROSTER_UPDATE")`);
+    expect(s.run(`return tostring(QuebecGoldDB.guildKey)`)).toBe("nil");
+    s.run(`function IsInGuild() return false end; function GetGuildInfo() return "Alpha", "x", 1 end; fire_event("GUILD_ROSTER_UPDATE")`);
+    expect(s.run(`return tostring(QuebecGoldDB.guildKey)`)).toBe("nil");
+  });
+
+  it("/qg diag shows which guild the data belongs to", () => {
+    const s = loggedIn();
+    inGuild(s, "Alpha");
+    s.run(`fire_event("GUILD_ROSTER_UPDATE"); SlashCmdList["QUEBECGOLD"]("diag")`);
+    expect(s.chat().join("\n")).toContain("Saved data belongs to guild: Alpha-TestRealm");
+  });
+});

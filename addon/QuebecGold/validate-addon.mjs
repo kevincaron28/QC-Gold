@@ -54,7 +54,7 @@ if (!casino.includes("commandHandlers")) {
   throw new Error("Casino.lua does not register into Core.lua's command extension point");
 }
 
-const addonFiles = ["Core.lua", "Compat.lua", "Locale.lua", "Standings.lua", "Modules/Casino.lua", "Modules/Sync.lua", "Modules/Sim.lua", "Modules/Bidding.lua", "Modules/Calendar.lua", "Modules/Consumables.lua", "Modules/Digest.lua", "Modules/API.lua", "Modules/Dungeon.lua", "Modules/Minimap.lua"];
+const addonFiles = ["Core.lua", "Compat.lua", "Locale.lua", "Standings.lua", "Modules/Casino.lua", "Modules/Sync.lua", "Modules/Sim.lua", "Modules/Bidding.lua", "Modules/Calendar.lua", "Modules/Consumables.lua", "Modules/Digest.lua", "Modules/API.lua", "Modules/Backup.lua", "Modules/Dungeon.lua", "Modules/Minimap.lua"];
 for (const file of addonFiles) {
   const source = readFileSync(new URL(file, root), "utf8");
   if (/RegisterEvent\(\s*"COMBAT_LOG_EVENT/.test(source)) {

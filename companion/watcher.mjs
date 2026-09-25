@@ -16,6 +16,13 @@ async function upload() {
   const exported = config.watchFile.toLowerCase().endsWith(".lua")
     ? await readAddonExport(config.watchFile, config.realm)
     : JSON.parse(await readFile(config.watchFile, "utf8"));
+  // The saved data belongs to one WoW guild. If this companion is set up for
+  // a specific one (wowGuild in the config) and the file is from another
+  // (e.g. you played an alt in a different guild), don't send it to this Discord.
+  if (config.wowGuild && exported.wowGuild && exported.wowGuild !== config.wowGuild) {
+    console.log(`Skipped: the saved data belongs to "${exported.wowGuild}", this companion is for "${config.wowGuild}".`);
+    return;
+  }
   const response = await fetch(config.uploadUrl, {
     method: "POST",
     headers: {

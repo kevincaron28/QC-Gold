@@ -181,3 +181,8 @@ presence, loot, and dungeon runs. An officer reviews and applies it with
 - **`QuebecGoldAPI`** (see `Modules/API.lua`): read-only version 1 for WeakAuras and other addons.
 - **Casino:** `/qg casino ban|unban|bans|resetbans` and `/qg casino stats`.
 - **Player identity.** `/qg diag` now prints what this client returns for name and realm. WoW Forever has no real realms, so the addon never assumes one.
+
+## Version 2.1 additions
+
+- **One saved-data set per WoW guild.** If a WoW install has characters in two guilds, the addon keeps each guild's ledger, roster, raids and settings apart: the data of the guild you are not playing in is parked and comes back when you play there. The guild is only known a moment after login, so a "Guild changed" line (and a `/reload` suggestion) appears the first time you switch. `/qg diag` shows which guild the data belongs to. The companion skips an upload whose data belongs to another guild if you set `"wowGuild": "Guild Name-Realm"` in `companion.config.json` (the exact text `/qg diag` shows).
+- **`/qg backup` and `/qg restore`.** A backup is one copyable code with this guild's saved data; restoring needs two presses (it shows what the backup holds first) and `/qg restore undo` reverses it. Codes are checked (checksum), read by a plain parser that never runs code, and refused if they come from another guild.

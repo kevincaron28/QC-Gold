@@ -105,6 +105,8 @@ Dungeon Challenge (addon v1.7.0+, roadmap D1–D10):
 - Permanent achievements (First Blood, No One Dies, Speed Demon, Record Breaker, Guild Squad, Dungeon Master, Season Champion), revoked with the run that earned them if it is invalidated
 - In game: a Dungeons tab (live run, recent runs and their sync state, season top 10 from Discord); `/testraid dungeon` and `/qg sim dungeon` for testing, removed by `/testraid cleanup`
 
+Version 2.1 (addon and bot): per-core point rules (guild defaults, per-core overrides, optional separate point pools, per-core loot mode), one saved-data set per WoW guild in the addon, and `/qg backup` / `/qg restore`.
+
 Version 2.0.0 (addon and bot):
 
 - **Addon:** enchant check (which slots lack an enchant; reason flags travel in the guild digest), consumable scan, `/qg share` (one paste to Discord's `/character sync`, no companion needed), login digest, `/qg peers`, attendance snapshots, casino ban list and stats, and a read-only `QuebecGoldAPI` for other addons. The addon's real Lua files now run in the test suite against a mocked game (`tests/lua/`, fengari).

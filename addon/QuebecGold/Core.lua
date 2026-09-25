@@ -810,6 +810,7 @@ local function showIdentity()
   if not ns.compat or not ns.compat.identity then return end
   local id = ns.compat.identity()
   local raw = id.raw
+  message("Saved data belongs to guild: " .. tostring(db and db.guildKey or "(not known yet)"))
   message(string.format("Identity: name=%s realm=%s (GetRealmName=%s, normalized=%s, UnitName realm=%s, full=%s)",
     id.name, id.hasRealm and id.realm or "(none)", tostring(raw.realmName), tostring(raw.normalizedRealm),
     tostring(raw.unitNameRealm), tostring(raw.fullName)))
@@ -911,6 +912,7 @@ ns.MODULES = {
   { key = "bidding", name = "GP bidding", desc = "in-game GP bids on loot", commands = { "bid" } },
   { key = "dungeon", name = "Dungeons", desc = "dungeon run tracking and points", commands = { "dungeon" } },
   { key = "calendar", name = "Calendar", desc = "guild calendar check", commands = { "calendar" } },
+  { key = "backup", name = "Backup and restore", desc = "copy this guild's saved data as one code", commands = { "backup", "restore" } },
   { key = "digest", name = "Login digest", desc = "what changed since your last login", commands = { "digest" } },
   { key = "consumables", name = "Consumable scan", desc = "who is missing a flask or food", commands = { "consumes" } },
   { key = "sim", name = "Test tools", desc = "fake raid and dungeon runs for officers", commands = { "sim" } }
@@ -1159,6 +1161,60 @@ local function handlePeerReadiness(text, sender)
   }
 end
 
+-- ---------------------------------------------------------------------
+-- One saved-data set per WoW guild. A WoW install with characters in two
+-- guilds must not mix their ledgers, rosters and raids, so the active data
+-- lives at the top of QuebecGoldDB (every module reads it as before) and the
+-- data of other guilds is parked in QuebecGoldDB.otherGuilds[key]. When the
+-- character's guild differs from the one the data belongs to, the two are
+-- swapped in place. The guild is only known once the client has loaded it,
+-- so this is tried on entering the world and on guild roster updates.
+-- ---------------------------------------------------------------------
+local KEEP_AT_ROOT = { version = true, guildKey = true, otherGuilds = true }
+local guildResolved = false
+
+local function currentGuildKey()
+  if not (IsInGuild and IsInGuild()) then return nil end
+  local guildName = GetGuildInfo and GetGuildInfo("player")
+  if type(guildName) ~= "string" or guildName == "" or isSecret(guildName) then return nil end
+  local realm = (ns.compat and ns.compat.identity().realm) or (GetRealmName and GetRealmName()) or ""
+  return guildName .. "-" .. realm
+end
+
+-- Returns "recorded", "same", "switched" or nil (guild not known yet / no guild).
+local function resolveGuildData()
+  if guildResolved or not db then return nil end
+  local key = currentGuildKey()
+  if not key then return nil end
+  guildResolved = true
+  if not db.guildKey then
+    -- First time: the data already saved belongs to this guild.
+    db.guildKey = key
+    return "recorded"
+  end
+  if db.guildKey == key then return "same" end
+  local old = db.guildKey
+  db.otherGuilds = db.otherGuilds or {}
+  local parked = {}
+  for field, value in pairs(db) do
+    if not KEEP_AT_ROOT[field] then parked[field] = value end
+  end
+  for field in pairs(parked) do db[field] = nil end
+  db.otherGuilds[old] = parked
+  local incoming = db.otherGuilds[key]
+  db.otherGuilds[key] = nil
+  local restored = false
+  if incoming then
+    for field, value in pairs(incoming) do db[field] = value end
+    restored = true
+  end
+  db.guildKey = key
+  ensureDb()
+  message(string.format("Guild changed: now using the saved data for %s (%s). Data for %s is kept and comes back if you play there. /reload is recommended.",
+    key, restored and "restored" or "new", old))
+  return "switched"
+end
+
 local function onEvent(_, event, ...)
   if event == "PLAYER_LOGIN" then
     ensureDb()
@@ -1176,6 +1232,7 @@ local function onEvent(_, event, ...)
   end
   if not db then return end
   if event == "PLAYER_ENTERING_WORLD" then
+    resolveGuildData()
     maybeAutoSync(AUTO_SYNC_DEBOUNCE_SECONDS)
   elseif event == "UNIT_INVENTORY_CHANGED" then
     local unit = ...
@@ -1184,6 +1241,8 @@ local function onEvent(_, event, ...)
     if activeRaid then recordPresence() end
     if inRaidGroup() then maybeAutoSync(AUTO_SYNC_RAID_INTERVAL_SECONDS) end
   elseif event == "GUILD_ROSTER_UPDATE" then
+    -- Before anything is added to the roster: make sure it is the right guild's data.
+    resolveGuildData()
     local count = GetNumGuildMembers and GetNumGuildMembers() or 0
     db.lastRosterUpdate = now()
     for i = 1, count do
@@ -1249,6 +1308,7 @@ SLASH_QUEBECGOLD1 = "/qg"
 SlashCmdList["QUEBECGOLD"] = command
 
 -- Shared namespace API for modules (see Modules/Casino.lua).
+ns.ensureDb = ensureDb
 ns.playerName = playerName
 ns.normalizeName = normalizeName
 ns.parseRoll = parseRoll
