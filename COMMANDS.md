@@ -222,6 +222,12 @@ Approve, and a raid can never be paid twice.
 | `/testraid cleanup` | Delete every test raid and fake raider with their EPGP and loot. Real data is untouched |
 | `/loot auction <item> <minimum> <increment> <duration> [boss] [raid]` / `/loot close <auction>` | Run a GP auction (boss/raid show up in loot history) |
 | `/import <file>` then `/import-apply <id>` | Preview then apply an addon export. Entries already imported are skipped; in-game raids fill Discord attendance and list no-shows and walk-ins |
+| `/dungeon-admin invalidate <run> <reason>` | A run stops counting and its points are taken back (records update by themselves) |
+| `/dungeon-admin award <amount> <reason> [member | character]` | Give dungeon points by hand; a negative amount takes them away |
+| `/dungeon-admin audit [member | character | run]` | Point history: what, why, automatic or which officer |
+| `/dungeon-admin config [rule] [points] [weekly]` | See the point rules, change one, or the weekly repeat share (e.g. `100,50,0`) |
+| `/dungeon-admin target <dungeon> <minutes>` | Target time; beating it earns the underTarget bonus. 0 removes it |
+| `/dungeon-admin season-start <name>` | End the season (kept) and start a new one |
 | `/application list` / `view` / `approve` / `reject` / `trial` | Handle applications |
 | `/mod warn` / `timeout` / `kick` / `ban` / `history` | Moderation (logged) |
 | `/tag set` / `/tag delete` | Manage saved answers |

@@ -340,7 +340,7 @@ D5. [x] **M — Seasons, records, leaderboards (bot)** *(Done 2026-09-25: /dunge
     `/dungeon history`, `/dungeon season`.
 D6. [x] **S — Announcements** *(Done 2026-09-25: one post per import, dungeon channel or notify fallback, /config dungeon-channel + /setup.)*: completed runs, new personal and guild
     records in a dungeon channel (/setup + `/config`).
-D7. [ ] **M — Admin + audit**: `/dungeon invalidate`, `award`, `remove`,
+D7. [x] **M — Admin + audit** *(Done 2026-09-25: /dungeon-admin invalidate|award|audit|config|target|season-start; every change is a new point row + DUNGEON_ADMIN audit + officer log. force-complete stays in game: /qg dungeon complete.)*: `/dungeon invalidate`, `award`, `remove`,
     `force-complete`, `audit`, `config`, `season start|end`, all logged.
 D8. [ ] **M — Achievements**: First Blood, No One Dies, Speed Demon
     (target time), Record Breaker, Dungeon Master (all dungeons), Guild

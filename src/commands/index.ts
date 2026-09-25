@@ -24,6 +24,7 @@ import { craftCommand } from "./craft.js";
 import { setupCommand } from "./setup.js";
 import { helpCommand } from "./help.js";
 import { dungeonCommand } from "./dungeon.js";
+import { dungeonAdminCommand } from "./dungeon-admin.js";
 
 export const commands = [
   healthCommand,
@@ -53,6 +54,7 @@ export const commands = [
   , setupCommand
   , helpCommand
   , dungeonCommand
+  , dungeonAdminCommand
 ];
 
 const commandNames = commands.map((command) => command.name);

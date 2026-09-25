@@ -36,6 +36,7 @@ import { executeCraft } from "./commands/craft.js";
 import { executeSetup, greetNewGuild, logSetupStatus } from "./commands/setup.js";
 import { executeHelp } from "./commands/help.js";
 import { executeDungeon } from "./commands/dungeon.js";
+import { executeDungeonAdmin } from "./commands/dungeon-admin.js";
 import { handleAutocomplete } from "./commands/autocomplete.js";
 import { prisma } from "./database.js";
 import { runRecruitmentPosts } from "./services/recruitment.js";
@@ -78,6 +79,7 @@ handlers.set("craft", executeCraft);
 handlers.set("setup", executeSetup);
 handlers.set("help", executeHelp);
 handlers.set("dungeon", executeDungeon);
+handlers.set("dungeon-admin", executeDungeonAdmin);
 
 client.once(Events.ClientReady, (readyClient) => {
   console.info(`Logged in as ${readyClient.user.tag}`);
