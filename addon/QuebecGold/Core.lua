@@ -496,8 +496,48 @@ local function characterString(info)
   }, "|")
 end
 
+-- Plain base64 (RFC 4648), so a pasted string survives chat, edit boxes and Discord.
+local B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+local function base64Encode(data)
+  local out = {}
+  for i = 1, #data, 3 do
+    local a, b, c = string.byte(data, i, i + 2)
+    local n = a * 65536 + (b or 0) * 256 + (c or 0)
+    local c1, c2, c3, c4 = math.floor(n / 262144) % 64, math.floor(n / 4096) % 64, math.floor(n / 64) % 64, n % 64
+    out[#out + 1] = string.sub(B64, c1 + 1, c1 + 1) .. string.sub(B64, c2 + 1, c2 + 1)
+      .. (b and string.sub(B64, c3 + 1, c3 + 1) or "=") .. (c and string.sub(B64, c4 + 1, c4 + 1) or "=")
+  end
+  return table.concat(out)
+end
+
+-- One paste for Discord's /character sync: who you are (the QG1 line), your
+-- last gear check, active consumables and attunements. It is only ever YOUR
+-- data, so there is no ledger and no officer review step.
+local function selfExportString(info, snapshot, attunements)
+  local lines = { characterString(info) }
+  if snapshot then
+    table.insert(lines, string.format("R|%s|%s", tostring(snapshot.status or ""), tostring(snapshot.itemLevel or "")))
+    for _, finding in ipairs(snapshot.findings or {}) do
+      table.insert(lines, string.format("F|%s|%s|%s", finding.code or "", finding.severity or "", (string.gsub(finding.message or "", "[\n|]", " "))))
+    end
+    for _, row in ipairs(snapshot.consumables or {}) do
+      table.insert(lines, string.format("C|%s|%s", row.category or "", (string.gsub(row.name or "", "|", " "))))
+    end
+  end
+  local names = {}
+  for name in pairs(attunements or {}) do table.insert(names, name) end
+  table.sort(names)
+  for _, name in ipairs(names) do
+    table.insert(lines, string.format("A|%s|%d", (string.gsub(name, "|", " ")), attunements[name].completed and 1 or 0))
+  end
+  return "QGEXP1:" .. base64Encode(table.concat(lines, "\n"))
+end
+
 local exportFrame
-local function showCharacterExport(text)
+local exportTitle = "Quebec Gold - copy this line (Ctrl+C), then in Discord: /character import"
+local function showCharacterExport(text, title)
+  exportTitle = title or exportTitle
+  if exportFrame and exportFrame.titleText then exportFrame.titleText:SetText(exportTitle) end
   if not exportFrame then
     exportFrame = CreateFrame("Frame", "QuebecGoldCharacterExport", UIParent)
     exportFrame:SetSize(520, 110)
@@ -509,7 +549,8 @@ local function showCharacterExport(text)
     background:SetColorTexture(0, 0, 0, 0.85)
     local title = exportFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     title:SetPoint("TOP", 0, -10)
-    title:SetText("Quebec Gold - copy this line (Ctrl+C), then in Discord: /character import")
+    title:SetText(exportTitle)
+    exportFrame.titleText = title
     local box = CreateFrame("EditBox", nil, exportFrame)
     box:SetSize(490, 24)
     box:SetPoint("CENTER", 0, 0)
@@ -808,6 +849,7 @@ local function showHelp()
   message("/qg menu (or click the minimap coin) | inspect | status | roster | standings [player] | diag | version")
   message("/qg attune <key> [clear] - mark your own attunement")
   message("/qg enchants - show or change the missing-enchant check (on/off, starting level)")
+  message("/qg share - one paste with your character, gear check, consumables and attunements (Discord: /character sync)")
   message("/qg character - copy a line to link this character in Discord (/character import)")
   if officer then
     message("Officer: /qg start [title] | end | attendance <name>|group|seen [PRESENT|ABSENT|LATE] | boss <name>")
@@ -978,6 +1020,15 @@ local function command(text)
       message(string.format("Enchant check is %s, from level %d. /qg enchants on|off|level <n>.",
         db.settings.enchantCheck ~= false and "on" or "off", db.settings.enchantMinLevel or DEFAULT_ENCHANT_MIN_LEVEL))
     end
+  elseif action == "share" then
+    -- Refresh the gear check, then export everything about YOU in one paste.
+    inspectReadiness(true, "GUILD")
+    local info = collectCharacter()
+    db.character = info
+    local code = selfExportString(info, db.readiness[playerName()], db.attunements[playerName()])
+    message("Your share code is " .. #code .. " characters (also shown in a box to copy). In Discord: /character sync")
+    showCharacterExport(code, "Quebec Gold - copy this (Ctrl+C), then in Discord: /character sync")
+    ns.lastShareCode = code
   elseif action == "character" then
     local info = collectCharacter()
     db.character = info
