@@ -102,8 +102,29 @@ within priority. Update the checkbox the moment an item lands.
 > (1-11) and P1 #13-16 are done and tested (94 bot tests, `tsc`,
 > `eslint`). Not pushed, no new GitHub release yet (addon zip
 > `dist/QuebecGold-v1.4.0.zip` rebuilt locally). First thing next session:
-> restart the bot, live-test the new commands and addon v1.4.0, then decide
-> between #19 crafting requests and #21 in-game GP bidding. Remaining P1:
+> restart the bot, live-test the new commands and addon v1.4.0, then build
+> **#0 raid test environment** (below), then decide between #19 crafting
+> requests and #21 in-game GP bidding.
+>
+> **#0 — P0 / M — Raid test environment / simulation (requested
+> 2026-09-24 for tomorrow).** No raids are released in WoW Forever yet, so
+> the whole raid flow can't be tested for real. Build a way to run a fake
+> raid end to end:
+> - **In game:** an officer-only `/qg sim` (or "Test raid" button) that
+>   runs a raid with made-up raiders and bosses. It would start the raid, fill
+>   presence, mark attendance (some late/absent), record boss kills and loot,
+>   and end it, all tagged as test data, using a 5-man dungeon group or
+>   solo.
+> - **Bot:** a `/raid create` test flag (or `/raid simulate`) that creates a
+>   raid with fake signups (including Maybe / waitlist) so reminders,
+>   signup embeds, `/raid end` EP proposal, raid report, and loot history
+>   can be exercised; plus a matching SavedVariables fixture for the
+>   companion → `/import-apply` path (attendance import, no-shows,
+>   walk-ins).
+> - **Safety:** test data must be clearly marked and removable in one
+>   command (`/raid simulate cleanup`), and must never touch real EPGP
+>   (separate test member records or a `TEST` sourceRef prefix that
+>   standings and reports ignore). Remaining P1:
 > #12 WCL (blocked on credentials + confirming Forever logs reach WCL),
 > #17 web dashboard (held), #18 WCL auto-discovery (after #12). Next
 > unblocked work is P2 (#19 crafting requests) or #21 in-game GP bidding. #12 Warcraft Logs is
