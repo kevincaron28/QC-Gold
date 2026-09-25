@@ -22,8 +22,8 @@ ns = ns or {}
 local ICON = "Interface\\Icons\\INV_Misc_Coin_01"
 local DEFAULT_ANGLE = math.rad(220)
 local RADIUS_PAD = 5
-local PANEL_WIDTH = 480
-local PANEL_HEIGHT = 470
+local PANEL_WIDTH = 560
+local PANEL_HEIGHT = 480
 local ATTUNEMENT_PRESETS = { "Molten Core", "Onyxia", "Blackwing Lair", "Naxxramas" }
 
 local button, panel
@@ -297,18 +297,75 @@ local function buildEpgpPage(page)
     if n then run("award group " .. n .. " " .. reasonText()) end
   end)
 
-  at(newLabel(page, "Item (shift-click an item while this box is selected)"), page, 0, -198)
-  ui.itemBox = at(newEdit(page, 380), page, 6, -216)
-  at(newButton(page, "Give item + charge Amount as GP", 260, function()
-    local name, n = needPlayer(), amount()
-    local item = ui.itemBox:GetText()
-    if item == "" then ns.message("Put the item in the Item box first."); return end
-    if name and n then
-      run("loot " .. name .. " " .. item .. " " .. n)
-      run("gp " .. name .. " " .. n .. " " .. item)
+  at(newLabel(page, "Loot and GP bidding are on the Loot tab.", "GameFontDisableSmall"), page, 0, -198)
+end
+
+-- Loot: GP bidding on an item, or giving it directly at a set price.
+local function buildLootPage(page)
+  at(newLabel(page, "Item (click the box, then shift-click the item)"), page, 0, 0)
+  ui.itemBox = at(newEdit(page, 400), page, 6, -18)
+
+  at(newLabel(page, "Min GP"), page, 0, -52)
+  ui.minGpBox = at(newEdit(page, 50, true), page, 60, -48)
+  ui.minGpBox:SetText("10")
+  local x = 120
+  for _, preset in ipairs({ 10, 25, 50, 100 }) do
+    at(newButton(page, tostring(preset), 44, function() ui.minGpBox:SetText(tostring(preset)) end), page, x, -48)
+    x = x + 48
+  end
+  at(newLabel(page, "Time"), page, 0, -84)
+  ui.bidSeconds = 30
+  ui.secondsButtons = {}
+  x = 60
+  for _, seconds in ipairs({ 20, 30, 60 }) do
+    local b = at(newButton(page, seconds .. "s", 50, function()
+      ui.bidSeconds = seconds
+      for s, button in pairs(ui.secondsButtons) do
+        if s == seconds then button:LockHighlight() else button:UnlockHighlight() end
+      end
+    end), page, x, -80)
+    ui.secondsButtons[seconds] = b
+    x = x + 54
+  end
+  ui.secondsButtons[30]:LockHighlight()
+
+  local function item()
+    local text = ui.itemBox:GetText()
+    if text == "" then ns.message("Put the item in the Item box first (shift-click it).") end
+    return text ~= "" and text or nil
+  end
+  local function minGp()
+    local n = tonumber(ui.minGpBox:GetText())
+    if not n then ns.message("Enter a minimum GP.") end
+    return n
+  end
+
+  at(newButton(page, "Open bidding", 110, function()
+    local link, n = item(), minGp()
+    if link and n then run("bid start " .. n .. " " .. link .. " " .. ui.bidSeconds) end
+  end), page, 0, -114)
+  at(newButton(page, "Close now", 90, function() run("bid close") end), page, 114, -114)
+  at(newButton(page, "Award winner", 110, function()
+    run("bid award")
+    ui.itemBox:SetText("")
+  end), page, 208, -114)
+  local cancel = at(newButton(page, "Cancel", 80), page, 322, -114)
+  confirmClick(cancel, "Cancel", function() run("bid cancel") end)
+
+  ui.bidStatus = at(newLabel(page, "", "GameFontHighlightSmall"), page, 0, -146)
+  ui.bidStatus:SetWidth(PANEL_WIDTH - 44)
+
+  at(newLabel(page, "No bidding: give it to the selected Player for Min GP", "GameFontNormalSmall"), page, 0, -262)
+  at(newButton(page, "Give directly", 110, function()
+    local name, link, n = needPlayer(), item(), minGp()
+    if name and link and n then
+      local plain = string.match(link, "%[(.-)%]") or link
+      run("loot " .. name .. " " .. plain .. " " .. n)
+      if n > 0 then run("gp " .. name .. " " .. n .. " " .. plain) end
       ui.itemBox:SetText("")
     end
-  end), page, 0, -244)
+  end), page, 0, -278)
+  at(newLabel(page, "Pugs without the addon bid by whispering you a number.", "GameFontDisableSmall"), page, 116, -283)
 end
 
 local function buildCasinoPage(page)
@@ -448,6 +505,7 @@ end
 local TAB_DEFS = {
   { name = "Raid", officer = true, build = buildRaidPage },
   { name = "EPGP", officer = true, build = buildEpgpPage },
+  { name = "Loot", officer = true, build = buildLootPage },
   { name = "Casino", officer = true, build = buildCasinoPage },
   { name = "Me", build = buildMePage },
   { name = "Standings", build = buildStandingsPage },
@@ -525,6 +583,13 @@ refresh = function()
     end
 
     ui.casinoStatus:SetText(ns.casino and ns.casino.statusText and ns.casino.statusText() or "")
+    ui.bidStatus:SetText(ns.bidding and ns.bidding.statusText and ns.bidding.statusText() or "")
+    -- Keep the bid countdown moving while bidding is open.
+    local auction = ns.bidding and ns.bidding.current
+    if auction and auction.open and not ui.bidTickPending and C_Timer then
+      ui.bidTickPending = true
+      C_Timer.After(1, function() ui.bidTickPending = false; refresh() end)
+    end
   end
 
   local snapshot = db.readiness[me]
@@ -637,6 +702,7 @@ local function buildPanel()
     if ui.status then ui.status:SetText(text) end
   end
   ns.onCasinoChange = function() refresh() end
+  ns.onBiddingChange = function() refresh() end
 
   -- Targeting a player while the window is open fills the Player field.
   panel:RegisterEvent("PLAYER_TARGET_CHANGED")

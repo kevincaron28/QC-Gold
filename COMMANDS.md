@@ -9,7 +9,7 @@ Master role, or Administrator), or the specific Discord role named.
 
 **Easiest way: click the gold coin on the minimap** (or type `/qg menu`).
 Each rank only sees what it can use: members get **Me, Standings, Tools**;
-officers also get **Raid, EPGP, Casino** and the officer tools. A **Player**
+officers also get **Raid, EPGP, Loot, Casino** and the officer tools. A **Player**
 box sits at the top. Target someone and their name fills in automatically, or use
 **Me** or **Group...** (a clickable list of your raid/party). Buttons that
 affect everyone (whole-group EP, end raid) need a second click to confirm.
@@ -50,6 +50,32 @@ typed command. Names are case-insensitive (`bob` = `Bob`).
 | `/qg attune <player> <key> [clear]` | Set someone else's attunement, e.g. `/qg attune Bob "Onyxia Key"` |
 | `/qg end` | End the raid |
 | `/qg export` | Mark a sync point, then `/reload` so the game saves, then run the companion |
+
+### Officers: GP bidding (Loot tab)
+
+Shift-click the item into the Loot tab, set the minimum GP and time, press
+**Open bidding**. Raiders with the addon get a popup (with their PR) and bid
+from it; anyone else whispers you a number, like `25`. Bids are sealed. At
+the end the highest bid wins (tie: higher PR, then first to bid). Press
+**Award winner** to record the loot and GP. Chat gets one line to open and
+one for the winner.
+
+| Command | What it does |
+| --- | --- |
+| `/qg bid start <min GP> <item> [seconds]` | Open bidding (default 30 s) |
+| `/qg bid close` | Stop early and show the leader |
+| `/qg bid award` | Give it to the winner at their bid (records loot + GP) |
+| `/qg bid cancel` | Cancel, nothing recorded |
+| `/qg bid status` | Current bids |
+
+### Officers: test raid (no raids are out yet)
+
+| Command | What it does |
+| --- | --- |
+| `/qg sim start` | Start a `[TEST]` raid with fake raiders (Testalpha, Testbravo, ...) in the group |
+| `/qg sim bids` | Fake raiders bid on the open item |
+| `/qg sim end` | Kill 3 test bosses, mark attendance, give a test item, end it |
+| `/qg sim clear` | Remove every test raid and the EP/GP it recorded |
 
 ### Guild master only
 
@@ -121,6 +147,9 @@ Casino games can't be started while you're in combat.
 | `/stats [days]` | Guild activity (default last 7 days): raids, boss kills, EP, loot, new members, applications, most raids attended |
 | `/bank request <item> [quantity] [note]` | Ask the guild bank for something; you get a DM when it's handled |
 | `/bank mine` / `/bank cancel <id>` | Your requests / cancel an open one |
+| `/craft request <item> [profession] [quantity] [materials] [note]` | Ask a guild crafter to make something; shows who has that profession |
+| `/craft list [profession]` / `/craft claim <id>` | Crafters: see open requests and take one |
+| `/craft done <id>` / `release <id>` / `mine` / `cancel <id>` | Finish, give back, see yours, or cancel. The requester gets DMs |
 
 ### Raid Leaders (and Officers)
 
@@ -154,6 +183,9 @@ Approve, and a raid can never be paid twice.
 
 | Command | What it does |
 | --- | --- |
+| `/testraid start [raiders] [starts_in] [realm]` | Fake `[TEST]` raid with fake raiders signed up (hits role caps, Maybe, waitlist) |
+| `/testraid finish <raid> [via_addon]` | Play it: attendance (late, no-show, walk-in), boss kills, loot, end, EP proposal. `via_addon` sends attendance through `/import-apply` instead |
+| `/testraid cleanup` | Delete every test raid and fake raider with their EPGP and loot. Real data is untouched |
 | `/loot auction <item> <minimum> <increment> <duration> [boss] [raid]` / `/loot close <auction>` | Run a GP auction (boss/raid show up in loot history) |
 | `/import <file>` then `/import-apply <id>` | Preview then apply an addon export. Entries already imported are skipped; in-game raids fill Discord attendance and list no-shows and walk-ins |
 | `/application list` / `view` / `approve` / `reject` / `trial` | Handle applications |

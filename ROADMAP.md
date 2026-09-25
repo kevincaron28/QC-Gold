@@ -98,14 +98,14 @@ within priority. Update the checkbox the moment an item lands.
 
 **P0 — core gaps (bot-side, testable without the game)**
 
-> **Resume here (session ended 2026-09-24, committed):** all P0 items
-> (1-11) and P1 #13-16 are done and tested (94 bot tests, `tsc`,
-> `eslint`). Not pushed, no new GitHub release yet (addon zip
-> `dist/QuebecGold-v1.4.0.zip` rebuilt locally). First thing next session:
-> (2026-09-25: user confirmed addon v1.4.0 works in game.)
-> restart the bot, live-test the new Discord commands, then build
-> **#0 raid test environment** (below), then decide between #19 crafting
-> requests and #21 in-game GP bidding.
+> **Resume here (2026-09-25, committed):** P0 1-11, P1 13-16, #0 test
+> raid environment, #19 crafting requests, and #21 in-game GP bidding are
+> done (98 bot tests, 61 + 28 + 18 addon simulation checks). Addon is
+> v1.5.0 (zip rebuilt locally, not released). Next: live-test /testraid,
+> /craft, and the Loot tab (use /qg sim start + /qg sim bids in a party);
+> then push + GitHub release v1.5.0 + refresh the install page. Blocked:
+> #12 WCL (credentials). Held: #17 dashboard. Open: profession cooldowns,
+> importing addon loot rows into bot loot history.
 >
 > **#0 — [x] DONE 2026-09-25.** Bot: `/testraid start|finish|cleanup`
 > (`src/services/simulation.ts`, `src/commands/testraid.ts`; `isTest` on
@@ -273,8 +273,15 @@ within priority. Update the checkbox the moment an item lands.
     `20260925095707_craft_requests`. Cooldown tracking still open — needs
     addon data.)*
 20. [ ] Guild achievements, progression graphs, historical analytics.
-21. [ ] In-game GP bidding tied to the bot (see section A; L, needs a raid
-    to test).
+21. [x] In-game GP bidding tied to the bot (see section A; L, needs a raid
+    to test). *(Done 2026-09-25, addon v1.5.0 `Modules/Bidding.lua` + Loot
+    tab: officer opens bidding (one raid-chat line), addon users bid from a
+    popup showing their Discord PR, pugs whisper a number; sealed bids;
+    highest wins, tie → higher PR → earliest; Award runs `/qg loot` +
+    `/qg gp` so the GP has a ledger id and imports into Discord. Popups only
+    accept an officer's bidding. `/qg sim bids` for testing. Verified in
+    the Lua simulation (20 bidding checks). Not yet seen live. Open idea:
+    import addon loot rows into the bot's loot history.)*
 
 ---
 
