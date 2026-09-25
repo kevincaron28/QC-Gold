@@ -284,6 +284,73 @@ within priority. Update the checkbox the moment an item lands.
 30. [x] **S — Nightly database backup** *(Done 2026-09-25: `src/services/backup.ts`, backups/ gitignored.)* (export key tables to a dated file,
     keep the last 14).
 
+**Dungeon Challenge system (requested 2026-09-25) — build in this order**
+
+Source: a detailed spec the user pasted (ChatGPT). Kept: permanent run
+records with unique ids and duplicate protection; explicit run states;
+stable ids (instance/encounter ids, never names); one compatibility layer
+for every WoW API call; never faking a stat the client can't give;
+bot-side configurable points with an audit trail; anti-farming;
+seasons, records, achievements, rankings computed from stored runs;
+offline-safe local storage until the bot confirms; protocol versions;
+/reload safety; logged admin commands. Adapted: reuse the existing
+`Core.lua + Modules/` layout and the companion → `/import-apply` sync
+instead of a new folder tree or network path; deaths come from each
+player's own addon (the combat log is blocked since 12.0), and players
+without the addon show "deaths not tracked" instead of a guess;
+completion = final boss from the Encounter Journal when the client has it,
+otherwise the leader/officer presses Complete. Dropped: `/dungeon start`
+and `/dungeon cancel` in Discord (Discord can't control the game; they
+are in-game buttons), race tracking, a new folder structure.
+
+Rules that apply to every step: reliability over feature count; one
+failing API or event disables only that feature; points are never sent
+by the addon, only computed by the bot from rules.
+
+D1. [ ] **M — Compatibility layer (addon `Compat.lua`)**: every WoW API
+    the dungeon system uses (instance info, group members and roles, GUIDs,
+    encounter journal, time, death state) behind `ns.compat`, each checked
+    before use, failures logged to `/qg diag`, `/qg dungeon check` reports
+    which features are available on this client.
+D2. [ ] **M — Run tracker (addon `Modules/Dungeon.lua`)**: state machine
+    DETECTED → STARTING → ACTIVE → COMPLETED / ABANDONED / INVALID / ERROR;
+    one recorder per group (leader if they have the addon, else first
+    addon user by name) so five clients don't make five runs; timer starts
+    at the group's first combat after entering (or Start button);
+    encounters from ENCOUNTER_END; own deaths from PLAYER_DEAD shared
+    after combat; per-player time present; saved every change so /reload,
+    disconnect, or a crash resumes the run; runs kept until the bot
+    confirms them.
+D3. [ ] **M — Sync + validation (companion, bot)**: runs in the export
+    with `protocolVersion` / `addonVersion`; bot validates (known shape,
+    duration 3 min – 4 h, no future timestamps, 1–5 players, completion
+    state), rejects duplicates by run id and by same dungeon + same
+    players + start within 2 minutes; stores `DungeonRun` +
+    `DungeonRunPlayer`; companion writes accepted run ids back so the addon
+    can mark them synced.
+D4. [ ] **M — Points (bot)**: configurable rules (completion, 0/1/2
+    deaths, personal record, guild record, first completion, full guild
+    group, under target time) and anti-farming (per player per dungeon per
+    week: 1st 100%, 2nd 50%, 3rd+ 0%, configurable); every point is a
+    `DungeonPointTransaction` with reason, run, source.
+D5. [ ] **M — Seasons, records, leaderboards (bot)**: seasons with
+    start/end, archived not deleted; records (fastest, fewest deaths) per
+    dungeon, guild and personal; `/dungeon leaderboard [dungeon]
+    [weekly|season|all]`, `/dungeon records`, `/dungeon player`,
+    `/dungeon history`, `/dungeon season`.
+D6. [ ] **S — Announcements**: completed runs, new personal and guild
+    records in a dungeon channel (/setup + `/config`).
+D7. [ ] **M — Admin + audit**: `/dungeon invalidate`, `award`, `remove`,
+    `force-complete`, `audit`, `config`, `season start|end`, all logged.
+D8. [ ] **M — Achievements**: First Blood, No One Dies, Speed Demon
+    (target time), Record Breaker, Dungeon Master (all dungeons), Guild
+    Squad, Season Champion — rules in config, permanent.
+D9. [ ] **S — In-game view**: a Dungeons tab (current run, timer,
+    Start / Complete / Abandon buttons, recent runs, your points).
+D10. [ ] **S — Test path**: `/qg sim dungeon` and `/testraid`-style bot
+    fixtures that play a full run (including reload, duplicate
+    submission, disconnect) so this can be tested before release.
+
 **P1 — second wave**
 
 12. [ ] **M — Warcraft Logs, manual import first**: `/wcl <report url>`
