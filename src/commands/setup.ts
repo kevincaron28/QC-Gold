@@ -8,6 +8,7 @@ import {
   PermissionFlagsBits,
   RoleSelectMenuBuilder,
   SlashCommandBuilder,
+  StringSelectMenuBuilder,
   type ChatInputCommandInteraction,
   type Guild as DiscordGuild,
   type GuildMember,
@@ -20,6 +21,8 @@ import { prisma } from "../database.js";
 import { hasPermission, permissionRoles } from "../permissions.js";
 import { formatChecks, setupChecks, setupComplete, type ChannelFact, type SetupFacts } from "../services/setup-status.js";
 import { guildService, requireGuildContext } from "./context.js";
+import { sendWelcome, welcomeDelivery } from "../services/housekeeping.js";
+import { isValidTimeZone } from "../services/raid-time.js";
 
 // Guided first-time setup. One private message that walks an admin through
 // five steps with buttons and dropdowns only (no IDs, no typing):
@@ -47,7 +50,24 @@ const RECOMMENDED_EPGP = {
   bidIncrement: 5
 };
 
-const STEP_TITLES = ["Welcome", "Step 1 of 4 — Permission roles", "Step 2 of 4 — Channels", "Step 3 of 4 — Welcome & auto-roles", "Step 4 of 4 — EPGP & automation", "All done"];
+const STEP_TITLES = [
+  "Welcome", "Step 1 of 5 — Permission roles", "Step 2 of 5 — Channels", "Step 3 of 5 — Welcome message",
+  "Step 4 of 5 — New member roles", "Step 5 of 5 — EPGP, time & language", "All done"
+];
+const LAST_STEP = 5;
+const SUMMARY_STEP = 6;
+
+// Common choices; anything else can be set with /config timezone.
+const TIMEZONES: [string, string][] = [
+  ["Eastern — Quebec, Ontario, New York", "America/Toronto"],
+  ["Atlantic — Maritimes", "America/Halifax"],
+  ["Central — Manitoba, Texas", "America/Winnipeg"],
+  ["Mountain — Alberta", "America/Edmonton"],
+  ["Pacific — British Columbia, California", "America/Vancouver"],
+  ["France / Central Europe", "Europe/Paris"],
+  ["UK / Ireland", "Europe/London"],
+  ["UTC", "UTC"]
+];
 
 // ---------------------------------------------------------------------
 // Facts about the server, for the checklist
@@ -76,7 +96,7 @@ function botCanAssign(guild: DiscordGuild, roleId: string): { name: string; botC
 
 async function gatherFacts(guild: DiscordGuild, guildId: string, settings: GuildSettings): Promise<SetupFacts> {
   await guild.roles.fetch();
-  const autoRoles = [settings.applicantRoleId, settings.memberRoleId]
+  const autoRoles = [settings.applicantRoleId, settings.memberRoleId, ...settings.welcomeRoleIds]
     .filter((id): id is string => !!id)
     .map((id) => botCanAssign(guild, id))
     .filter((role): role is { name: string; botCanAssign: boolean } => role !== null);
@@ -86,7 +106,7 @@ async function gatherFacts(guild: DiscordGuild, guildId: string, settings: Guild
     notifyChannel: await channelFact(guild, settings.notifyChannelId),
     raidChannel: await channelFact(guild, settings.raidSignupChannelId),
     logChannel: await channelFact(guild, settings.logChannelId),
-    welcomeChannel: await channelFact(guild, settings.welcomeChannelId),
+    welcomeChannel: welcomeDelivery(settings) === "DM" ? null : await channelFact(guild, settings.welcomeChannelId),
     autoRoles,
     epgpConfigured: settings.baseGp > 0,
     remindersOn: settings.raidReminderMinutes > 0,
@@ -107,7 +127,7 @@ function navRow(step: number, extra: ButtonBuilder[] = []) {
   const row = new ActionRowBuilder<ButtonBuilder>();
   if (step > 1) row.addComponents(button("back", "◀ Back"));
   row.addComponents(...extra);
-  row.addComponents(button("next", step >= 4 ? "Finish ▶" : "Next ▶", ButtonStyle.Primary));
+  row.addComponents(button("next", step >= LAST_STEP ? "Finish ▶" : "Next ▶", ButtonStyle.Primary));
   return row;
 }
 
@@ -118,7 +138,7 @@ export async function renderStep(step: number, guild: DiscordGuild, guildId: str
   const settings = await guildService.getSettings(guildId);
   if (!settings) throw new Error("Guild settings are missing.");
   const embed = new EmbedBuilder().setTitle(`⚜️ Quebec Gold setup — ${STEP_TITLES[step]}`).setColor(0xd4af37);
-  const components: ActionRowBuilder<ButtonBuilder | ChannelSelectMenuBuilder | RoleSelectMenuBuilder>[] = [];
+  const components: ActionRowBuilder<ButtonBuilder | ChannelSelectMenuBuilder | RoleSelectMenuBuilder | StringSelectMenuBuilder>[] = [];
 
   if (step === 0) {
     embed.setDescription([
@@ -126,8 +146,9 @@ export async function renderStep(step: number, guild: DiscordGuild, guildId: str
       "",
       "**1. Roles** — who counts as Guild Master, Officer, Raid Leader, DKP Officer.",
       "**2. Channels** — where announcements, raid signups, and officer logs go.",
-      "**3. Welcome** — optional welcome message and automatic roles for new people.",
-      "**4. EPGP** — point values, raid reminders, weekly report.",
+      "**3. Welcome** — optional welcome message (in a channel or by DM) with buttons to pick game roles.",
+      "**4. New member roles** — optional automatic Applicant / Member roles.",
+      "**5. EPGP, time & language** — point values, reminders, your timezone, English or French.",
       "",
       "You can **run /setup again any time**: it shows what's already done and only changes what you click. Nothing gets deleted."
     ].join("\n"));
@@ -180,48 +201,87 @@ export async function renderStep(step: number, guild: DiscordGuild, guildId: str
   }
 
   if (step === 3) {
+    const delivery = welcomeDelivery(settings);
+    const offered = settings.welcomeRoleIds.map((id) => `<@&${id}>`).join(", ");
     embed.setDescription([
-      "**Optional.** Skip with **Next** if you don't want these.",
+      "**Optional.** Skip with **Next** if you don't want a welcome message.",
       "",
-      `👋 **Welcome channel** — greets new members and tells them to \`/apply\` or \`/character add\`: ${channelLabel(settings.welcomeChannelId)}`,
-      `🆕 **Applicant role** — given automatically when someone joins: ${roleLabel(settings.applicantRoleId)}`,
-      `🛡️ **Member role** — given when an application is approved: ${roleLabel(settings.memberRoleId)}`,
+      `📨 **Sent to:** ${delivery === "DM" ? "a private message (DM)" : delivery === "BOTH" ? "a private message and the welcome channel" : "the welcome channel"}`,
+      `👋 **Welcome channel:** ${channelLabel(settings.welcomeChannelId)}${delivery === "DM" ? " (not needed for DM only; used if their DMs are closed)" : ""}`,
+      `🎮 **Role buttons in the message:** ${offered || "*none*"}`,
       "",
-      "For auto-roles, **my role must be above those roles** (Server Settings → Roles, drag me higher). The final checklist tells you if it isn't."
+      "Role buttons let new people pick what they're here for — for example one role per game, so they only see those channels. They can pick several, and click again to remove one. Pick up to 5 roles in the second menu (create the roles first in Server Settings → Roles).",
+      "",
+      "Press **Send me a preview** to see exactly what new people get."
     ].join("\n"));
+    const deliveryButton = (value: string, label: string) => button(`delivery-${value}`, label, delivery === value ? ButtonStyle.Success : ButtonStyle.Secondary);
     components.push(
       new ActionRowBuilder<ChannelSelectMenuBuilder>().addComponents(new ChannelSelectMenuBuilder().setCustomId("setup:ch-welcome")
         .setPlaceholder("👋 Pick the welcome channel").setChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement).setMinValues(1).setMaxValues(1)),
-      new ActionRowBuilder<RoleSelectMenuBuilder>().addComponents(new RoleSelectMenuBuilder().setCustomId("setup:role-applicant")
-        .setPlaceholder("🆕 Pick the applicant role").setMinValues(1).setMaxValues(1)),
-      new ActionRowBuilder<RoleSelectMenuBuilder>().addComponents(new RoleSelectMenuBuilder().setCustomId("setup:role-member")
-        .setPlaceholder("🛡️ Pick the member role").setMinValues(1).setMaxValues(1)),
-      navRow(3, [button("welcome-off", "Turn welcome & auto-roles off")])
+      new ActionRowBuilder<RoleSelectMenuBuilder>().addComponents(new RoleSelectMenuBuilder().setCustomId("setup:welcome-roles")
+        .setPlaceholder("🎮 Roles people can pick (up to 5; pick none to remove)").setMinValues(0).setMaxValues(5)),
+      new ActionRowBuilder<ButtonBuilder>().addComponents(
+        deliveryButton("CHANNEL", "Post in channel"),
+        deliveryButton("DM", "Private message"),
+        deliveryButton("BOTH", "Both"),
+        button("welcome-preview", "Send me a preview", ButtonStyle.Primary)
+      ),
+      navRow(3, [button("welcome-off", "Turn welcome off")])
     );
   }
 
   if (step === 4) {
+    embed.setDescription([
+      "**Optional.** Skip with **Next** if you don't use these.",
+      "",
+      `🆕 **Applicant role** — given automatically when someone joins: ${roleLabel(settings.applicantRoleId)}`,
+      `🛡️ **Member role** — given when an application is approved (\`/application approve\`): ${roleLabel(settings.memberRoleId)}`,
+      "",
+      "**My role must be above these roles** (Server Settings → Roles, drag me higher). The final checklist tells you if it isn't."
+    ].join("\n"));
+    components.push(
+      new ActionRowBuilder<RoleSelectMenuBuilder>().addComponents(new RoleSelectMenuBuilder().setCustomId("setup:role-applicant")
+        .setPlaceholder("🆕 Pick the applicant role").setMinValues(1).setMaxValues(1)),
+      new ActionRowBuilder<RoleSelectMenuBuilder>().addComponents(new RoleSelectMenuBuilder().setCustomId("setup:role-member")
+        .setPlaceholder("🛡️ Pick the member role").setMinValues(1).setMaxValues(1)),
+      navRow(4, [button("autoroles-off", "Turn auto-roles off")])
+    );
+  }
+
+  if (step === 5) {
+    const tzLabel = TIMEZONES.find(([, value]) => value === settings.timezone)?.[0] ?? settings.timezone;
     embed.setDescription([
       "**EPGP points** (current):",
       `• Raid attendance: **${settings.attendanceDkp} EP** (late: ${settings.lateAttendanceDkp})`,
       `• Per boss killed: **${settings.bossKillDkp} EP**, full clear bonus: **${settings.epCompletionBonus} EP**`,
       `• Base GP: **${settings.baseGp}** (stops new players with tiny GP from topping the list)`,
       `• Weekly decay: **${Math.round(settings.epgpDecayPercent * 100)}%**`,
+      "**Recommended:** 10 attendance / 5 late / 5 per boss / 10 full clear / base GP 100 / 10% decay. Fine-tune later with `/config set`.",
       "",
-      "**Recommended:** 10 attendance / 5 late / 5 per boss / 10 full clear / base GP 100 / 10% decay.",
-      "You can fine-tune any value later with `/config set`.",
-      "",
-      `⏰ **Raid reminders:** ${settings.raidReminderMinutes > 0 ? `on (${settings.raidReminderMinutes} min before start)` : "off"}`,
-      `📊 **Weekly report:** ${settings.weeklyReportEnabled ? "on" : "off"}`
+      `⏰ **Raid reminders:** ${settings.raidReminderMinutes > 0 ? `on (${settings.raidReminderMinutes} min before start)` : "off"}   📊 **Weekly report:** ${settings.weeklyReportEnabled ? "on" : "off"}`,
+      `🕗 **Timezone** (for typing raid times like "friday 8pm"): **${tzLabel}**`,
+      `🗣️ **Language** for member messages: **${settings.language === "fr" ? "Français" : "English"}**`
     ].join("\n"));
-    components.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
-      button("epgp-recommended", "Use recommended values", ButtonStyle.Success),
-      button("reminders", settings.raidReminderMinutes > 0 ? "Turn reminders off" : "Turn reminders on (60 min)"),
-      button("weekly", settings.weeklyReportEnabled ? "Turn weekly report off" : "Turn weekly report on")
-    ), navRow(4));
+    components.push(
+      new ActionRowBuilder<ButtonBuilder>().addComponents(
+        button("epgp-recommended", "Use recommended values", ButtonStyle.Success),
+        button("reminders", settings.raidReminderMinutes > 0 ? "Turn reminders off" : "Turn reminders on (60 min)"),
+        button("weekly", settings.weeklyReportEnabled ? "Turn weekly report off" : "Turn weekly report on")
+      ),
+      new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(new StringSelectMenuBuilder().setCustomId("setup:tz")
+        .setPlaceholder("🕗 Pick your timezone")
+        .addOptions(TIMEZONES.map(([label, value]) => ({ label, value, default: value === settings.timezone })))),
+      new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(new StringSelectMenuBuilder().setCustomId("setup:lang")
+        .setPlaceholder("🗣️ Language / Langue")
+        .addOptions(
+          { label: "English", value: "en", default: settings.language !== "fr" },
+          { label: "Français", value: "fr", default: settings.language === "fr" }
+        )),
+      navRow(5)
+    );
   }
 
-  if (step === 5) {
+  if (step === SUMMARY_STEP) {
     const checks = setupChecks(await gatherFacts(guild, guildId, settings));
     const done = setupComplete(checks);
     embed.setDescription([
@@ -322,7 +382,7 @@ export async function executeSetup(interaction: ChatInputCommandInteraction): Pr
   const guildId = context.guildId;
 
   if (interaction.options.getBoolean("status")) {
-    await interaction.reply({ ...(await renderStep(5, guild, guildId, "")), ephemeral: true });
+    await interaction.reply({ ...(await renderStep(SUMMARY_STEP, guild, guildId, "")), ephemeral: true });
     return;
   }
 
@@ -347,9 +407,9 @@ export async function executeSetup(interaction: ChatInputCommandInteraction): Pr
       // Acknowledge right away: Discord allows 3 seconds, and the database
       // (or creating roles/channels) can take longer than that.
       await i.deferUpdate();
-      if (action === "next") step = Math.min(5, step + 1);
+      if (action === "next") step = Math.min(SUMMARY_STEP, step + 1);
       else if (action === "back") step = Math.max(1, step - 1);
-      else if (action === "jump-summary") step = 5;
+      else if (action === "jump-summary") step = SUMMARY_STEP;
       else if (action === "restart") step = 1;
       else {
         if (action === "create-roles") note = await createMissingRoles(guild);
@@ -368,6 +428,38 @@ export async function executeSetup(interaction: ChatInputCommandInteraction): Pr
             await guildService.updateSettings(guildId, { [field]: channelId });
             note = `Saved <#${channelId}>.`;
           }
+        } else if (i.isRoleSelectMenu() && action === "welcome-roles") {
+          await guildService.updateSettings(guildId, { welcomeRoleIds: i.values.slice(0, 5) });
+          const blocked = i.values.map((id) => botCanAssign(guild, id)).filter((role) => role && !role.botCanAssign).map((role) => role?.name);
+          note = i.values.length
+            ? `Welcome buttons: ${i.values.map((id) => `<@&${id}>`).join(", ")}.${blocked.length ? ` **My role is below ${blocked.join(", ")}**, so I can't hand those out yet: Server Settings → Roles, drag my role above them.` : ""}`
+            : "Removed the role buttons from the welcome message.";
+        } else if (i.isStringSelectMenu() && action === "tz") {
+          const timezone = i.values[0];
+          if (timezone && isValidTimeZone(timezone)) {
+            await guildService.updateSettings(guildId, { timezone });
+            note = `Timezone saved: raid times like "friday 8pm" now mean 8pm ${timezone.replace("_", " ")}.`;
+          }
+        } else if (i.isStringSelectMenu() && action === "lang") {
+          const language = i.values[0] === "fr" ? "fr" : "en";
+          await guildService.updateSettings(guildId, { language });
+          note = language === "fr" ? "Langue : français pour les messages aux membres." : "Language: English for member messages.";
+        } else if (action.startsWith("delivery-")) {
+          const value = action.slice("delivery-".length);
+          await guildService.updateSettings(guildId, { welcomeDelivery: value });
+          note = value === "DM" ? "New members get the welcome by private message (the channel is used only if their DMs are closed)."
+            : value === "BOTH" ? "New members get the welcome by private message and in the welcome channel."
+              : "The welcome is posted in the welcome channel.";
+        } else if (action === "welcome-preview") {
+          const current = await guildService.getSettings(guildId);
+          const member = await guild.members.fetch(i.user.id);
+          const sent = current ? await sendWelcome(guild, member, current) : { dm: false, channel: false };
+          note = sent.dm || sent.channel
+            ? `Preview sent${sent.dm ? " to your DMs" : ""}${sent.dm && sent.channel ? " and" : ""}${sent.channel ? " in the welcome channel" : ""}. Try the buttons!`
+            : "Nothing was sent: pick a welcome channel, or choose Private message. (If you chose DM, your DMs from server members may be off.)";
+        } else if (action === "autoroles-off") {
+          await guildService.updateSettings(guildId, { applicantRoleId: null, memberRoleId: null });
+          note = "Automatic Applicant / Member roles are off.";
         } else if (i.isRoleSelectMenu()) {
           const roleId = i.values[0];
           const field = action === "role-applicant" ? "applicantRoleId" : "memberRoleId";
@@ -377,8 +469,8 @@ export async function executeSetup(interaction: ChatInputCommandInteraction): Pr
             note = check?.botCanAssign ? `Saved <@&${roleId}>.` : `Saved <@&${roleId}>, but **my role is below it** so I can't hand it out yet: Server Settings → Roles, drag my role above it.`;
           }
         } else if (action === "welcome-off") {
-          await guildService.updateSettings(guildId, { welcomeChannelId: null, applicantRoleId: null, memberRoleId: null });
-          note = "Welcome message and auto-roles are off.";
+          await guildService.updateSettings(guildId, { welcomeChannelId: null, welcomeDelivery: "CHANNEL", welcomeRoleIds: [] });
+          note = "Welcome message is off.";
         } else if (action === "epgp-recommended") {
           await guildService.updateSettings(guildId, RECOMMENDED_EPGP);
           note = "Recommended EPGP values saved.";

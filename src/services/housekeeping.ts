@@ -1,8 +1,14 @@
-import type { Guild as DiscordGuild, GuildMember, PartialGuildMember } from "discord.js";
+import {
+  ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder,
+  type ButtonInteraction, type Guild as DiscordGuild, type GuildMember, type PartialGuildMember
+} from "discord.js";
+import type { GuildSettings } from "@prisma/client";
 import { prisma } from "../database.js";
 import { createGuildService } from "./guild.js";
 
 const guildService = createGuildService(prisma);
+// Exported so tests can stub settings lookups.
+export const welcomeGuildService = guildService;
 
 export const DEFAULT_WELCOME_TEMPLATE =
   "Welcome to {guild}, {mention}! Run `/apply` to submit a recruitment application, "
@@ -52,18 +58,109 @@ export async function handleMemberJoin(discordGuild: DiscordGuild, member: Guild
     });
   }
 
-  if (settings.welcomeChannelId) {
+  await sendWelcome(discordGuild, member, settings);
+}
+
+export type WelcomeDelivery = "CHANNEL" | "DM" | "BOTH";
+export const WELCOME_ROLE_PREFIX = "welcomerole:";
+export const DEFAULT_WELCOME_ROLE_PROMPT = "Pick what you're here for (you can pick more than one, click again to remove):";
+
+export function welcomeDelivery(settings: Pick<GuildSettings, "welcomeDelivery">): WelcomeDelivery {
+  return settings.welcomeDelivery === "DM" || settings.welcomeDelivery === "BOTH" ? settings.welcomeDelivery : "CHANNEL";
+}
+
+// Welcome is on when it has somewhere to go: a channel (CHANNEL/BOTH) or DMs.
+export function welcomeEnabled(settings: Pick<GuildSettings, "welcomeDelivery" | "welcomeChannelId">): boolean {
+  const delivery = welcomeDelivery(settings);
+  return delivery !== "CHANNEL" || !!settings.welcomeChannelId;
+}
+
+// The welcome message: text plus up to 5 role buttons ("which game are you
+// here for?"). Button ids carry the server id so they also work in DMs.
+export function buildWelcomeMessage(
+  settings: Pick<GuildSettings, "welcomeMessageTemplate" | "welcomeRoleIds" | "welcomeRolePrompt">,
+  discordGuild: Pick<DiscordGuild, "id" | "name" | "memberCount" | "roles">,
+  member: { id: string; username: string }
+) {
+  const text = renderTemplate(settings.welcomeMessageTemplate ?? DEFAULT_WELCOME_TEMPLATE, {
+    mention: `<@${member.id}>`,
+    username: member.username,
+    guildName: discordGuild.name,
+    memberCount: discordGuild.memberCount
+  });
+  const roles = settings.welcomeRoleIds
+    .map((id) => discordGuild.roles.cache.get(id))
+    .filter((role): role is NonNullable<typeof role> => !!role)
+    .slice(0, 5);
+  if (roles.length === 0) return { content: text, components: [] };
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(roles.map((role) =>
+    new ButtonBuilder()
+      .setCustomId(`${WELCOME_ROLE_PREFIX}${discordGuild.id}:${role.id}`)
+      .setLabel(role.name.slice(0, 80))
+      .setStyle(ButtonStyle.Primary)));
+  return {
+    content: text,
+    embeds: [new EmbedBuilder().setColor(0xd4af37).setDescription(settings.welcomeRolePrompt ?? DEFAULT_WELCOME_ROLE_PROMPT)],
+    components: [row]
+  };
+}
+
+// Sends the welcome to the channel, the member's DMs, or both. A closed DM
+// falls back to the channel when there is one.
+export async function sendWelcome(discordGuild: DiscordGuild, member: GuildMember, settings: GuildSettings): Promise<{ channel: boolean; dm: boolean }> {
+  const result = { channel: false, dm: false };
+  if (!welcomeEnabled(settings)) return result;
+  const delivery = welcomeDelivery(settings);
+  const message = buildWelcomeMessage(settings, discordGuild, { id: member.id, username: member.user.username });
+  if (delivery !== "CHANNEL") {
+    result.dm = await member.send(message).then(() => true).catch(() => false);
+  }
+  if ((delivery !== "DM" || !result.dm) && settings.welcomeChannelId) {
     const channel = await discordGuild.channels.fetch(settings.welcomeChannelId).catch(() => null);
     if (channel?.isTextBased()) {
-      const text = renderTemplate(settings.welcomeMessageTemplate ?? DEFAULT_WELCOME_TEMPLATE, {
-        mention: `<@${member.id}>`,
-        username: member.user.username,
-        guildName: discordGuild.name,
-        memberCount: discordGuild.memberCount
-      });
-      await channel.send(text).catch((error: unknown) => console.error("Failed to send welcome message", error));
+      result.channel = await channel.send({ ...message, allowedMentions: { users: [member.id] } })
+        .then(() => true)
+        .catch((error: unknown) => { console.error("Failed to send welcome message", error); return false; });
     }
   }
+  return result;
+}
+
+// Clicks on the welcome message's role buttons: toggles that role for
+// whoever clicked. Only roles still listed in the welcome settings are
+// honoured, so an old message can't hand out a role that was removed.
+export async function handleWelcomeRoleButton(interaction: ButtonInteraction): Promise<void> {
+  const [discordGuildId, roleId] = interaction.customId.slice(WELCOME_ROLE_PREFIX.length).split(":");
+  if (!discordGuildId || !roleId) return;
+  const discordGuild = await interaction.client.guilds.fetch(discordGuildId).catch(() => null);
+  if (!discordGuild) {
+    await interaction.reply({ content: "I'm no longer in that server.", ephemeral: true });
+    return;
+  }
+  const guild = await guildService.ensureGuild(discordGuild.id, discordGuild.name);
+  const settings = await guildService.getSettings(guild.id);
+  const role = await discordGuild.roles.fetch(roleId).catch(() => null);
+  if (!settings?.welcomeRoleIds.includes(roleId) || !role) {
+    await interaction.reply({ content: "That choice isn't offered anymore. Ask an officer.", ephemeral: true });
+    return;
+  }
+  const member = await discordGuild.members.fetch(interaction.user.id).catch(() => null);
+  if (!member) {
+    await interaction.reply({ content: `You're not in ${discordGuild.name} anymore.`, ephemeral: true });
+    return;
+  }
+  const had = member.roles.cache.has(role.id);
+  try {
+    if (had) await member.roles.remove(role, "Welcome role button");
+    else await member.roles.add(role, "Welcome role button");
+  } catch {
+    await interaction.reply({ content: `I couldn't change "${role.name}". An officer needs to move my role above it (Server Settings > Roles).`, ephemeral: true });
+    return;
+  }
+  await interaction.reply({
+    content: had ? `Removed **${role.name}**. Click again to get it back.` : `Added **${role.name}**. You can pick more, or click again to remove it.`,
+    ephemeral: true
+  });
 }
 
 export async function handleMemberLeave(discordGuild: DiscordGuild, member: GuildMember | PartialGuildMember): Promise<void> {

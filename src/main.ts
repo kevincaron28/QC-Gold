@@ -42,7 +42,7 @@ import { runRaidReminders } from "./services/reminders.js";
 import { runBackup } from "./services/backup.js";
 import { config } from "./config.js";
 import { startCompanionApi } from "./companion-api.js";
-import { handleMemberJoin, handleMemberLeave } from "./services/housekeeping.js";
+import { handleMemberJoin, handleMemberLeave, handleWelcomeRoleButton, WELCOME_ROLE_PREFIX } from "./services/housekeeping.js";
 
 // GuildMembers is a privileged intent: it must also be enabled for this bot
 // application under "Server Members Intent" in the Discord Developer Portal,
@@ -137,6 +137,13 @@ client.on(Events.GuildMemberRemove, async (member) => {
 client.on(Events.InteractionCreate, async (interaction) => {
   if (interaction.isAutocomplete()) {
     await handleAutocomplete(interaction);
+    return;
+  }
+  if (interaction.isButton() && interaction.customId.startsWith(WELCOME_ROLE_PREFIX)) {
+    await handleWelcomeRoleButton(interaction).catch(async (error: unknown) => {
+      console.error("Welcome role button failed", error);
+      if (!interaction.replied) await interaction.reply({ content: "That didn't work, try again or ask an officer.", ephemeral: true }).catch(() => undefined);
+    });
     return;
   }
   if (interaction.isButton() && interaction.customId.startsWith(RAID_SIGNUP_PREFIX)) {

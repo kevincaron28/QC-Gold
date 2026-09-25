@@ -1,6 +1,8 @@
 import { ChannelType, SlashCommandBuilder, type ChatInputCommandInteraction } from "discord.js";
 import { permissionRoles, hasPermission } from "../permissions.js";
 import { guildService, requireGuildContext } from "./context.js";
+import { sendWelcome, welcomeDelivery } from "../services/housekeeping.js";
+import { isValidTimeZone } from "../services/raid-time.js";
 
 export const configCommand = new SlashCommandBuilder()
   .setName("config")
@@ -32,6 +34,10 @@ export const configCommand = new SlashCommandBuilder()
     .addChannelOption((o) => o.setName("channel").setDescription("Channel to post welcome messages in")
       .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
     .addStringOption((o) => o.setName("message").setDescription("Template. Variables: {mention} {username} {guild} {membercount}").setMaxLength(1000))
+    .addStringOption((o) => o.setName("send_to").setDescription("Where new members get it")
+      .addChoices({ name: "Channel", value: "CHANNEL" }, { name: "Private message (DM)", value: "DM" }, { name: "Both", value: "BOTH" }))
+    .addStringOption((o) => o.setName("role_prompt").setDescription("Text above the role buttons, e.g. Which game are you here for?").setMaxLength(300))
+    .addBooleanOption((o) => o.setName("preview").setDescription("Send me the welcome exactly as a new member gets it"))
     .addBooleanOption((o) => o.setName("disable").setDescription("Turn off welcome messages")))
   .addSubcommand((sub) => sub.setName("farewell").setDescription("Configure the farewell message for departing members.")
     .addChannelOption((o) => o.setName("channel").setDescription("Channel to post farewell messages in")
@@ -49,6 +55,8 @@ export const configCommand = new SlashCommandBuilder()
     .addChannelOption((o) => o.setName("channel").setDescription("Log channel")
       .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
     .addBooleanOption((o) => o.setName("disable").setDescription("Stop logging")))
+  .addSubcommand((sub) => sub.setName("timezone").setDescription("Timezone for typing raid times (e.g. America/Toronto). /setup has a picker too.")
+    .addStringOption((o) => o.setName("zone").setDescription("IANA name, e.g. America/Toronto, Europe/Paris").setRequired(true)))
   .addSubcommand((sub) => sub.setName("weekly-report").setDescription("Post a weekly guild activity report in the notify channel.")
     .addBooleanOption((o) => o.setName("enabled").setDescription("Turn the weekly report on or off").setRequired(true)))
   .addSubcommand((sub) => sub.setName("notify-channel").setDescription("Channel for raid started/ended, boss kills, loot awards, and EPGP changes.")
@@ -107,22 +115,52 @@ export async function executeConfig(interaction: ChatInputCommandInteraction): P
     return;
   }
 
-  if (subcommand === "welcome" || subcommand === "farewell") {
+  if (subcommand === "welcome") {
+    if (interaction.options.getBoolean("disable")) {
+      await guildService.updateSettings(context.guildId, { welcomeChannelId: null, welcomeMessageTemplate: null, welcomeDelivery: "CHANNEL" });
+      await interaction.reply({ content: "Welcome messages disabled.", ephemeral: true });
+      return;
+    }
+    const channel = interaction.options.getChannel("channel");
+    const message = interaction.options.getString("message");
+    const sendTo = interaction.options.getString("send_to");
+    const prompt = interaction.options.getString("role_prompt");
+    const updated = await guildService.updateSettings(context.guildId, {
+      ...(channel ? { welcomeChannelId: channel.id } : {}),
+      ...(message === null ? {} : { welcomeMessageTemplate: message }),
+      ...(sendTo === null ? {} : { welcomeDelivery: sendTo }),
+      ...(prompt === null ? {} : { welcomeRolePrompt: prompt })
+    });
+    if (interaction.options.getBoolean("preview") && interaction.guild) {
+      const member = await interaction.guild.members.fetch(interaction.user.id);
+      const result = await sendWelcome(interaction.guild, member, updated);
+      await interaction.reply({
+        content: result.dm || result.channel
+          ? `Preview sent${result.dm ? " to your DMs" : ""}${result.dm && result.channel ? " and" : ""}${result.channel ? ` in <#${updated.welcomeChannelId}>` : ""}.`
+          : "Nothing was sent: pick a channel, or choose send_to: Private message (DM). If you chose DM, your DMs from server members may be closed.",
+        ephemeral: true
+      });
+      return;
+    }
+    const where = welcomeDelivery(updated) === "DM" ? "by private message"
+      : welcomeDelivery(updated) === "BOTH" ? `by private message and in ${updated.welcomeChannelId ? `<#${updated.welcomeChannelId}>` : "(no channel set yet)"}`
+        : updated.welcomeChannelId ? `in <#${updated.welcomeChannelId}>` : "nowhere yet (pick a channel or send_to: DM)";
+    await interaction.reply({ content: `Welcome messages go ${where}. Role buttons: ${updated.welcomeRoleIds.length ? updated.welcomeRoleIds.map((id) => `<@&${id}>`).join(", ") : "none (pick them in /setup step 3)"}. Try \`/config welcome preview:true\`.`, ephemeral: true });
+    return;
+  }
+
+  if (subcommand === "farewell") {
     const disable = interaction.options.getBoolean("disable");
     if (disable) {
-      await guildService.updateSettings(context.guildId, subcommand === "welcome"
-        ? { welcomeChannelId: null, welcomeMessageTemplate: null }
-        : { farewellChannelId: null, farewellMessageTemplate: null });
-      await interaction.reply({ content: `${subcommand === "welcome" ? "Welcome" : "Farewell"} messages disabled.`, ephemeral: true });
+      await guildService.updateSettings(context.guildId, { farewellChannelId: null, farewellMessageTemplate: null });
+      await interaction.reply({ content: "Farewell messages disabled.", ephemeral: true });
       return;
     }
     const channel = interaction.options.getChannel("channel");
     const message = interaction.options.getString("message");
     if (!channel) throw new Error("Provide a channel, or use disable:true to turn messages off.");
-    await guildService.updateSettings(context.guildId, subcommand === "welcome"
-      ? { welcomeChannelId: channel.id, ...(message === null ? {} : { welcomeMessageTemplate: message }) }
-      : { farewellChannelId: channel.id, ...(message === null ? {} : { farewellMessageTemplate: message }) });
-    await interaction.reply({ content: `${subcommand === "welcome" ? "Welcome" : "Farewell"} messages will post in <#${channel.id}>.`, ephemeral: true });
+    await guildService.updateSettings(context.guildId, { farewellChannelId: channel.id, ...(message === null ? {} : { farewellMessageTemplate: message }) });
+    await interaction.reply({ content: `Farewell messages will post in <#${channel.id}>.`, ephemeral: true });
     return;
   }
 
@@ -136,6 +174,16 @@ export async function executeConfig(interaction: ChatInputCommandInteraction): P
     if (!channel) throw new Error("Provide a channel, or use disable:true to turn logging off.");
     await guildService.updateSettings(context.guildId, { logChannelId: channel.id });
     await interaction.reply({ content: `Logs will post in <#${channel.id}>.`, ephemeral: true });
+    return;
+  }
+
+  if (subcommand === "timezone") {
+    const zone = interaction.options.getString("zone", true).trim();
+    if (!isValidTimeZone(zone)) {
+      throw new Error(`"${zone}" isn't a timezone I know. Use a name like America/Toronto, America/Vancouver, Europe/Paris (list: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones).`);
+    }
+    await guildService.updateSettings(context.guildId, { timezone: zone });
+    await interaction.reply({ content: `Timezone set to **${zone}**. "friday 8pm" in /raid create now means 8pm there.`, ephemeral: true });
     return;
   }
 

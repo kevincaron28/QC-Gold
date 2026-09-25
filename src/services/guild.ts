@@ -85,6 +85,11 @@ export function createGuildService(database: PrismaClient) {
       epCompletionBonus?: number;
       notifyChannelId?: string | null;
       weeklyReportEnabled?: boolean;
+      timezone?: string;
+      language?: string;
+      welcomeDelivery?: string;
+      welcomeRoleIds?: string[];
+      welcomeRolePrompt?: string | null;
       welcomeChannelId?: string | null;
       welcomeMessageTemplate?: string | null;
       farewellChannelId?: string | null;

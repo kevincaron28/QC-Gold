@@ -3,7 +3,8 @@ import { describe, expect, it, vi } from "vitest";
 const settings = {
   notifyChannelId: "c1", raidSignupChannelId: null, logChannelId: null, welcomeChannelId: null,
   applicantRoleId: null, memberRoleId: null, attendanceDkp: 10, lateAttendanceDkp: 5, bossKillDkp: 5,
-  epCompletionBonus: 0, baseGp: 0, epgpDecayPercent: 0.1, raidReminderMinutes: 60, weeklyReportEnabled: false
+  epCompletionBonus: 0, baseGp: 0, epgpDecayPercent: 0.1, raidReminderMinutes: 60, weeklyReportEnabled: false,
+  timezone: "America/Toronto", language: "en", welcomeDelivery: "DM", welcomeRoleIds: ["r1"], welcomeRolePrompt: null
 };
 vi.mock("../src/commands/context.js", () => ({
   guildService: { getSettings: vi.fn(async () => settings), updateSettings: vi.fn() },
@@ -29,7 +30,7 @@ const guild = {
 describe("setup wizard screens", () => {
   it("every step builds a payload Discord will accept", async () => {
     const { renderStep } = await import("../src/commands/setup.js");
-    for (let step = 0; step <= 5; step++) {
+    for (let step = 0; step <= 6; step++) {
       const screen = await renderStep(step, guild as never, "g1", step === 2 ? "Saved <#c1>." : "");
       expect(screen.components.length).toBeLessThanOrEqual(5);
       const ids = new Set<string>();
@@ -59,7 +60,7 @@ describe("setup wizard screens", () => {
 
   it("the checklist step lists what's missing with a fix", async () => {
     const { renderStep } = await import("../src/commands/setup.js");
-    const text = (await renderStep(5, guild as never, "g1", "")).embeds[0]!.toJSON().description ?? "";
+    const text = (await renderStep(6, guild as never, "g1", "")).embeds[0]!.toJSON().description ?? "";
     expect(text).toContain("❌ Raid signups channel");
     expect(text).toContain("Run /setup, step 2");
     expect(text).toContain("✅ Announcements channel (#announcements)");
