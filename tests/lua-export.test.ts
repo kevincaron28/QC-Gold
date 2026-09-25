@@ -100,4 +100,15 @@ describe("readAddonExport (real WoW SavedVariables array syntax)", () => {
     // An empty reason would fail the bot's 3-character minimum.
     expect(first.epgpTransactions[1]?.reason.length).toBeGreaterThanOrEqual(3);
   });
+
+  it("turns a peer's reason flags into readiness findings", async () => {
+    const flagged = FIXTURE.replace('["Bob"] = {', '["Cy"] = { status = "PARTIAL", missing = 0, minDurability = 90, professions = "", flags = "NOFLASK,NOFOOD,ENCH:Chest+Legs", updatedAt = "2026-09-24T00:06:00Z", reportedBy = "Cy" }, ["Bob"] = {');
+    await writeFile(file, flagged, "utf8");
+    const result = await readAddonExport(file, "WoW Forever");
+    const peer = result.readiness.find((entry: { character: string }) => entry.character === "Cy");
+    expect(peer?.findings.map((finding: { code: string }) => finding.code)).toEqual(["NO_FLASK", "NO_FOOD", "MISSING_ENCHANTS"]);
+    expect(peer?.findings[2]?.message).toBe("Missing enchants: Chest, Legs.");
+    // And the bot's schema still accepts it.
+    expect(() => parseAddonSnapshot(result)).not.toThrow();
+  });
 });

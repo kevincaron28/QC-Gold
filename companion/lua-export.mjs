@@ -129,6 +129,12 @@ export async function readAddonExport(path, realm) {
         message: `Lowest reported equipment durability: ${entry.minDurability}%.`
       });
     }
+    // Reason flags from the peer's digest (Core.lua): NOFLASK, NOFOOD, ENCH:Chest+Legs.
+    for (const flag of String(entry.flags ?? "").split(",").filter(Boolean)) {
+      if (flag === "NOFLASK") findings.push({ code: "NO_FLASK", severity: "WARNING", message: "No flask or elixir active." });
+      else if (flag === "NOFOOD") findings.push({ code: "NO_FOOD", severity: "WARNING", message: "No food buff active." });
+      else if (flag.startsWith("ENCH:")) findings.push({ code: "MISSING_ENCHANTS", severity: "WARNING", message: `Missing enchants: ${flag.slice(5).split("+").join(", ")}.` });
+    }
     return {
       character,
       realm,

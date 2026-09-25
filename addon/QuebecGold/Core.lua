@@ -536,11 +536,17 @@ local READINESS_SLOTS = {
   { 16, "MainHand" }, { 17, "OffHand" }
 }
 
+-- Equipment slots where a missing enchant is worth flagging. Officers can
+-- turn the check off or set the level it starts at with /qg enchants.
+local ENCHANTABLE = { Chest = true, Legs = true, Feet = true, Wrist = true, Hands = true, MainHand = true }
+local DEFAULT_ENCHANT_MIN_LEVEL = 60
+
 local function inspectReadiness(silent, target)
   local professions = collectProfessions()
   local snapshot = { character = playerName(), inspectedAt = now(), items = {}, consumables = {}, professions = professions, findings = {} }
   local missing = 0
   local missingSlots = {}
+  local unenchanted = {}
   local minDurability = 100
   for _, slot in ipairs(READINESS_SLOTS) do
     local link = GetInventoryItemLink("player", slot[1])
@@ -553,6 +559,13 @@ local function inspectReadiness(silent, target)
       local itemName = link and string.match(link, "%[(.-)%]")
       if not itemName or itemName == "" then itemName = "Item " .. tostring(itemId or "?") end
       local row = { slot = slot[2], itemName = itemName, itemId = itemId and tostring(itemId) or (link and string.match(link, "item:(%d+)")) }
+      -- The enchant id is the second field of an item link: item:<id>:<enchant>:...
+      local enchantId = link and tonumber(string.match(link, "item:%d+:(%d+)"))
+      if enchantId and enchantId > 0 then
+        row.enchants = { { slot = slot[2], name = "Enchant " .. enchantId, enchantId = tostring(enchantId) } }
+      elseif link and ENCHANTABLE[slot[2]] then
+        table.insert(unenchanted, slot[2])
+      end
       local current, maximum
       if GetInventoryItemDurability then current, maximum = GetInventoryItemDurability(slot[1]) end
       if current and maximum and maximum > 0 then
@@ -586,6 +599,12 @@ local function inspectReadiness(silent, target)
         end
       end
     end
+  end
+  local enchantCheck = db.settings.enchantCheck ~= false
+    and (UnitLevel("player") or 0) >= (db.settings.enchantMinLevel or DEFAULT_ENCHANT_MIN_LEVEL)
+  if enchantCheck and #unenchanted > 0 then
+    table.insert(snapshot.findings, { code = "MISSING_ENCHANTS", severity = "WARNING",
+      message = "Missing enchants: " .. table.concat(unenchanted, ", ") .. "." })
   end
   if minDurability < 20 then
     table.insert(snapshot.findings, { code = "LOW_DURABILITY", severity = "WARNING", message = "Lowest equipped durability is " .. minDurability .. "%." })
@@ -622,7 +641,20 @@ local function inspectReadiness(silent, target)
   -- Compact digest only (no item list/enchants/consumables) so this fits in
   -- a single addon message with no chunking. Broadcast to GUILD by default
   -- so it reaches everyone online, not just the current raid group.
-  send(string.format("READINESS|%s|%s|%d|%d|%s", playerName(), snapshot.status, missing, minDurability, table.concat(profParts, ",")), target or "GUILD")
+  -- Short reason flags ride along so officers see why a peer is PARTIAL:
+  -- NOFLASK, NOFOOD, ENCH:<slots joined by +>. Marked "F:" so an empty
+  -- profession field can't shift them.
+  local flags = {}
+  for _, finding in ipairs(snapshot.findings) do
+    if finding.code == "NO_FLASK" then table.insert(flags, "NOFLASK")
+    elseif finding.code == "NO_FOOD" then table.insert(flags, "NOFOOD")
+    elseif finding.code == "MISSING_ENCHANTS" then table.insert(flags, "ENCH:" .. table.concat(unenchanted, "+")) end
+  end
+  local digest = string.format("READINESS|%s|%s|%d|%d|%s", playerName(), snapshot.status, missing, minDurability, table.concat(profParts, ","))
+  if #flags > 0 and #digest + 3 + #table.concat(flags, ",") <= MAX_ADDON_MESSAGE then
+    digest = digest .. "|F:" .. table.concat(flags, ",")
+  end
+  send(digest, target or "GUILD")
   if not silent then
     local detail = ""
     if missing > 0 then
@@ -775,6 +807,7 @@ local function showHelp()
   local officer = isOfficer()
   message("/qg menu (or click the minimap coin) | inspect | status | roster | standings [player] | diag | version")
   message("/qg attune <key> [clear] - mark your own attunement")
+  message("/qg enchants - show or change the missing-enchant check (on/off, starting level)")
   message("/qg character - copy a line to link this character in Discord (/character import)")
   if officer then
     message("Officer: /qg start [title] | end | attendance <name>|group|seen [PRESENT|ABSENT|LATE] | boss <name>")
@@ -932,6 +965,18 @@ local function command(text)
     for name in pairs(db.roster) do table.insert(names, name) end
     table.sort(names)
     message(#names .. " known character(s): " .. table.concat(names, ", "))
+  elseif action == "enchants" then
+    local sub = string.lower(args[2] or "")
+    if sub == "on" or sub == "off" then
+      db.settings.enchantCheck = (sub == "on")
+      message("Enchant check " .. sub .. ".")
+    elseif sub == "level" and tonumber(args[3]) then
+      db.settings.enchantMinLevel = math.floor(tonumber(args[3]))
+      message("Enchants are checked from level " .. db.settings.enchantMinLevel .. ".")
+    else
+      message(string.format("Enchant check is %s, from level %d. /qg enchants on|off|level <n>.",
+        db.settings.enchantCheck ~= false and "on" or "off", db.settings.enchantMinLevel or DEFAULT_ENCHANT_MIN_LEVEL))
+    end
   elseif action == "character" then
     local info = collectCharacter()
     db.character = info
@@ -1020,11 +1065,17 @@ local function handlePeerReadiness(text, sender)
   -- overwrite a guildmate's readiness in every officer's export.
   local name = normalizeName(parts[2])
   if not name or name ~= normalizeName(sender) then return end
+  local professions, flags = "", ""
+  for index = 6, #parts do
+    if string.sub(parts[index], 1, 2) == "F:" then flags = string.sub(parts[index], 3)
+    elseif professions == "" then professions = parts[index] end
+  end
   db.peerRoster[name] = {
     status = parts[3] or "UNKNOWN",
     missing = tonumber(parts[4]) or 0,
     minDurability = tonumber(parts[5]) or 100,
-    professions = parts[6] or "",
+    professions = professions,
+    flags = flags,
     updatedAt = now(),
     reportedBy = name
   }
