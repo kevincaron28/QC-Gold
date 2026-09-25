@@ -8,7 +8,7 @@ Master role, or Administrator), or the specific Discord role named.
 ## In game: `/qg`
 
 **Easiest way: click the gold coin on the minimap** (or type `/qg menu`).
-Each rank only sees what it can use: members get **Me, Standings, Tools**;
+Each rank only sees what it can use: members get **Me, Standings, Dungeons, Tools**;
 officers also get **Raid, EPGP, Loot, Casino** and the officer tools. A **Player**
 box sits at the top. Target someone and their name fills in automatically, or use
 **Me** or **Group...** (a clickable list of your raid/party). Buttons that

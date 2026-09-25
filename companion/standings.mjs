@@ -36,6 +36,13 @@ export function standingsToLua(data) {
     "QuebecGoldDungeonAccepted = {",
     ...(data.acceptedRunRefs ?? []).map((ref) => `  ${luaString(ref)},`),
     "}",
+    "",
+    "-- Dungeon points this season (top 10), for the addon's Dungeons tab.",
+    ...(data.dungeonBoard ? [
+      `QuebecGoldDungeonBoard = { season = ${luaString(data.dungeonBoard.season)}, rows = {`,
+      ...data.dungeonBoard.rows.map((row) => `  { name = ${luaString(row.name)}, points = ${Math.trunc(row.points)} },`),
+      "} }"
+    ] : ["QuebecGoldDungeonBoard = nil"]),
     ""
   ].join("\n");
 }

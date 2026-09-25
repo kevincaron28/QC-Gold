@@ -22,7 +22,7 @@ ns = ns or {}
 local ICON = "Interface\\Icons\\INV_Misc_Coin_01"
 local DEFAULT_ANGLE = math.rad(220)
 local RADIUS_PAD = 5
-local PANEL_WIDTH = 560
+local PANEL_WIDTH = 620
 local PANEL_HEIGHT = 480
 local ATTUNEMENT_PRESETS = { "Molten Core", "Onyxia", "Blackwing Lair", "Naxxramas" }
 
@@ -505,6 +505,28 @@ local function buildToolsPage(page)
   ui.exportHelp:SetWidth(PANEL_WIDTH - 44)
 end
 
+-- Dungeon challenge: the run being recorded, recent runs, and the
+-- season's points from Discord (roadmap D9). Start/complete/abandon check
+-- permissions themselves (group leader, officer, or solo).
+local function buildDungeonPage(page)
+  ui.dgnCurrent = at(newLabel(page, "", "GameFontHighlight"), page, 0, 0)
+  ui.dgnCurrent:SetWidth(PANEL_WIDTH - 44)
+  at(newButton(page, L("Status"), 90, function() run("dungeon status") end), page, 0, -44)
+  at(newButton(page, L("Start now"), 90, function() run("dungeon start") end), page, 94, -44)
+  local complete = at(newButton(page, L("Complete"), 90), page, 188, -44)
+  confirmClick(complete, L("Complete"), function() run("dungeon complete") end)
+  local abandon = at(newButton(page, L("Abandon"), 90), page, 282, -44)
+  confirmClick(abandon, L("Abandon"), function() run("dungeon abandon") end)
+  at(newButton(page, L("Check"), 90, function() run("dungeon check") end), page, 376, -44)
+
+  at(newLabel(page, L("Recent runs"), "GameFontNormal"), page, 0, -80)
+  ui.dgnRuns = at(newLabel(page, "", "GameFontHighlightSmall"), page, 0, -98)
+  ui.dgnRuns:SetWidth(PANEL_WIDTH - 44)
+  ui.dgnBoardTitle = at(newLabel(page, "", "GameFontNormal"), page, 0, -196)
+  ui.dgnBoard = at(newLabel(page, "", "GameFontHighlightSmall"), page, 0, -214)
+  ui.dgnBoard:SetWidth(PANEL_WIDTH - 44)
+end
+
 local TAB_DEFS = {
   { name = "Raid", officer = true, build = buildRaidPage },
   { name = "EPGP", officer = true, build = buildEpgpPage },
@@ -512,6 +534,7 @@ local TAB_DEFS = {
   { name = "Casino", officer = true, build = buildCasinoPage },
   { name = "Me", build = buildMePage },
   { name = "Standings", build = buildStandingsPage },
+  { name = "Dungeons", build = buildDungeonPage },
   { name = "Tools", build = buildToolsPage }
 }
 
@@ -530,6 +553,62 @@ local function standingsRows()
 end
 
 local selectTab
+
+local function clock(seconds)
+  seconds = math.max(0, math.floor(seconds or 0))
+  return string.format("%d:%02d", math.floor(seconds / 60), seconds % 60)
+end
+
+local function refreshDungeons(db)
+  if not ui.dgnCurrent then return end
+  local d = db.dungeon or {}
+  local run = d.current
+  if run then
+    local kills, deaths, tracked = 0, 0, false
+    for _, encounter in ipairs(run.encounters or {}) do if encounter.success then kills = kills + 1 end end
+    for _, player in pairs(run.players or {}) do
+      if type(player.deaths) == "number" then deaths = deaths + player.deaths; tracked = true end
+    end
+    local now = GetServerTime and GetServerTime() or time()
+    local timer = run.startedAt and clock(now - run.startedAt) or L("waiting for the first pull")
+    ui.dgnCurrent:SetText(string.format("%s - %s - %s\n%s %d%s   %s", run.name or "?", run.state or "?", timer,
+      L("Bosses"), kills, run.bossCount and ("/" .. run.bossCount) or "",
+      tracked and string.format(L("Deaths %d"), deaths) or ""))
+    -- Keep the timer moving while this tab is open.
+    if run.state == "ACTIVE" and ui.tabs[ui.currentTab or 0] and ui.tabs[ui.currentTab].name == "Dungeons"
+      and not ui.dgnTickPending and C_Timer then
+      ui.dgnTickPending = true
+      C_Timer.After(1, function() ui.dgnTickPending = false; refresh() end)
+    end
+  else
+    ui.dgnCurrent:SetText(L("No dungeon run in progress. Enter a dungeon: the timer starts on the first pull and stops on the last boss."))
+  end
+
+  local runs = {}
+  for _, stored in pairs(d.runs or {}) do table.insert(runs, stored) end
+  table.sort(runs, function(a, b) return (a.endedAt or a.detectedAt or 0) > (b.endedAt or b.detectedAt or 0) end)
+  local lines = {}
+  for i = 1, math.min(6, #runs) do
+    local r = runs[i]
+    local shown = r.state == "COMPLETED" and r.durationSec and clock(r.durationSec) or string.lower(r.state or "?")
+    table.insert(lines, string.format("%s  %s  %s", r.name or "?", shown, r.synced and L("on Discord") or L("waiting to sync")))
+  end
+  ui.dgnRuns:SetText(#lines > 0 and table.concat(lines, "\n") or L("None yet."))
+
+  local board = QuebecGoldDungeonBoard
+  if type(board) == "table" and type(board.rows) == "table" and #board.rows > 0 then
+    ui.dgnBoardTitle:SetText(string.format(L("Dungeon points - %s (from Discord)"), tostring(board.season or "")))
+    local rows = {}
+    for i, row in ipairs(board.rows) do
+      if i > 8 then break end
+      table.insert(rows, string.format("%2d. %-14s %d", i, tostring(row.name), tonumber(row.points) or 0))
+    end
+    ui.dgnBoard:SetText(table.concat(rows, "\n"))
+  else
+    ui.dgnBoardTitle:SetText(L("Dungeon points"))
+    ui.dgnBoard:SetText(L("No points yet. They come from Discord after an officer imports the runs."))
+  end
+end
 
 local function layoutTabs(officer)
   local x = 18
@@ -619,6 +698,8 @@ refresh = function()
     or string.format(L("%s has done: %s"), attuneTarget, doneText)) ..
     (officer and L("\n(Officers: Mark done applies to the selected player.)") or ""))
 
+  refreshDungeons(db)
+
   local updatedAt = ns.getStandingsUpdatedAt and ns.getStandingsUpdatedAt()
   if not updatedAt then
     ui.standingsPlayer:SetText(L("No standings yet."))
@@ -707,6 +788,7 @@ local function buildPanel()
   end
   ns.onCasinoChange = function() refresh() end
   ns.onBiddingChange = function() refresh() end
+  ns.onDungeonChange = function() refresh() end
 
   -- Targeting a player while the window is open fills the Player field.
   panel:RegisterEvent("PLAYER_TARGET_CHANGED")

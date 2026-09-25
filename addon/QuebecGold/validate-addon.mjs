@@ -74,4 +74,22 @@ for (const file of addonFiles) {
   if (!toc.includes(name)) throw new Error(`${file} is not listed in QuebecGold.toc, so the game would never load it`);
 }
 
+// Lua syntax: one broken file stops the whole addon from loading in game.
+// luaparse comes with the bot's dependencies (the companion uses it).
+let luaparse = null;
+try {
+  luaparse = (await import("luaparse")).default;
+} catch {
+  console.warn("luaparse not installed (run npm install in the bot folder); skipping the Lua syntax check.");
+}
+if (luaparse) {
+  for (const file of addonFiles) {
+    try {
+      luaparse.parse(readFileSync(new URL(file, root), "utf8"), { luaVersion: "5.1" });
+    } catch (error) {
+      throw new Error(`${file}: Lua syntax error: ${error.message}`);
+    }
+  }
+}
+
 console.log("QuebecGold addon static validation passed.");

@@ -4,6 +4,7 @@ import { config } from "./config.js";
 import { prisma } from "./database.js";
 import { createAddonImportService } from "./services/addon-import.js";
 import { createEpgpService } from "./services/epgp.js";
+import { addonDungeonBoard } from "./services/dungeon-stats.js";
 
 const importService = createAddonImportService(prisma);
 const epgpService = createEpgpService(prisma);
@@ -65,7 +66,8 @@ export function startCompanionApi(): ReturnType<typeof createServer> {
           orderBy: { createdAt: "desc" },
           take: 500
         })).map((row) => row.runRef);
-        json(response, 200, { updatedAt: new Date().toISOString(), baseGp, acceptedRunRefs, standings: await epgpService.getGuildStandings(guild.id, baseGp) });
+        const dungeonBoard = await addonDungeonBoard(prisma, guild.id);
+        json(response, 200, { updatedAt: new Date().toISOString(), baseGp, acceptedRunRefs, dungeonBoard, standings: await epgpService.getGuildStandings(guild.id, baseGp) });
         return;
       }
       const payload = await readBody(request);

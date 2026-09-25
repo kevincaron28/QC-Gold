@@ -147,6 +147,20 @@ export async function dungeonChoices(database: Pick<PrismaClient, "dungeonRun">,
     .map((row) => ({ name: row.dungeonName.slice(0, 100), value: String(row.instanceId) }));
 }
 
+// Season top 10 by in-game name (main character) for the addon's Dungeons
+// tab; the companion writes it into Standings.lua.
+export async function addonDungeonBoard(database: Db & Pick<PrismaClient, "character">, guildId: string) {
+  const season = await activeSeasonOrNull(database, guildId);
+  if (!season) return null;
+  const rows = await leaderboard(database, guildId, "season", null, 10);
+  const characters = await database.character.findMany({
+    where: { memberId: { in: rows.map((row) => row.memberId) } }, orderBy: [{ isMain: "desc" }, { createdAt: "asc" }], select: { memberId: true, name: true }
+  });
+  const mainName = new Map<string, string>();
+  for (const character of characters) if (!mainName.has(character.memberId)) mainName.set(character.memberId, character.name);
+  return { season: season.name, rows: rows.map((row) => ({ name: mainName.get(row.memberId) ?? row.name, points: row.points })) };
+}
+
 // "1. Kev — 240" lines with medals for the top three.
 export function formatLeaderboard(rows: LeaderRow[]): string {
   const medals = ["🥇", "🥈", "🥉"];

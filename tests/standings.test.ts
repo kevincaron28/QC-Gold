@@ -23,6 +23,19 @@ describe("companion standings file", () => {
     expect(() => luaparse.parse(lua)).not.toThrow();
     expect(lua).toContain('name = "Kévin", ep = 100, gp = 50, main = true');
   });
+
+  it("carries accepted dungeon runs and the season's dungeon board", () => {
+    const lua = standingsToLua({
+      updatedAt: "2026-09-24T00:00:00.000Z", standings: [],
+      acceptedRunRefs: ["QG-20260925-120000-Kev"],
+      dungeonBoard: { season: "Season \"1\"", rows: [{ name: "Kev", points: 240.7 }] }
+    });
+    expect(() => luaparse.parse(lua)).not.toThrow();
+    expect(lua).toContain('"QG-20260925-120000-Kev",');
+    expect(lua).toContain('QuebecGoldDungeonBoard = { season = "Season \\"1\\"", rows = {');
+    expect(lua).toContain('{ name = "Kev", points = 240 },');
+    expect(standingsToLua({ updatedAt: "x", standings: [] })).toContain("QuebecGoldDungeonBoard = nil");
+  });
 });
 
 describe("guild standings", () => {
