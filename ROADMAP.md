@@ -11,50 +11,66 @@ priority (P0 = do first) · **S/M/L** = rough size
 
 ---
 
-## ⏸ Where we are — resume here (updated 2026-09-26)
+## ⏸ Where we are — resume here (updated 2026-09-26, v2 push)
 
-- **Everything planned so far is built** except what's blocked or held:
-  backlog P0/P1/P2 (#1–31 minus #17, #18, #20), Dungeon Challenge D1–D10,
-  addon modules M1–M2, and the 2026-09-26 batch (#33–#45: character import,
-  setup channels and categories, WCL, readiness channel, consumable scan,
-  raid cores, dungeon groups with voice). Only #46 (public rebrand) and
-  the review ideas below are unbuilt. Addon **v1.9.0**, zip built into
-  `dist/` (not released). 180 bot tests.
-- **Tonight (user):** run `LUNCH_TEST_CHECKLIST.md` (untracked, sections
-  0-11; 8 = **Warcraft Logs**, 9 = consumable scan, 10 = raid cores,
-  11 = dungeon group voice). Before that: restart the bot with the desktop
-  shortcut (it updates the database and opens the companion itself),
-  install v1.9.0. The Lua for the consumable scan and `/qg character` has
-  only been syntax-checked, so game tests matter most. Also send the output of `/qg calendar check` (decides #32).
-  Then push, GitHub release v1.8.0, refresh the install page.
-- **Next (build):** pick from the GuildOS review (G1–G13) and the eight-addon
-  review (PM, LR, VG, RF, ID, GP, IR, GK series, with "common themes" at the end);
-  #18 WCL auto-discovery once the manual import proves useful; M3
-  CurseForge packaging when the user wants a public listing; #32 calendar
-  sync after the check result; #46 rebrand.
-- **Blocked / held:** #18 (needs #12 proven on real Forever logs); #17
-  web dashboard (held); #20 guild achievements/graphs (open).
-- **Verification baseline:** 180 bot tests, `tsc`, `eslint`, addon
-  validator (also a Lua syntax check), and Lua simulations in the
-  session scratchpad: core 18, window/sync/modules 92, casino 28,
-  calendar 9, dungeon 29, sim dungeon + module gating 37. The new
-  `/qg character` box has only been syntax-checked, not run in game.
-- **Live DB migrations applied** through
-  `20260926120000_warcraft_logs_and_channels` (applied 2026-09-26).
-  `start-bot.bat` now runs `npm run db:update` on every start.
+**Goal: ship v2.0.0 (addon + bot) tonight for testing, with everything that
+can be built without live data or a decision from the user built.** Items
+are grouped below; the progress log at the end of this section is updated
+after each commit so a session that hits a limit can resume from it.
 
-## Overnight run log (2026-09-26 → keep updated; resume from here if a limit hits)
+**Already shipped (v1.x, in the repo):** EPGP ledger and bidding, raids with
+waitlist and buttons, loot history, dungeon challenge, casino, module switches,
+`/setup` (7 steps, categories, permissions), character import, raid cores with
+signup priority, dungeon groups with temporary voice, readiness board with
+consumables, Warcraft Logs import, backups, French. See the sections below for
+each item's notes.
 
-Order of work: **A** roadmap entries (#42–#46) → **B** consumable scan (#42) →
-**C** raid cores (#43) → **D** dungeon group signup + temp voice (#44) →
-**E** setup categories/permissions (#45). #46 (rebrand) is planning only.
-Each step ends with tsc + eslint + tests green and a commit. Status:
+### v2.0.0 scope
 
-- [x] A. Roadmap entries added.
-- [x] B. Consumable scan (addon `Modules/Consumables.lua`, `ConsumableCheck` model, readiness board section; addon v1.9.0; not yet run in game).
-- [x] C. Raid cores (`/core`, `RaidCore`, `/raid create core:`, signup priority, roster channel; tests/raid-core.test.ts).
-- [x] D. Dungeon group signup + temporary voice channel (`/dungeon group`, `DungeonGroup` models, buttons, private voice channel, 2-minute cleanup; tests/dungeon-group.test.ts).
-- [x] E. Setup categories and permissions (5 categories, per-channel access, roster/readiness channels, "Tidy my channels" button; setup is still 7 steps, step 3 = raid team, step 4 = dungeon + recruitment).
+**Addon (Lua), tested with the new fengari harness (`tests/lua/`)**
+- [x] **A1 (X3)** Lua test harness: the real addon files run against a mocked game inside vitest.
+- [ ] **A2 (X1)** Player identity for Forever (`ns.compat.playerKey/normalizeName`) and `/qg diag` identity line.
+- [ ] **A3 (GO5)** Enchant check: which equipped slots lack an enchant, in the snapshot and on the board.
+- [ ] **A4 (X5)** Login digest: "since your last login" summary, `/qg digest`.
+- [ ] **A5 (X6)** `QuebecGoldAPI` read-only v1.
+- [ ] **A6 (X4)** Versioned addon-message envelope (accepts old, sends new).
+- [ ] **A7 (X2)** `QGEXP1:` paste export + `/import code:` for members without the companion.
+- [ ] **A8 (ID3)** Attendance snapshot: `/qg snapshot [label]`.
+- [ ] **A9 (VG1, VG2)** Casino ban list and session stats.
+
+**Bot (Discord)**
+- [ ] **B1 (GO3)** Readiness aggregator: one status per member, sorted most actionable first, enchants and attunement target.
+- [ ] **B2 (GK2)** `/inactive`: members inactive for N days (read-only report).
+- [ ] **B3 (GP4)** `/export`: CSV of roster, attendance or loot for officers.
+- [ ] **B4 (IR4, GK4)** Composition (class, race, level ranges) in `/stats`.
+- [ ] **B5 (RF4)** Bench credit: a BENCHED attendance status that counts as present for EP and rates.
+- [ ] **B6 (GO2)** Loot council mode: points shown but bidding buttons hidden.
+- [ ] **B7 (GO7)** `/poll`: officers create polls, members vote with buttons.
+- [ ] **B8 (GP10)** Retention cohorts (30/60/90 days) in `/stats`.
+- [ ] **B9 (#46 prep)** One `BRAND` constant for the product name used in embeds, so the public rename is a one-line change.
+
+**Release**
+- [ ] **R1** Addon 2.0.0 (TOC, zip), README/COMMANDS, launch checklist sections for everything new, roadmap final status.
+
+### Not in v2 (why)
+
+| Item | Why it waits |
+| --- | --- |
+| #46 public rebrand and CurseForge (M3) | needs a name and logo from the user, and a hosting decision |
+| #18 WCL auto-discovery | needs `/wcl report` proven on real Forever logs first |
+| #32 calendar sync | needs the output of `/qg calendar check` |
+| #17 web dashboard, #20 achievements/graphs | held; data model still moving |
+| #40 fully automatic character linking, IR3 verification | needs the verification design and live testing of `/qg character` |
+| PM1/PM2/IR1 recipes, cooldowns, bank stock | need in-game API discovery on Forever (trade skill and guild bank windows) |
+| RF1-RF3 mass invite, group layout, assignments | protected group APIs; needs in-game testing per call |
+| ID1 loot responses, GO1 per-core rules | designs touch bidding/EPGP rules; better after v2 feedback |
+| G6 roster panel, G1 tooltips, G7 compression | large UI/library decisions (bundling libs) |
+| GO8/G13 SoftRes and TMB import | need sample export files from the user |
+| LR1, LR2 roster events/permissions, GK1 auto invite, GP1/GP2 event log and DNI list | need live guild-log behaviour on Forever |
+
+### Progress log (update after every commit)
+
+- 2026-09-26 14:40 A1 done: fengari harness; Consumables.lua and Core.lua (`/qg character`) verified against the mocked game.
 
 ## History — where we were on 2026-09-24 (kept for reference)
 
