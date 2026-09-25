@@ -86,6 +86,9 @@ export const configCommand = new SlashCommandBuilder()
     .addChannelOption((o) => o.setName("channel").setDescription("Readiness channel (make it visible to officers and raid leaders only)")
       .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
     .addBooleanOption((o) => o.setName("disable").setDescription("Stop posting readiness to a channel")))
+  .addSubcommand((sub) => sub.setName("loot-mode").setDescription("How loot is decided: EPGP bids, or loot council (officers decide, bidding off).")
+    .addStringOption((o) => o.setName("mode").setDescription("Loot mode").setRequired(true).addChoices(
+      { name: "EPGP (GP bids decide)", value: "EPGP" }, { name: "Loot council (officers decide)", value: "COUNCIL" })))
   .addSubcommand((sub) => sub.setName("core-channel").setDescription("Channel that shows each raid core's roster (one live message per core).")
     .addChannelOption((o) => o.setName("channel").setDescription("Raid roster channel")
       .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
@@ -130,6 +133,7 @@ export async function executeConfig(interaction: ChatInputCommandInteraction): P
         `Dungeon posts: ${settings.dungeonChannelId ? `<#${settings.dungeonChannelId}>` : "notify channel"}`,
         `Raid logs: ${settings.raidLogChannelId ? `<#${settings.raidLogChannelId}>` : "notify channel"}`,
         `Loot and EP log: ${settings.lootChannelId ? `<#${settings.lootChannelId}>` : "notify channel"}`,
+        `Loot mode: ${settings.lootMode === "COUNCIL" ? "loot council" : "EPGP bids"}`,
         `Raid roster channel: ${settings.coreChannelId ? `<#${settings.coreChannelId}>` : "not set"}`,
         `Readiness channel: ${settings.readinessChannelId ? `<#${settings.readinessChannelId}>` : "not set"}`,
         `Craft board: ${settings.craftChannelId ? `<#${settings.craftChannelId}>` : "officer log"}`,
@@ -296,6 +300,18 @@ export async function executeConfig(interaction: ChatInputCommandInteraction): P
     if (channelSetting.field === "dungeonLeaderboardChannelId") await updateDungeonLeaderboard(interaction.guild);
     if (channelSetting.field === "coreChannelId") await syncAllCoreRosters(interaction.guild, prisma, context.guildId);
     await interaction.reply({ content: `${channelSetting.label} will use <#${channel.id}>.`, ephemeral: true });
+    return;
+  }
+
+  if (subcommand === "loot-mode") {
+    const mode = interaction.options.getString("mode", true) === "COUNCIL" ? "COUNCIL" : "EPGP";
+    await guildService.updateSettings(context.guildId, { lootMode: mode });
+    await interaction.reply({
+      content: mode === "COUNCIL"
+        ? "Loot council on: `/loot auction` and `/loot bid` are off; officers use `/loot award`. In game, an officer can also turn GP bidding off for everyone: `/qg modules guild off bidding`."
+        : "Loot mode: EPGP bids. `/loot auction` and `/loot bid` work again.",
+      ephemeral: true
+    });
     return;
   }
 

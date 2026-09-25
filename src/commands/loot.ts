@@ -4,7 +4,7 @@ import { notifications, notify } from "../services/notify.js";
 import { createWishlistService } from "../services/wishlist.js";
 import { prisma } from "../database.js";
 import { hasPermission } from "../permissions.js";
-import { requireGuildContext } from "./context.js";
+import { guildService, requireGuildContext } from "./context.js";
 
 const lootService = createLootService(prisma);
 const wishlistService = createWishlistService(prisma);
@@ -16,6 +16,12 @@ export const lootCommand = new SlashCommandBuilder()
     .addIntegerOption((o) => o.setName("minimum").setDescription("Minimum bid").setMinValue(1).setRequired(true))
     .addIntegerOption((o) => o.setName("increment").setDescription("Bid increment").setMinValue(1).setRequired(true))
     .addIntegerOption((o) => o.setName("duration").setDescription("Duration in seconds").setMinValue(1).setMaxValue(86400).setRequired(true))
+    .addStringOption((o) => o.setName("boss").setDescription("Boss that dropped it (for loot history)"))
+    .addStringOption((o) => o.setName("raid").setDescription("Raid for loot history (start typing its name)").setAutocomplete(true)))
+  .addSubcommand((sub) => sub.setName("award").setDescription("Give an item straight to a player (loot council or a manual award). Officers.")
+    .addStringOption((o) => o.setName("item").setDescription("Item name").setRequired(true))
+    .addUserOption((o) => o.setName("player").setDescription("Who gets it").setRequired(true))
+    .addIntegerOption((o) => o.setName("gp").setDescription("GP to charge (default 0)").setMinValue(0))
     .addStringOption((o) => o.setName("boss").setDescription("Boss that dropped it (for loot history)"))
     .addStringOption((o) => o.setName("raid").setDescription("Raid for loot history (start typing its name)").setAutocomplete(true)))
   .addSubcommand((sub) => sub.setName("bid").setDescription("Bid on an active auction.")
@@ -33,8 +39,25 @@ export async function executeLoot(interaction: ChatInputCommandInteraction): Pro
   const context = await requireGuildContext(interaction);
   if (!context) return;
   const subcommand = interaction.options.getSubcommand();
-  if ((subcommand === "auction" || subcommand === "close") && !officer(interaction)) {
+  if ((subcommand === "auction" || subcommand === "close" || subcommand === "award") && !officer(interaction)) {
     await interaction.reply({ content: "Only officers, Guild Masters, or administrators can manage auctions.", ephemeral: true });
+    return;
+  }
+  const councilMode = (await guildService.getSettings(context.guildId))?.lootMode === "COUNCIL";
+  if (subcommand === "award") {
+    const user = interaction.options.getUser("player", true);
+    const target = await guildService.ensureMember(context.guildId, user.id, user.username);
+    const award = await lootService.awardDirect({
+      guildId: context.guildId, memberId: target.id, itemName: interaction.options.getString("item", true),
+      gp: interaction.options.getInteger("gp") ?? 0, raidId: interaction.options.getString("raid") ?? undefined,
+      bossName: interaction.options.getString("boss") ?? undefined, awardedBy: interaction.user.id
+    });
+    await interaction.reply({ content: `**${award.itemName}** awarded to ${user.username}${award.amount ? ` for ${award.amount} GP` : ""}.`, allowedMentions: { parse: [] } });
+    await notify(interaction.guild, notifications.lootAwarded(award.itemName, award.member.displayName, award.amount), "loot");
+    return;
+  }
+  if (councilMode && (subcommand === "auction" || subcommand === "bid")) {
+    await interaction.reply({ content: "This guild uses **loot council**: officers decide. Officers award with `/loot award`; add the item to your `/wishlist` to state interest.", ephemeral: true });
     return;
   }
   if (subcommand === "auction") {

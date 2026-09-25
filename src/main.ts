@@ -34,6 +34,7 @@ import { executeCore } from "./commands/core.js";
 import { executeInactive } from "./commands/inactive.js";
 import { executeExport } from "./commands/export.js";
 import { executeGuildHealth } from "./commands/guild-health.js";
+import { executePoll, handlePollButton, POLL_PREFIX } from "./commands/poll.js";
 import { cleanupDungeonGroups, DUNGEON_GROUP_PREFIX, handleDungeonGroupButton } from "./commands/dungeon-group.js";
 import { executeStats, runWeeklyReports } from "./commands/stats.js";
 import { executeBank } from "./commands/bank.js";
@@ -83,6 +84,7 @@ handlers.set("core", executeCore);
 handlers.set("inactive", executeInactive);
 handlers.set("export", executeExport);
 handlers.set("guildhealth", executeGuildHealth);
+handlers.set("poll", executePoll);
 handlers.set("stats", executeStats);
 handlers.set("bank", executeBank);
 handlers.set("testraid", executeTestRaid);
@@ -167,6 +169,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
       console.error("Welcome role button failed", error);
       if (!interaction.replied) await interaction.reply({ content: "That didn't work, try again or ask an officer.", ephemeral: true }).catch(() => undefined);
     });
+    return;
+  }
+  if (interaction.isButton() && interaction.customId.startsWith(POLL_PREFIX)) {
+    await handlePollButton(interaction).catch((error: unknown) => console.error("Poll button failed", error));
     return;
   }
   if (interaction.isButton() && interaction.customId.startsWith(DUNGEON_GROUP_PREFIX)) {

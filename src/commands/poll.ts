@@ -1,0 +1,106 @@
+import {
+  ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, SlashCommandBuilder,
+  type ButtonInteraction, type ChatInputCommandInteraction, type Guild as DiscordGuild, type GuildMember
+} from "discord.js";
+import { prisma } from "../database.js";
+import { hasPermission } from "../permissions.js";
+import { cleanOptions, createPollService, resultBar } from "../services/poll.js";
+import { parseRaidTime } from "../services/raid-time.js";
+import { guildService, requireGuildContext } from "./context.js";
+
+const service = createPollService(prisma);
+export const POLL_PREFIX = "poll:";
+
+export const pollCommand = new SlashCommandBuilder()
+  .setName("poll")
+  .setDescription("Polls answered with buttons.")
+  .addSubcommand((sub) => {
+    sub.setName("create").setDescription("Officers: post a poll (2 to 5 options).")
+      .addStringOption((o) => o.setName("question").setDescription("The question").setMinLength(3).setMaxLength(250).setRequired(true))
+      .addStringOption((o) => o.setName("option1").setDescription("First option").setMaxLength(80).setRequired(true))
+      .addStringOption((o) => o.setName("option2").setDescription("Second option").setMaxLength(80).setRequired(true));
+    for (const n of [3, 4, 5]) sub.addStringOption((o) => o.setName(`option${n}`).setDescription(`Option ${n}`).setMaxLength(80));
+    sub.addStringOption((o) => o.setName("closes").setDescription("When it closes by itself, e.g. friday 8pm (default: stays open)"));
+    return sub;
+  })
+  .addSubcommand((sub) => sub.setName("close").setDescription("Officers: close a poll and post the result.")
+    .addStringOption((o) => o.setName("poll").setDescription("Poll id (from the post's footer)").setRequired(true)));
+
+async function pollEmbed(pollId: string): Promise<EmbedBuilder> {
+  const { poll, counts, total } = await service.results(pollId);
+  const expired = !!poll.closesAt && poll.closesAt.getTime() <= Date.now();
+  const closed = poll.closed || expired;
+  return new EmbedBuilder()
+    .setColor(closed ? 0x808080 : 0x5865f2)
+    .setTitle(`📊 ${poll.question}`)
+    .setDescription(poll.options.map((option, index) => `**${option}**\n${resultBar(counts[index] ?? 0, total)}`).join("\n\n"))
+    .addFields(
+      { name: "Votes", value: String(total), inline: true },
+      { name: "Status", value: closed ? "Closed" : poll.closesAt ? `Open until <t:${Math.floor(poll.closesAt.getTime() / 1000)}:f>` : "Open", inline: true }
+    )
+    .setFooter({ text: `Poll ${poll.id} · one vote each, you can change it` });
+}
+
+function pollButtons(pollId: string, options: string[], closed: boolean) {
+  if (closed) return [];
+  return [new ActionRowBuilder<ButtonBuilder>().addComponents(
+    ...options.map((option, index) => new ButtonBuilder().setCustomId(`${POLL_PREFIX}${pollId}:${index}`).setLabel(option.slice(0, 80)).setStyle(ButtonStyle.Primary))
+  )];
+}
+
+async function syncPoll(guild: DiscordGuild, pollId: string): Promise<void> {
+  try {
+    const poll = await prisma.poll.findUnique({ where: { id: pollId } });
+    if (!poll?.channelId || !poll.messageId) return;
+    const channel = await guild.channels.fetch(poll.channelId).catch(() => null);
+    if (!channel?.isTextBased()) return;
+    const message = await channel.messages.fetch(poll.messageId).catch(() => null);
+    await message?.edit({ embeds: [await pollEmbed(pollId)], components: pollButtons(pollId, poll.options, poll.closed) });
+  } catch (error) {
+    console.error("Failed to refresh poll", error);
+  }
+}
+
+export async function executePoll(interaction: ChatInputCommandInteraction): Promise<void> {
+  const context = await requireGuildContext(interaction);
+  if (!context || !interaction.guild) return;
+  if (!interaction.member || !hasPermission(interaction.member as GuildMember, "officer")) {
+    await interaction.reply({ content: "Only Officers and Guild Masters can create or close polls.", ephemeral: true });
+    return;
+  }
+  const subcommand = interaction.options.getSubcommand();
+  if (subcommand === "close") {
+    const poll = await service.close(interaction.options.getString("poll", true), context.guildId);
+    await syncPoll(interaction.guild, poll.id);
+    const { counts, total } = await service.results(poll.id);
+    await interaction.reply({
+      content: `Closed **${poll.question}** — ${total} vote${total === 1 ? "" : "s"}: ${poll.options.map((option, index) => `${option} ${counts[index] ?? 0}`).join(" · ")}`,
+      ephemeral: true
+    });
+    return;
+  }
+  const options = cleanOptions([1, 2, 3, 4, 5].map((n) => interaction.options.getString(`option${n}`)));
+  const closesText = interaction.options.getString("closes");
+  const settings = await guildService.getSettings(context.guildId);
+  const closesAt = closesText ? parseRaidTime(closesText, settings?.timezone ?? "America/Toronto") : null;
+  const poll = await service.create({ guildId: context.guildId, question: interaction.options.getString("question", true), options, createdBy: interaction.user.id, closesAt });
+  const channel = interaction.channel;
+  if (!channel?.isTextBased() || !("send" in channel)) throw new Error("I can't post in this channel.");
+  const message = await channel.send({ embeds: [await pollEmbed(poll.id)], components: pollButtons(poll.id, poll.options, false) });
+  await service.setMessage(poll.id, channel.id, message.id);
+  await interaction.reply({ content: `Poll posted. Close it with \`/poll close poll:${poll.id}\`.`, ephemeral: true });
+}
+
+export async function handlePollButton(interaction: ButtonInteraction): Promise<void> {
+  const [pollId, optionText] = interaction.customId.slice(POLL_PREFIX.length).split(":");
+  if (!interaction.guild || !pollId || optionText === undefined) return;
+  const guild = await guildService.ensureGuild(interaction.guild.id, interaction.guild.name);
+  const member = await guildService.ensureMember(guild.id, interaction.user.id, (interaction.member as GuildMember | null)?.displayName ?? interaction.user.username);
+  try {
+    const poll = await service.vote(pollId, guild.id, member.id, Number(optionText));
+    await interaction.reply({ content: `Your vote for **${poll.options[Number(optionText)]}** is recorded. Click another option to change it.`, ephemeral: true });
+    await syncPoll(interaction.guild, pollId);
+  } catch (error) {
+    await interaction.reply({ content: error instanceof Error ? error.message : "Could not record your vote.", ephemeral: true }).catch(() => undefined);
+  }
+}

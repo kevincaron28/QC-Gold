@@ -102,6 +102,36 @@ export function createLootService(database: PrismaClient) {
       });
     },
 
+    // Loot council / direct award: no auction. GP is charged only when gp > 0
+    // (council guilds usually award for 0), and the award lands in loot history.
+    async awardDirect(input: { guildId: string; memberId: string; itemName: string; gp: number; raidId?: string | undefined; bossName?: string | undefined; awardedBy: string }) {
+      const itemName = input.itemName.trim();
+      if (!itemName) throw new Error("Item name is required");
+      if (!Number.isInteger(input.gp) || input.gp < 0) throw new Error("GP must be zero or a positive whole number");
+      return database.$transaction(async (tx) => {
+        const member = await tx.member.findUnique({ where: { id: input.memberId } });
+        if (!member || member.guildId !== input.guildId) throw new Error("That player is not in this guild");
+        const before = await tx.epgpTransaction.aggregate({ where: { memberId: input.memberId }, _sum: { epAmount: true, gpAmount: true } });
+        if (input.gp > 0) {
+          await tx.epgpTransaction.create({
+            data: {
+              guildId: input.guildId, memberId: input.memberId, epAmount: 0, gpAmount: input.gp,
+              type: EpgpTransactionType.ITEM_AWARD, reason: `Loot award: ${itemName}`,
+              sourceRef: `loot-direct:${input.memberId}:${Date.now()}:${itemName}`, createdBy: input.awardedBy
+            }
+          });
+        }
+        return tx.lootAward.create({
+          data: {
+            guildId: input.guildId, memberId: input.memberId, itemName, amount: input.gp,
+            raidId: input.raidId?.trim() || null, bossName: input.bossName?.trim() || null, awardedBy: input.awardedBy,
+            epBefore: before._sum.epAmount ?? 0, gpBefore: before._sum.gpAmount ?? 0
+          },
+          include: { member: true }
+        });
+      });
+    },
+
     getActiveAuctions(guildId: string) {
       return database.auction.findMany({
         where: { guildId, status: AuctionStatus.ACTIVE },

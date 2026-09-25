@@ -138,6 +138,7 @@ model Guild {
   consumableChecks    ConsumableCheck[]
   raidCores           RaidCore[]
   dungeonGroups       DungeonGroup[]
+  polls               Poll[]
 }
 
 model Member {
@@ -158,6 +159,7 @@ model Member {
   raidSignups         RaidSignup[]
   coreMemberships     RaidCoreMember[]
   dungeonGroupSignups DungeonGroupSignup[]
+  pollVotes           PollVote[]
   raidAttendance      RaidAttendance[]
   bids                AuctionBid[]
   lootAwards          LootAward[]
@@ -435,6 +437,8 @@ model GuildSettings {
   readinessChannelId       String?
   // Where each raid core's roster is shown (one live message per core).
   coreChannelId            String?
+  // "EPGP" (bids decide) or "COUNCIL" (officers decide with /loot award; bids are off).
+  lootMode                 String    @default("EPGP")
   createdAt                DateTime  @default(now())
   updatedAt                DateTime  @updatedAt
   guild                    Guild     @relation(fields: [guildId], references: [id], onDelete: Cascade)
@@ -913,4 +917,34 @@ model DungeonGroupSignup {
   member   Member           @relation(fields: [memberId], references: [id], onDelete: Cascade)
 
   @@unique([groupId, memberId])
+}
+
+// An officer poll answered with buttons; one vote per member, changeable.
+model Poll {
+  id        String     @id @default(cuid())
+  guildId   String
+  question  String
+  options   String[]
+  createdBy String
+  channelId String?
+  messageId String?
+  closed    Boolean    @default(false)
+  closesAt  DateTime?
+  createdAt DateTime   @default(now())
+  guild     Guild      @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  votes     PollVote[]
+
+  @@index([guildId, closed])
+}
+
+model PollVote {
+  id       String   @id @default(cuid())
+  pollId   String
+  memberId String
+  option   Int
+  votedAt  DateTime @default(now())
+  poll     Poll     @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  member   Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([pollId, memberId])
 }
