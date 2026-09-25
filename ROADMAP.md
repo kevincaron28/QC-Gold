@@ -39,6 +39,19 @@ priority (P0 = do first) · **S/M/L** = rough size
   `20260926120000_warcraft_logs_and_channels` (applied 2026-09-26).
   `start-bot.bat` now runs `npm run db:update` on every start.
 
+## Overnight run log (2026-09-26 → keep updated; resume from here if a limit hits)
+
+Order of work: **A** roadmap entries (#42–#46) → **B** consumable scan (#42) →
+**C** raid cores (#43) → **D** dungeon group signup + temp voice (#44) →
+**E** setup categories/permissions (#45). #46 (rebrand) is planning only.
+Each step ends with tsc + eslint + tests green and a commit. Status:
+
+- [x] A. Roadmap entries added.
+- [ ] B. Consumable scan.
+- [ ] C. Raid cores.
+- [ ] D. Dungeon group signup + temporary voice channel.
+- [ ] E. Setup categories and permissions.
+
 ## History — where we were on 2026-09-24 (kept for reference)
 
 - **Blocked-action popup: fixed.** Cause was registering
@@ -537,6 +550,46 @@ D10. [x] **S — Test path** *(Done 2026-09-25: /testraid dungeon through the re
     posts the guild board there; `/import-apply` refreshes it when gear checks
     arrive. `src/services/readiness-board.ts`. Enchant/flask checks are still
     open (G2, ID2, plus an enchant check in the addon).
+42. [ ] **M — Consumable scan** (requested 2026-09-26; **building tonight**).
+    Addon: each player's own snapshot records active flask/elixir/food/weapon
+    buff; `/qg consumes` (officer) scans the whole group and prints who is
+    missing what; results export to the bot (`ConsumableCheck`) and show as a
+    "Consumables" section on the raid readiness board. Enchants are a
+    separate later step.
+43. [ ] **L — Raid cores + roster channel + signup priority** (requested
+    2026-09-26; **building tonight**). A *raid core* is a named roster (e.g.
+    "Tuesday MC core") with roles. **Multiple cores** per guild. A private/
+    read-only **roster channel** shows each core's roster as one live message.
+    Core members get **priority at signups for that core's raids**: their
+    signup takes a slot before non-core players, and a non-core player can't
+    bump a core member off the waitlist. `/core create|add|remove|list|post`,
+    `/raid create core:<name>`.
+44. [ ] **M — Dungeon signups with the bot + temporary voice channel**
+    (requested 2026-09-26; **building tonight**; supersedes #39). `/dungeon
+    group` posts a signup with Tank/Healer/DPS buttons in the dungeon signups
+    channel; when 5 are in (or the leader presses Start) the bot creates a
+    **temporary voice channel** for the group, moves nobody by force (it posts
+    the link and, if members are already in voice, offers to move them), and
+    deletes the channel when it's empty for a few minutes or the group is
+    closed. Judged worthwhile: it's cheap, tidy, and dungeon groups are
+    short-lived. Needs Manage Channels and (for moving) Move Members.
+45. [ ] **M — `/setup` organizes the whole server section** (requested
+    2026-09-26; **building tonight**). Every channel is created in a fitting
+    category (e.g. ⚜️ INFO, ⚔️ RAIDING, 🏰 DUNGEONS, 🔒 OFFICERS) with the
+    right permissions (members read-only in feeds, officers/raid leaders only
+    where private), re-runnable and never touching existing channels. Adds a
+    "Organize existing" step that only *moves* channels the bot made.
+46. [ ] **L — Public bot identity and CurseForge listing** (requested
+    2026-09-26; **last, after the launch test**). Replace the "Quebec Gold"
+    name with a neutral product identity so any guild can install it: pick a
+    name/logo/tagline (check trademark and that "WoW"/"Warcraft" is used only
+    descriptively), rename the addon folder, TOC title, `## SavedVariables`
+    (with a migration from `QuebecGoldDB`), slash prefix (`/qg` stays as an
+    alias), bot username and embed branding, docs, install page, GitHub repo
+    and release, a per-guild "guild name" setting so the branding is the
+    guild's own, CurseForge project page (screenshots, description,
+    changelog, license file), Wago listing (M3). Decide multi-guild hosting
+    vs self-host first: today the bot is one process per guild owner.
 38. [ ] **S — Warcraft Logs in the launch test** — checklist section 8
     (account, client, "do Forever logs reach WCL", `/wcl report`).
 39. [ ] **M — Real dungeon signups.** The signup channel exists but nothing
