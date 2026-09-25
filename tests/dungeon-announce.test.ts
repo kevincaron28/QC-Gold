@@ -4,7 +4,7 @@ import type { DungeonImportResult } from "../src/services/dungeon-import.js";
 
 const result = (overrides: Partial<DungeonImportResult>): DungeonImportResult => ({
   runRef: "QG-1", dungeonName: "Deadmines", difficultyId: 1, state: "COMPLETED", valid: true, durationSec: 1300, points: 0,
-  guildRecord: false, previousGuildBest: null, personalRecords: [], players: ["Kev", "Bob"], deaths: 0, unlinked: [], ...overrides
+  guildRecord: false, previousGuildBest: null, personalRecords: [], players: ["Kev", "Bob"], deaths: 0, unlinked: [], achievements: [], ...overrides
 });
 
 describe("dungeonAnnouncement", () => {

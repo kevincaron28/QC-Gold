@@ -97,6 +97,14 @@ Phase 11 adds (bot-side only, no addon changes):
 - `/epgp leaderboard` now shows 30-day attendance (Present = 1, Late = 0.5); `/config merit enabled:true` orders it by PR x attendance instead of raw PR (display only, the ledger is never touched)
 - `/config recruitment`: a recurring recruitment post on an interval. It only fires while the bot process is running (checked every 10 minutes), so a missed window posts on the next check
 
+Dungeon Challenge (addon v1.7.0, roadmap D1–D10):
+
+- The addon records dungeon runs (state machine, one recorder per group, peer-reported deaths, survives reloads and missing APIs through `Compat.lua`) and exports them with the rest of the SavedVariables
+- `/import-apply` validates every run on the server (protocol, 1–5 players, 3 min–4 h, no future timestamps), drops duplicates by run id and by near-duplicate reports, stores it, and gives configurable points with a weekly repeat share; one post per import lists runs, records and achievements
+- `/dungeon leaderboard|records|player|history|season` for everyone; `/dungeon-admin invalidate|award|audit|config|target|season-start` for officers, every change an append-only point transaction plus an audit entry
+- Permanent achievements (First Blood, No One Dies, Speed Demon, Record Breaker, Guild Squad, Dungeon Master, Season Champion), revoked with the run that earned them if it is invalidated
+- In game: a Dungeons tab (live run, recent runs and their sync state, season top 10 from Discord); `/testraid dungeon` and `/qg sim dungeon` for testing, removed by `/testraid cleanup`
+
 Deliberately not built: message edit/delete logging (needs the privileged Message Content intent) and a starboard (needs message-reaction intents). Reaction roles were implemented as buttons instead, which need no extra intents. `/mod` needs the bot to have Kick Members, Ban Members, and Moderate Members (the current Administrator invite already covers this).
 
 ## Requirements

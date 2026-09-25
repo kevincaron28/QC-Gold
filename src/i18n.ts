@@ -139,6 +139,8 @@ const STRINGS = {
   "dungeon.post.flawless": { en: "no deaths", fr: "aucune mort" },
   "dungeon.post.more": { en: "…and {count} more", fr: "…et {count} de plus" },
   "dungeon.post.records": { en: "Records", fr: "Records" },
+  "dungeon.post.achievements": { en: "🎖️ Achievements", fr: "🎖️ Hauts faits" },
+  "dungeon.player.achievements": { en: "Achievements", fr: "Hauts faits" },
   "dungeon.post.guildRecord": { en: "🏆 New guild record in **{dungeon}**: {before} → **{now}**", fr: "🏆 Nouveau record de guilde dans **{dungeon}** : {before} → **{now}**" },
   "dungeon.post.personal": { en: "⭐ Personal best in {dungeon}: {names}", fr: "⭐ Record personnel dans {dungeon} : {names}" },
   "dungeon.post.footer": { en: "/dungeon leaderboard · /dungeon records", fr: "/dungeon leaderboard · /dungeon records" }

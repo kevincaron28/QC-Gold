@@ -1,5 +1,6 @@
 import { EmbedBuilder } from "discord.js";
 import { t, type Lang } from "../i18n.js";
+import { achievementName } from "./dungeon-achievements.js";
 import type { DungeonImportSummary } from "./dungeon-import.js";
 import { formatDuration } from "./dungeon-rules.js";
 import { difficultyName } from "./dungeon-stats.js";
@@ -38,5 +39,16 @@ export function dungeonAnnouncement(summary: DungeonImportSummary, lang: Lang): 
     .setDescription(lines.join("\n").slice(0, 3500))
     .setFooter({ text: t(lang, "dungeon.post.footer") });
   if (highlights.length) embed.addFields({ name: t(lang, "dungeon.post.records"), value: highlights.join("\n").slice(0, 1024) });
+  // One line per achievement: "🩸 First Blood: Kev, Bob".
+  const earned = new Map<string, string[]>();
+  for (const run of done) {
+    for (const achievement of run.achievements) {
+      const name = achievementName(achievement.key, lang);
+      earned.set(name, [...(earned.get(name) ?? []), achievement.character]);
+    }
+  }
+  if (earned.size) {
+    embed.addFields({ name: t(lang, "dungeon.post.achievements"), value: [...earned].map(([name, who]) => `${name}: ${[...new Set(who)].join(", ")}`).join("\n").slice(0, 1024) });
+  }
   return embed;
 }

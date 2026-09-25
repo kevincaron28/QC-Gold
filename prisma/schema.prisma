@@ -109,54 +109,56 @@ enum ApplicationStatus {
 }
 
 model Guild {
-  id               String                    @id @default(cuid())
-  discordId        String                    @unique
-  name             String
-  createdAt        DateTime                  @default(now())
-  updatedAt        DateTime                  @updatedAt
-  members          Member[]
-  transactions     DkpTransaction[]
-  epgpTransactions EpgpTransaction[]
-  auditLogs        AuditLog[]
-  imports          AddonImport[]
-  settings         GuildSettings?
-  raids            Raid[]
-  auctions         Auction[]
-  applications     Application[]
-  lootAwards       LootAward[]
-  tags             Tag[]
-  bankRequests     BankRequest[]
-  craftRequests    CraftRequest[]
-  dungeonSeasons   DungeonSeason[]
-  dungeonRuns      DungeonRun[]
-  dungeonPoints    DungeonPointTransaction[]
+  id                  String                    @id @default(cuid())
+  discordId           String                    @unique
+  name                String
+  createdAt           DateTime                  @default(now())
+  updatedAt           DateTime                  @updatedAt
+  members             Member[]
+  transactions        DkpTransaction[]
+  epgpTransactions    EpgpTransaction[]
+  auditLogs           AuditLog[]
+  imports             AddonImport[]
+  settings            GuildSettings?
+  raids               Raid[]
+  auctions            Auction[]
+  applications        Application[]
+  lootAwards          LootAward[]
+  tags                Tag[]
+  bankRequests        BankRequest[]
+  craftRequests       CraftRequest[]
+  dungeonSeasons      DungeonSeason[]
+  dungeonRuns         DungeonRun[]
+  dungeonPoints       DungeonPointTransaction[]
+  dungeonAchievements DungeonAchievement[]
 }
 
 model Member {
-  id                 String                       @id @default(cuid())
-  guildId            String
-  discordUserId      String
-  displayName        String
-  status             MembershipStatus             @default(ACTIVE)
+  id                  String                       @id @default(cuid())
+  guildId             String
+  discordUserId       String
+  displayName         String
+  status              MembershipStatus             @default(ACTIVE)
   // Created by /testraid; removed by /testraid cleanup.
-  isTest             Boolean                      @default(false)
-  createdAt          DateTime                     @default(now())
-  updatedAt          DateTime                     @updatedAt
-  guild              Guild                        @relation(fields: [guildId], references: [id], onDelete: Cascade)
-  characters         Character[]
-  transactions       DkpTransaction[]
-  epgpTransactions   EpgpTransaction[]
-  readinessSnapshots InspectedCharacterSnapshot[]
-  raidSignups        RaidSignup[]
-  raidAttendance     RaidAttendance[]
-  bids               AuctionBid[]
-  lootAwards         LootAward[]
-  applications       Application[]
-  craftRequests      CraftRequest[]               @relation("CraftRequester")
-  craftsClaimed      CraftRequest[]               @relation("CraftCrafter")
-  dungeonRunPlayers  DungeonRunPlayer[]
-  dungeonPoints      DungeonPointTransaction[]
-  bankRequests       BankRequest[]
+  isTest              Boolean                      @default(false)
+  createdAt           DateTime                     @default(now())
+  updatedAt           DateTime                     @updatedAt
+  guild               Guild                        @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  characters          Character[]
+  transactions        DkpTransaction[]
+  epgpTransactions    EpgpTransaction[]
+  readinessSnapshots  InspectedCharacterSnapshot[]
+  raidSignups         RaidSignup[]
+  raidAttendance      RaidAttendance[]
+  bids                AuctionBid[]
+  lootAwards          LootAward[]
+  applications        Application[]
+  craftRequests       CraftRequest[]               @relation("CraftRequester")
+  craftsClaimed       CraftRequest[]               @relation("CraftCrafter")
+  dungeonRunPlayers   DungeonRunPlayer[]
+  dungeonPoints       DungeonPointTransaction[]
+  dungeonAchievements DungeonAchievement[]
+  bankRequests        BankRequest[]
 
   @@unique([guildId, discordUserId])
   @@index([guildId, status])
@@ -664,17 +666,18 @@ model CraftRequest {
 // ---------------------------------------------------------------------
 
 model DungeonSeason {
-  id        String                    @id @default(cuid())
-  guildId   String
-  name      String
-  startsAt  DateTime                  @default(now())
-  endsAt    DateTime?
+  id           String                    @id @default(cuid())
+  guildId      String
+  name         String
+  startsAt     DateTime                  @default(now())
+  endsAt       DateTime?
   // ACTIVE or ENDED. Ended seasons stay viewable forever.
-  status    String                    @default("ACTIVE")
-  createdAt DateTime                  @default(now())
-  guild     Guild                     @relation(fields: [guildId], references: [id], onDelete: Cascade)
-  runs      DungeonRun[]
-  points    DungeonPointTransaction[]
+  status       String                    @default("ACTIVE")
+  createdAt    DateTime                  @default(now())
+  guild        Guild                     @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  runs         DungeonRun[]
+  points       DungeonPointTransaction[]
+  achievements DungeonAchievement[]
 
   @@index([guildId, status])
 }
@@ -707,6 +710,7 @@ model DungeonRun {
   season          DungeonSeason?            @relation(fields: [seasonId], references: [id], onDelete: SetNull)
   players         DungeonRunPlayer[]
   points          DungeonPointTransaction[]
+  achievements    DungeonAchievement[]
 
   @@unique([guildId, runRef])
   @@index([guildId, instanceId, valid])
@@ -751,5 +755,25 @@ model DungeonPointTransaction {
 
   @@index([guildId, createdAt])
   @@index([memberId, createdAt])
+  @@index([runId])
+}
+
+// Permanent dungeon achievements (roadmap D8), one per member per key.
+// Season Champion is keyed per season (seasonChampion:<seasonId>). Removed
+// with the run that earned it if an officer invalidates that run.
+model DungeonAchievement {
+  id       String         @id @default(cuid())
+  guildId  String
+  memberId String
+  key      String
+  runId    String?
+  seasonId String?
+  earnedAt DateTime       @default(now())
+  guild    Guild          @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  member   Member         @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  run      DungeonRun?    @relation(fields: [runId], references: [id], onDelete: Cascade)
+  season   DungeonSeason? @relation(fields: [seasonId], references: [id], onDelete: SetNull)
+
+  @@unique([guildId, memberId, key])
   @@index([runId])
 }

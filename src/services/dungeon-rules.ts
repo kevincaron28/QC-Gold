@@ -50,6 +50,8 @@ export interface DungeonConfig {
   // Share of points for a player's 1st, 2nd, 3rd... completion of the same
   // dungeon in one week; runs past the end of the list use the last value.
   weeklyRepeat: number[];
+  // Different dungeons needed for the Dungeon Master achievement.
+  dungeonMasterCount: number;
 }
 
 export const DEFAULT_DUNGEON_CONFIG: DungeonConfig = {
@@ -63,7 +65,8 @@ export const DEFAULT_DUNGEON_CONFIG: DungeonConfig = {
   fullGuildGroup: 20,
   underTarget: 20,
   targets: {},
-  weeklyRepeat: [1, 0.5, 0]
+  weeklyRepeat: [1, 0.5, 0],
+  dungeonMasterCount: 10
 };
 
 // Guild settings JSON on top of the defaults; bad values fall back.
@@ -83,6 +86,8 @@ export function dungeonConfig(stored: unknown): DungeonConfig {
   if (Array.isArray(input["weeklyRepeat"]) && input["weeklyRepeat"].length > 0 && input["weeklyRepeat"].every((v) => typeof v === "number" && v >= 0 && v <= 1)) {
     config.weeklyRepeat = input["weeklyRepeat"] as number[];
   }
+  const master = input["dungeonMasterCount"];
+  if (typeof master === "number" && Number.isInteger(master) && master >= 1 && master <= 100) config.dungeonMasterCount = master;
   return config;
 }
 

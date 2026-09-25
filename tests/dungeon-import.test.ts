@@ -11,8 +11,9 @@ interface StoredRun {
 function fakeTx() {
   const runs: StoredRun[] = [];
   const points: { memberId: string; amount: number; source: string; runId: string }[] = [];
-  const completedWith = (where: { instanceId: number; valid?: boolean; state?: string }) => (run: StoredRun) =>
-    run.instanceId === where.instanceId && (where.valid === undefined || run.valid === where.valid)
+  const achievements: { memberId: string; key: string; runId: string }[] = [];
+  const completedWith = (where: { instanceId?: number; valid?: boolean; state?: string }) => (run: StoredRun) =>
+    (where.instanceId === undefined || run.instanceId === where.instanceId) && (where.valid === undefined || run.valid === where.valid)
     && (where.state === undefined || run.state === where.state);
   const tx = {
     guildSettings: { findUnique: async () => null },
@@ -23,7 +24,7 @@ function fakeTx() {
     dungeonRun: {
       findUnique: async ({ where }: { where: { guildId_runRef: { runRef: string } } }) =>
         runs.find((run) => run.runRef === where.guildId_runRef.runRef) ?? null,
-      findMany: async ({ where }: { where: { instanceId: number; valid?: boolean; state?: string; startedAt?: { gte: Date; lte: Date }; players?: { some: { memberId: string } } } }) =>
+      findMany: async ({ where }: { where: { instanceId?: number; valid?: boolean; state?: string; startedAt?: { gte: Date; lte: Date }; players?: { some: { memberId: string } } } }) =>
         runs.filter(completedWith(where)).filter((run) => {
           if (where.startedAt && !(run.startedAt && run.startedAt >= where.startedAt.gte && run.startedAt <= where.startedAt.lte)) return false;
           if (where.players && !run.players.some((player) => player.memberId === where.players?.some.memberId)) return false;
@@ -38,6 +39,10 @@ function fakeTx() {
         return run;
       }
     },
+    dungeonAchievement: {
+      findMany: async ({ where }: { where: { memberId: { in: string[] } } }) => achievements.filter((row) => where.memberId.in.includes(row.memberId)),
+      create: async ({ data }: { data: { memberId: string; key: string; runId: string } }) => { achievements.push(data); return data; }
+    },
     dungeonPointTransaction: {
       create: async ({ data }: { data: { memberId: string; amount: number; source: string; runId: string } }) => {
         points.push(data);
@@ -45,7 +50,7 @@ function fakeTx() {
       }
     }
   };
-  return { tx: tx as unknown as Parameters<typeof importDungeonRuns>[0], runs, points };
+  return { tx: tx as unknown as Parameters<typeof importDungeonRuns>[0], runs, points, achievements };
 }
 
 const characters = ["Kev", "Bob", "Amy", "Zed", "Liz"].map((name) => ({ name, realm: "Forever", memberId: `m-${name.toLowerCase()}` }));
@@ -122,5 +127,27 @@ describe("importDungeonRuns", () => {
     const summary = await importDungeonRuns(tx, "g1", [run("run-a", { players })], characters, "officer", "imp1", now);
     expect(summary.results[0]?.unlinked).toEqual(["Pugsy"]);
     expect(points.some((row) => row.source === "rule:fullGuildGroup")).toBe(false);
+  });
+});
+
+describe("dungeon achievements", () => {
+  it("are earned once each, from the run that qualified", async () => {
+    const { tx, achievements } = fakeTx();
+    const first = await importDungeonRuns(tx, "g1", [run("run-a")], characters, "officer", "imp1", now);
+    const kev = (key: string) => achievements.filter((row) => row.memberId === "m-kev" && row.key === key);
+    // Everyone tracked with 0 deaths and a full guild group: three at once.
+    expect(first.results[0]?.achievements.filter((a) => a.character === "Kev").map((a) => a.key).sort()).toEqual(["firstBlood", "guildSquad", "noOneDies"]);
+    const later = start + 3600;
+    const second = await importDungeonRuns(tx, "g1", [run("run-b", { startedAt: later, endedAt: later + 1200 })], characters, "officer", "imp2", now);
+    expect(second.results[0]?.achievements.map((a) => a.key)).toEqual(["recordBreaker", "recordBreaker", "recordBreaker", "recordBreaker", "recordBreaker"]);
+    expect(kev("firstBlood")).toHaveLength(1);
+    expect(kev("recordBreaker")[0]?.runId).toBe("run-2");
+  });
+
+  it("No One Dies needs every player tracked", async () => {
+    const { tx } = fakeTx();
+    const players = run("run-a").players.map((player, i) => (i === 4 ? { ...player, deaths: null } : player));
+    const summary = await importDungeonRuns(tx, "g1", [run("run-a", { players })], characters, "officer", "imp1", now);
+    expect(summary.results[0]?.achievements.some((a) => a.key === "noOneDies")).toBe(false);
   });
 });

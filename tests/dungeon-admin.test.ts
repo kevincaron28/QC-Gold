@@ -24,3 +24,14 @@ describe("dungeon admin", () => {
     expect(text).toContain("Deadmines 25:00");
   });
 });
+
+describe("achievement rules", () => {
+  it("qualify from the run's facts and the dungeon count", async () => {
+    const { qualifiedAchievements, achievementName } = await import("../src/services/dungeon-achievements.js");
+    expect(qualifiedAchievements({ guildRecord: false, fullGuildGroup: false, underTarget: false, deathless: false }, 1, 10)).toEqual(["firstBlood"]);
+    expect(qualifiedAchievements({ guildRecord: true, fullGuildGroup: true, underTarget: true, deathless: true }, 10, 10))
+      .toEqual(["firstBlood", "noOneDies", "speedDemon", "recordBreaker", "guildSquad", "dungeonMaster"]);
+    expect(achievementName("seasonChampion:abc", "fr", "Saison 1")).toBe("👑 Champion de saison (Saison 1)");
+    expect(achievementName("unknownThing", "en")).toBe("unknownThing");
+  });
+});

@@ -3,7 +3,7 @@ import { prisma } from "../database.js";
 import { hasPermission } from "../permissions.js";
 import { createAuditService } from "../services/audit.js";
 import {
-  adjustPoints, describeConfig, invalidateRun, pointHistory, POINT_RULES, readConfig, setRulePoints, setTarget,
+  adjustPoints, describeConfig, setDungeonMasterCount, invalidateRun, pointHistory, POINT_RULES, readConfig, setRulePoints, setTarget,
   setWeeklyRepeat, startSeason, type PointRule
 } from "../services/dungeon-admin.js";
 import { formatDuration } from "../services/dungeon-rules.js";
@@ -33,7 +33,8 @@ export const dungeonAdminCommand = new SlashCommandBuilder()
   .addSubcommand((sub) => sub.setName("config").setDescription("See the point rules, or change one")
     .addStringOption((o) => o.setName("rule").setDescription("Rule to change").addChoices(...POINT_RULES.map((rule) => ({ name: rule, value: rule }))))
     .addIntegerOption((o) => o.setName("points").setDescription("New points for that rule").setMinValue(0).setMaxValue(10000))
-    .addStringOption((o) => o.setName("weekly").setDescription("Share per repeat in a week, percent: e.g. 100,50,0")))
+    .addStringOption((o) => o.setName("weekly").setDescription("Share per repeat in a week, percent: e.g. 100,50,0"))
+    .addIntegerOption((o) => o.setName("dungeon_master").setDescription("Different dungeons needed for the Dungeon Master achievement").setMinValue(1).setMaxValue(100)))
   .addSubcommand((sub) => sub.setName("target").setDescription("Target time for a dungeon (bonus when beaten); 0 removes it")
     .addStringOption((o) => o.setName("dungeon").setDescription("Dungeon (pick from the list)").setAutocomplete(true).setRequired(true))
     .addNumberOption((o) => o.setName("minutes").setDescription("e.g. 25").setRequired(true).setMinValue(0).setMaxValue(240)))
@@ -73,7 +74,8 @@ export async function executeDungeonAdmin(interaction: ChatInputCommandInteracti
     const reason = interaction.options.getString("reason", true);
     const result = await invalidateRun(prisma, context.guildId, interaction.options.getString("run", true), reason, actor);
     const time = result.run.durationSec !== null ? ` (${formatDuration(result.run.durationSec)})` : "";
-    reply = `${result.run.dungeonName}${time} no longer counts. ${result.reversed} point(s) taken back from ${result.players} player(s). Records and leaderboards update by themselves.`;
+    reply = `${result.run.dungeonName}${time} no longer counts. ${result.reversed} point(s) taken back from ${result.players} player(s)`
+      + `${result.achievementsRevoked ? `, ${result.achievementsRevoked} achievement(s) it earned removed` : ""}. Records and leaderboards update by themselves.`;
     await log(`invalidated ${result.run.dungeonName}${time}: ${reason}`, { runRef: result.run.runRef, reason, reversed: result.reversed });
   } else if (subcommand === "award") {
     const member = await memberFromOptions(interaction, context.guildId);
@@ -107,6 +109,11 @@ export async function executeDungeonAdmin(interaction: ChatInputCommandInteracti
       const shares = await setWeeklyRepeat(prisma, context.guildId, weekly);
       changes.push(`weekly repeat: ${shares.map((share) => `${Math.round(share * 100)}%`).join(" → ")}`);
     }
+    const master = interaction.options.getInteger("dungeon_master");
+    if (master !== null) {
+      const result = await setDungeonMasterCount(prisma, context.guildId, master);
+      changes.push(`Dungeon Master: ${result.before} → ${result.after} dungeons`);
+    }
     if (changes.length) await log(`dungeon rules changed (${changes.join("; ")})`, { changes: changes.join("; ") });
     const names = new Map((await prisma.dungeonRun.findMany({ where: { guildId: context.guildId }, distinct: ["instanceId"], select: { instanceId: true, dungeonName: true } }))
       .map((row) => [row.instanceId, row.dungeonName]));
@@ -122,7 +129,9 @@ export async function executeDungeonAdmin(interaction: ChatInputCommandInteracti
     await log(reply, { instanceId, minutes });
   } else {
     const result = await startSeason(prisma, context.guildId, interaction.options.getString("name", true));
-    reply = `${result.ended.length ? `Ended ${result.ended.join(", ")} (still viewable). ` : ""}**${result.season.name}** has started; season leaderboards start from zero.`;
+    reply = `${result.ended.length ? `Ended ${result.ended.join(", ")} (still viewable). ` : ""}`
+      + `${result.champions.length ? `👑 Season Champion: ${result.champions.join(", ")}. ` : ""}`
+      + `**${result.season.name}** has started; season leaderboards start from zero.`;
     await log(reply, { seasonId: result.season.id });
   }
   await interaction.reply({ content: reply.slice(0, 1990), ephemeral: true, allowedMentions: { parse: [] } });

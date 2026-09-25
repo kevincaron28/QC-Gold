@@ -1,6 +1,7 @@
 import { EmbedBuilder, SlashCommandBuilder, type ChatInputCommandInteraction } from "discord.js";
 import { prisma } from "../database.js";
 import { asLang, t, type Lang } from "../i18n.js";
+import { achievementName } from "../services/dungeon-achievements.js";
 import { formatDuration } from "../services/dungeon-rules.js";
 import {
   activeSeasonOrNull, difficultyName, formatLeaderboard, leaderboard, playerSummary, recentRuns, records,
@@ -112,6 +113,9 @@ export async function executeDungeon(interaction: ChatInputCommandInteraction): 
       );
       if (summary.bests.length) {
         embed.addFields({ name: t(lang, "dungeon.player.bests"), value: summary.bests.map((row) => `• ${label(row)} — ${formatDuration(row.durationSec)}`).join("\n").slice(0, 1024) });
+      }
+      if (summary.achievements.length) {
+        embed.addFields({ name: t(lang, "dungeon.player.achievements"), value: summary.achievements.map((row) => achievementName(row.key, lang, row.seasonName)).join(" · ").slice(0, 1024) });
       }
       if (summary.recent.length) {
         embed.addFields({ name: t(lang, "dungeon.player.recent"), value: summary.recent.map((run) => runLine(run, lang)).join("\n").slice(0, 1024) });

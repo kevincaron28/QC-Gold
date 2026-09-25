@@ -6,7 +6,7 @@ import { weekStart } from "./dungeon-rules.js";
 // never show up (valid: false), and their points are reversed with
 // negative transactions, so point sums are always the true totals.
 
-type Db = Pick<PrismaClient, "dungeonPointTransaction" | "dungeonRun" | "dungeonSeason" | "member">;
+type Db = Pick<PrismaClient, "dungeonPointTransaction" | "dungeonRun" | "dungeonSeason" | "member" | "dungeonAchievement">;
 export type Period = "week" | "season" | "all";
 
 export interface LeaderRow { memberId: string; name: string; points: number }
@@ -99,6 +99,7 @@ export interface PlayerSummary {
   completed: number; deathlessRuns: number;
   bests: RecordRow[];
   recent: RunRow[];
+  achievements: { key: string; seasonName: string | null; earnedAt: Date }[];
 }
 
 export async function playerSummary(database: Db, guildId: string, memberId: string, now = new Date()): Promise<PlayerSummary> {
@@ -130,7 +131,10 @@ export async function playerSummary(database: Db, guildId: string, memberId: str
     completed: completedRuns.length,
     deathlessRuns,
     bests: [...bests.values()].sort((a, b) => a.dungeonName.localeCompare(b.dungeonName)),
-    recent: await recentRuns(database, guildId, memberId, 5)
+    recent: await recentRuns(database, guildId, memberId, 5),
+    achievements: (await database.dungeonAchievement.findMany({
+      where: { guildId, memberId }, orderBy: { earnedAt: "asc" }, include: { season: { select: { name: true } } }
+    })).map((row) => ({ key: row.key, seasonName: row.season?.name ?? null, earnedAt: row.earnedAt }))
   };
 }
 

@@ -175,6 +175,12 @@ The same dungeon more than once a week is worth 50%, then 0% (resets
 Tuesday). Runs under 3 minutes, over 4 hours, or with more than 5 players
 are not counted.
 
+Achievements are permanent and give no points: First Blood (first dungeon),
+No One Dies (every player tracked, nobody died), Speed Demon (beat a target
+time), Record Breaker (new guild record), Guild Squad (5 guild members),
+Dungeon Master (10 different dungeons, adjustable) and Season Champion (most
+points when a season ends). They show in the run post and on `/dungeon player`.
+
 | Command | What it does |
 | --- | --- |
 | `/dungeon leaderboard [period] [dungeon]` | Most points this week, this season (default) or all time; optionally one dungeon |
@@ -227,7 +233,7 @@ Approve, and a raid can never be paid twice.
 | `/dungeon-admin invalidate <run> <reason>` | A run stops counting and its points are taken back (records update by themselves) |
 | `/dungeon-admin award <amount> <reason> [member | character]` | Give dungeon points by hand; a negative amount takes them away |
 | `/dungeon-admin audit [member | character | run]` | Point history: what, why, automatic or which officer |
-| `/dungeon-admin config [rule] [points] [weekly]` | See the point rules, change one, or the weekly repeat share (e.g. `100,50,0`) |
+| `/dungeon-admin config [rule] [points] [weekly] [dungeon_master]` | See the point rules, change one, the weekly repeat share (e.g. `100,50,0`), or how many dungeons Dungeon Master needs |
 | `/dungeon-admin target <dungeon> <minutes>` | Target time; beating it earns the underTarget bonus. 0 removes it |
 | `/dungeon-admin season-start <name>` | End the season (kept) and start a new one |
 | `/application list` / `view` / `approve` / `reject` / `trial` | Handle applications |

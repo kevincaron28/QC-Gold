@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client";
+import { grantRunAchievements, type AchievementKey } from "./dungeon-achievements.js";
 import {
   computeRunPoints, dungeonConfig, dungeonRunSchema, validateRun, weekStart,
   type DungeonRunInput, type PlayerContext
@@ -10,7 +11,7 @@ import {
 // can never be counted twice (by run id, or by same dungeon + same players
 // + start within 2 minutes when two members reported it separately).
 
-type Tx = Pick<Prisma.TransactionClient, "dungeonRun" | "dungeonSeason" | "dungeonPointTransaction" | "guildSettings">;
+type Tx = Pick<Prisma.TransactionClient, "dungeonRun" | "dungeonSeason" | "dungeonPointTransaction" | "guildSettings" | "dungeonAchievement">;
 
 interface LinkedCharacter { name: string; realm: string; memberId: string }
 
@@ -30,6 +31,7 @@ export interface DungeonImportResult {
   // Sum of tracked deaths; null when no player's deaths were tracked.
   deaths: number | null;
   unlinked: string[];
+  achievements: { character: string; key: AchievementKey }[];
 }
 
 export interface DungeonImportSummary {
@@ -167,11 +169,20 @@ export async function importDungeonRuns(
     });
 
     let points = 0;
+    let achievements: DungeonImportResult["achievements"] = [];
     if (earnsPoints) {
+      const fullGuildGroup = run.players.length >= 5 && run.players.every((player) => player.inGuild);
+      const target = config.targets[String(run.instanceId)];
+      achievements = await grantRunAchievements(tx, guildId, { id: stored.id, seasonId: season.id }, contexts, {
+        guildRecord,
+        fullGuildGroup,
+        underTarget: target !== undefined && durationSec <= target,
+        deathless: run.players.every((player) => player.deaths === 0)
+      }, config.dungeonMasterCount);
       const awards = computeRunPoints({
         instanceId: run.instanceId,
         durationSec,
-        fullGuildGroup: run.players.length >= 5 && run.players.every((player) => player.inGuild),
+        fullGuildGroup,
         guildRecord,
         players: contexts,
         config
@@ -202,7 +213,8 @@ export async function importDungeonRuns(
       players: run.players.map((player) => player.character),
       deaths: run.players.some((player) => typeof player.deaths === "number")
         ? run.players.reduce((sum, player) => sum + (player.deaths ?? 0), 0) : null,
-      unlinked: linked.filter((entry) => !entry.character).map((entry) => entry.player.character)
+      unlinked: linked.filter((entry) => !entry.character).map((entry) => entry.player.character),
+      achievements
     });
   }
   return summary;

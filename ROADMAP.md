@@ -342,7 +342,7 @@ D6. [x] **S — Announcements** *(Done 2026-09-25: one post per import, dungeon 
     records in a dungeon channel (/setup + `/config`).
 D7. [x] **M — Admin + audit** *(Done 2026-09-25: /dungeon-admin invalidate|award|audit|config|target|season-start; every change is a new point row + DUNGEON_ADMIN audit + officer log. force-complete stays in game: /qg dungeon complete.)*: `/dungeon invalidate`, `award`, `remove`,
     `force-complete`, `audit`, `config`, `season start|end`, all logged.
-D8. [ ] **M — Achievements**: First Blood, No One Dies, Speed Demon
+D8. [x] **M — Achievements** *(Done 2026-09-25: permanent, no points; earned at import, revoked with an invalidated run, Season Champion on season-start; Dungeon Master count in /dungeon-admin config. "All dungeons" = N different dungeons, since the client has no reliable list.)*: First Blood, No One Dies, Speed Demon
     (target time), Record Breaker, Dungeon Master (all dungeons), Guild
     Squad, Season Champion — rules in config, permanent.
 D9. [x] **S — In-game view** *(Done 2026-09-25: Dungeons tab for everyone: live run, start/complete/abandon/check, recent runs + sync state, season top from Discord via Standings.lua; EN/FR.)*: a Dungeons tab (current run, timer,

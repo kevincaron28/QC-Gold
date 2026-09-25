@@ -1,12 +1,13 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { activeSeason } from "./dungeon-import.js";
+import { leaderboard } from "./dungeon-stats.js";
 import { DEFAULT_DUNGEON_CONFIG, dungeonConfig, formatDuration, type DungeonConfig } from "./dungeon-rules.js";
 
 // Officer corrections for the dungeon challenge (roadmap D7). Points are
 // never edited or deleted: every change is a new DungeonPointTransaction,
 // so the history always adds up and shows who did what.
 
-type Db = Pick<PrismaClient, "$transaction" | "dungeonRun" | "dungeonPointTransaction" | "dungeonSeason" | "guildSettings">;
+type Db = Pick<PrismaClient, "$transaction" | "dungeonRun" | "dungeonPointTransaction" | "dungeonSeason" | "guildSettings" | "dungeonAchievement" | "member">;
 
 export const POINT_RULES = ["completion", "noDeaths", "oneDeath", "twoDeaths", "personalRecord", "guildRecord", "firstCompletion", "fullGuildGroup", "underTarget"] as const;
 export type PointRule = typeof POINT_RULES[number];
@@ -28,7 +29,8 @@ export async function invalidateRun(database: Db, guildId: string, runRef: strin
       });
       reversed += amount;
     }
-    return { run, players: given.length, reversed };
+    const revoked = await tx.dungeonAchievement.deleteMany({ where: { runId: run.id } });
+    return { run, players: given.length, reversed, achievementsRevoked: revoked.count };
   });
 }
 
@@ -81,6 +83,15 @@ export async function setTarget(database: Db, guildId: string, instanceId: numbe
   return config.targets[key] ?? null;
 }
 
+export async function setDungeonMasterCount(database: Db, guildId: string, count: number) {
+  if (!Number.isInteger(count) || count < 1 || count > 100) throw new Error("Dungeon Master needs 1 to 100 different dungeons.");
+  const config = await readConfig(database, guildId);
+  const before = config.dungeonMasterCount;
+  config.dungeonMasterCount = count;
+  await saveConfig(database, guildId, config);
+  return { before, after: count };
+}
+
 // Weekly repeat shares, e.g. "100,50,0" (percent for the 1st, 2nd, 3rd+ run).
 export async function setWeeklyRepeat(database: Db, guildId: string, text: string) {
   const shares = text.split(/[,\s/]+/).filter(Boolean).map((part) => Number(part.replace("%", "")) / 100);
@@ -102,20 +113,35 @@ export function describeConfig(config: DungeonConfig, dungeonNames: Map<number, 
   return [
     `**Points:** ${rules.join(" · ")}`,
     `**Same dungeon in one week:** ${config.weeklyRepeat.map((share) => `${Math.round(share * 100)}%`).join(" → ")} (resets Tuesday)`,
-    `**Target times:** ${targets.length ? targets.join(" · ") : "none (`/dungeon-admin target`)"}`
+    `**Target times:** ${targets.length ? targets.join(" · ") : "none (`/dungeon-admin target`)"}`,
+    `**Dungeon Master achievement:** ${config.dungeonMasterCount} different dungeons`
   ].join("\n");
 }
 
-// Ends the current season (kept for history) and starts a new one.
+// Ends the current season (kept for history), crowns its Season Champion
+// (most points; a tie crowns everyone tied), and starts a new one.
 export async function startSeason(database: Db, guildId: string, name: string) {
   const trimmed = name.trim();
   if (trimmed.length < 2 || trimmed.length > 60) throw new Error("Season name must be 2 to 60 characters.");
+  const ending = await database.dungeonSeason.findFirst({ where: { guildId, status: "ACTIVE" }, orderBy: { startsAt: "desc" } });
+  const top = ending ? await leaderboard(database, guildId, "season", null, 5) : [];
+  const champions = top.filter((row) => row.points === top[0]?.points);
   return database.$transaction(async (tx) => {
     const ended = await tx.dungeonSeason.findMany({ where: { guildId, status: "ACTIVE" } });
+    if (ending) {
+      for (const champion of champions) {
+        const key = `seasonChampion:${ending.id}`;
+        await tx.dungeonAchievement.upsert({
+          where: { guildId_memberId_key: { guildId, memberId: champion.memberId, key } },
+          create: { guildId, memberId: champion.memberId, key, seasonId: ending.id },
+          update: {}
+        });
+      }
+    }
     const now = new Date();
     await tx.dungeonSeason.updateMany({ where: { guildId, status: "ACTIVE" }, data: { status: "ENDED", endsAt: now } });
     const season = await tx.dungeonSeason.create({ data: { guildId, name: trimmed, startsAt: now } });
-    return { season, ended: ended.map((row) => row.name) };
+    return { season, ended: ended.map((row) => row.name), champions: champions.map((row) => row.name) };
   });
 }
 
