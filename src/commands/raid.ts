@@ -10,6 +10,7 @@ import { raidReportEmbed } from "./raid-report.js";
 import { buildRaidReport } from "../services/raid-report.js";
 import { bossProgress } from "../services/progress.js";
 import { parseRaidTime } from "../services/raid-time.js";
+import { asLang, t, type Lang } from "../i18n.js";
 import { createRaidService, type SignupAvailability } from "../services/raid.js";
 import { hasPermission } from "../permissions.js";
 import { guildService, requireGuildContext } from "./context.js";
@@ -105,46 +106,48 @@ async function readRaidTime(guildId: string, value: string): Promise<Date> {
 // Buttons on the live signup post, so signing up needs no command. Only
 // shown while the raid is still planned.
 export const RAID_SIGNUP_PREFIX = "raidsignup:";
-function signupButtons(raidId: string, status: string) {
+function signupButtons(raidId: string, status: string, lang: Lang) {
   if (status !== "PLANNED") return [];
   const b = (action: string, label: string, style: ButtonStyle) =>
     new ButtonBuilder().setCustomId(`${RAID_SIGNUP_PREFIX}${raidId}:${action}`).setLabel(label).setStyle(style);
   return [new ActionRowBuilder<ButtonBuilder>().addComponents(
-    b("TANK", "🛡️ Tank", ButtonStyle.Primary),
-    b("HEALER", "💚 Healer", ButtonStyle.Success),
-    b("DPS", "⚔️ DPS", ButtonStyle.Danger),
-    b("MAYBE", "❔ Maybe", ButtonStyle.Secondary),
-    b("CANCEL", "✖ Can't come", ButtonStyle.Secondary)
+    b("TANK", t(lang, "button.tank"), ButtonStyle.Primary),
+    b("HEALER", t(lang, "button.healer"), ButtonStyle.Success),
+    b("DPS", t(lang, "button.dps"), ButtonStyle.Danger),
+    b("MAYBE", t(lang, "button.maybe"), ButtonStyle.Secondary),
+    b("CANCEL", t(lang, "button.cancel"), ButtonStyle.Secondary)
   )];
 }
 
 export async function syncSignupEmbed(discordGuild: DiscordGuild, guildId: string, raidId: string): Promise<void> {
   try {
     const raid = await raidService.getStatus(raidId, guildId);
+    const lang = asLang((await guildService.getSettings(guildId))?.language);
+    const roleName = (role: RaidRole) => t(lang, `role.${role}` as const);
     const everyone = await raidService.signups(raidId, guildId);
     const roster = everyone.filter((signup) => signup.status === "SIGNED_UP");
     const listOf = (status: string) => everyone.filter((signup) => signup.status === status)
-      .map((signup) => `${signup.member.displayName} (${roleLabel[signup.role]})`).join(", ");
+      .map((signup) => `${signup.member.displayName} (${roleName(signup.role)})`).join(", ");
     const maybe = listOf("MAYBE");
     const waitlist = listOf("WAITLISTED");
     const caps: Record<RaidRole, number | null> = { TANK: raid.tankLimit, HEALER: raid.healerLimit, DPS: raid.dpsLimit };
     const roleLines = (["TANK", "HEALER", "DPS"] as const).map((role) => {
       const count = roster.filter((signup) => signup.role === role).length;
       const cap = caps[role];
-      return `${roleLabel[role]}: ${count}${cap !== null ? `/${cap}` : ""}`;
+      return `${roleName(role)}: ${count}${cap !== null ? `/${cap}` : ""}`;
     });
 
     const embed = new EmbedBuilder()
       .setTitle(`⚜️ ${raid.title}`)
       .addFields(
-        { name: "Status", value: raid.status, inline: true },
-        { name: "Start", value: `<t:${Math.floor(raid.scheduledAt.getTime() / 1000)}:F>`, inline: true },
-        { name: "Total signed up", value: String(roster.length), inline: true },
-        { name: "Roles", value: roleLines.join("\n"), inline: false }
+        { name: t(lang, "signup.status"), value: t(lang, `status.${raid.status}` as const), inline: true },
+        { name: t(lang, "signup.start"), value: `<t:${Math.floor(raid.scheduledAt.getTime() / 1000)}:F>`, inline: true },
+        { name: t(lang, "signup.total"), value: String(roster.length), inline: true },
+        { name: t(lang, "signup.roles"), value: roleLines.join("\n"), inline: false }
       )
-      .setFooter({ text: raid.status === "PLANNED" ? "Click a button below to sign up, or use /raid signup." : `Raid ID: ${raid.id}` });
-    if (maybe) embed.addFields({ name: "Maybe", value: maybe.slice(0, 1000), inline: false });
-    if (waitlist) embed.addFields({ name: "Waitlist (in order)", value: waitlist.slice(0, 1000), inline: false });
+      .setFooter({ text: raid.status === "PLANNED" ? t(lang, "signup.footer.open") : t(lang, "signup.footer.closed", { id: raid.id }) });
+    if (maybe) embed.addFields({ name: t(lang, "signup.maybe"), value: maybe.slice(0, 1000), inline: false });
+    if (waitlist) embed.addFields({ name: t(lang, "signup.waitlist"), value: waitlist.slice(0, 1000), inline: false });
     if (raid.description) embed.setDescription(raid.description);
 
     if (raid.signupChannelId && raid.signupMessageId) {
@@ -152,7 +155,7 @@ export async function syncSignupEmbed(discordGuild: DiscordGuild, guildId: strin
       if (channel?.isTextBased()) {
         const message = await channel.messages.fetch(raid.signupMessageId).catch(() => null);
         if (message) {
-          await message.edit({ embeds: [embed], components: signupButtons(raid.id, raid.status) });
+          await message.edit({ embeds: [embed], components: signupButtons(raid.id, raid.status, lang) });
           return;
         }
       }
@@ -162,7 +165,7 @@ export async function syncSignupEmbed(discordGuild: DiscordGuild, guildId: strin
     if (!raid.signupChannelId && settings?.raidSignupChannelId) {
       const channel = await discordGuild.channels.fetch(settings.raidSignupChannelId).catch(() => null);
       if (channel?.isTextBased()) {
-        const message = await channel.send({ embeds: [embed], components: signupButtons(raid.id, raid.status) });
+        const message = await channel.send({ embeds: [embed], components: signupButtons(raid.id, raid.status, lang) });
         await raidService.setSignupMessage(raidId, guildId, channel.id, message.id);
       }
     }
@@ -178,10 +181,16 @@ async function tellPromoted(
   promoted: Array<{ raidId: string; role: RaidRole; member: { discordUserId: string } }>
 ): Promise<void> {
   for (const signup of promoted) {
-    const raid = await prisma.raid.findUnique({ where: { id: signup.raidId }, select: { title: true, scheduledAt: true } });
-    await interaction.client.users.send(signup.member.discordUserId,
-      `A ${roleLabel[signup.role]} slot opened in **${raid?.title ?? "a raid"}**${raid ? ` (<t:${Math.floor(raid.scheduledAt.getTime() / 1000)}:F>)` : ""}. You're off the waitlist and signed up.`)
-      .catch(() => undefined);
+    const raid = await prisma.raid.findUnique({
+      where: { id: signup.raidId },
+      select: { title: true, scheduledAt: true, guild: { select: { settings: { select: { language: true } } } } }
+    });
+    const lang = asLang(raid?.guild.settings?.language);
+    await interaction.client.users.send(signup.member.discordUserId, t(lang, "dm.promoted", {
+      role: t(lang, `role.${signup.role}` as const),
+      raid: raid?.title ?? "raid",
+      when: raid ? `<t:${Math.floor(raid.scheduledAt.getTime() / 1000)}:F>` : ""
+    })).catch(() => undefined);
   }
 }
 
@@ -255,7 +264,8 @@ export async function executeRaid(interaction: ChatInputCommandInteraction): Pro
   }
   if (subcommand === "report") {
     const report = await buildRaidReport(prisma, context.guildId, raidId);
-    await interaction.reply({ embeds: [raidReportEmbed(report)], allowedMentions: { parse: [] } });
+    const lang = asLang((await guildService.getSettings(context.guildId))?.language);
+    await interaction.reply({ embeds: [raidReportEmbed(report, lang)], allowedMentions: { parse: [] } });
     return;
   }
   if (subcommand === "award-ep") {
@@ -362,24 +372,26 @@ export async function handleRaidSignupButton(interaction: ButtonInteraction): Pr
   const guild = await guildService.ensureGuild(interaction.guild.id, interaction.guild.name);
   const member = await guildService.ensureMember(guild.id, interaction.user.id,
     (interaction.member as GuildMember | null)?.displayName ?? interaction.user.username);
+  const lang = asLang((await guildService.getSettings(guild.id))?.language);
   let content: string;
   if (action === "CANCEL") {
     const existing = await prisma.raidSignup.findUnique({ where: { raidId_memberId: { raidId, memberId: member.id } } });
     if (!existing || existing.status === "CANCELLED") {
-      content = "You weren't signed up, so there's nothing to cancel.";
+      content = t(lang, "reply.notSignedUp");
     } else {
       const { promoted } = await raidService.cancelSignup(raidId, guild.id, member.id);
       await tellPromoted(interaction, promoted);
-      content = "Got it, you're marked as not coming.";
+      content = t(lang, "reply.cancelled");
     }
   } else {
     const existing = await prisma.raidSignup.findUnique({ where: { raidId_memberId: { raidId, memberId: member.id } } });
     const role = (action === "MAYBE" ? existing?.role ?? "DPS" : action) as RaidRole;
     const signup = await raidService.signup(raidId, guild.id, member.id, role, action === "MAYBE" ? "MAYBE" : "AVAILABLE");
+    const roleText = t(lang, `role.${role}` as const);
     const replies: Record<string, string> = {
-      SIGNED_UP: `You're signed up as **${roleLabel[role]}**. Click another role to switch, or Can't come to drop out.`,
-      MAYBE: `You're marked as **maybe** (${roleLabel[role]}). Click a role when you're sure.`,
-      WAITLISTED: `${roleLabel[role]} is full, so you're on the **waitlist**. You'll get a DM if a spot opens.`
+      SIGNED_UP: t(lang, "reply.signedUp", { role: roleText }),
+      MAYBE: t(lang, "reply.maybe", { role: roleText }),
+      WAITLISTED: t(lang, "reply.waitlisted", { role: roleText })
     };
     content = replies[signup.status] ?? "Signup saved.";
   }

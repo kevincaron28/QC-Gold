@@ -23,6 +23,7 @@ import { formatChecks, setupChecks, setupComplete, type ChannelFact, type SetupF
 import { guildService, requireGuildContext } from "./context.js";
 import { sendWelcome, welcomeDelivery } from "../services/housekeeping.js";
 import { isValidTimeZone } from "../services/raid-time.js";
+import { asLang, t, type Lang } from "../i18n.js";
 
 // Guided first-time setup. One private message that walks an admin through
 // five steps with buttons and dropdowns only (no IDs, no typing):
@@ -352,20 +353,13 @@ async function createChannels(guild: DiscordGuild, guildId: string): Promise<str
   return made.length ? `Created ${made.join(", ")}. Move or rename them however you like.` : "All three channels were already set. Pick different ones from the menus if you want.";
 }
 
-function gettingStartedPost(): EmbedBuilder {
+function gettingStartedPost(lang: Lang): EmbedBuilder {
   return new EmbedBuilder()
-    .setTitle("⚜️ Getting started with Quebec Gold")
+    .setTitle(t(lang, "guide.title"))
     .setColor(0xd4af37)
-    .setDescription([
-      "**1. Link your character** — `/character add` (name and realm exactly as in game).",
-      "**2. Sign up for raids** — `/raid signup` in the raid signups channel (Available or Maybe).",
-      `**3. Install the addon** (optional but recommended) — download the zip from ${RELEASES_URL}, unzip into \`World of Warcraft\\_forever_\\Interface\\AddOns\\\`, restart the game, click the gold coin on the minimap.`,
-      "**4. See your standing** — `/epgp balance`, `/profile`, `/raid progress`.",
-      "**5. Need something?** — `/bank request` for the guild bank, `/craft request` for crafters.",
-      "",
-      "`/help` lists every command."
-    ].join("\n"));
+    .setDescription(t(lang, "guide.body", { url: RELEASES_URL }));
 }
+
 
 // ---------------------------------------------------------------------
 // Command
@@ -487,7 +481,7 @@ export async function executeSetup(interaction: ChatInputCommandInteraction): Pr
           const settings = await guildService.getSettings(guildId);
           const channel = settings?.notifyChannelId ? await guild.channels.fetch(settings.notifyChannelId).catch(() => null) : null;
           if (channel?.isTextBased()) {
-            await channel.send({ embeds: [gettingStartedPost()] });
+            await channel.send({ embeds: [gettingStartedPost(asLang(settings?.language))] });
             note = `Posted the getting-started guide in <#${channel.id}>. Pin it there so new members see it.`;
           } else note = "Set an announcements channel first (step 2).";
         }

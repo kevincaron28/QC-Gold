@@ -11,7 +11,7 @@ import { prisma } from "../database.js";
 import { hasPermission } from "../permissions.js";
 import { createAuditService } from "../services/audit.js";
 import { applyRaidEpProposal, computeRaidEpProposal, type EpProposal } from "../services/ep-award.js";
-import { notify } from "../services/notify.js";
+import { notifications, notify } from "../services/notify.js";
 import { guildService } from "./context.js";
 import { postRaidReport } from "./raid-report.js";
 
@@ -82,6 +82,6 @@ export async function handleEpAwardButton(interaction: ButtonInteraction): Promi
   // moment the raid's numbers are final.
   if (result.created > 0) {
     const posted = await postRaidReport(interaction.guild, guild.id, raidId).catch(() => false);
-    if (!posted) await notify(interaction.guild, `💰 EP awarded for **${result.proposal.title}**: ${result.created} raider(s), ${result.total} EP total`);
+    if (!posted) await notify(interaction.guild, notifications.epAwarded(result.proposal.title, result.created, result.total));
   }
 }

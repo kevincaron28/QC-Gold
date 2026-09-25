@@ -5,6 +5,7 @@ import {
 import type { GuildSettings } from "@prisma/client";
 import { prisma } from "../database.js";
 import { createGuildService } from "./guild.js";
+import { asLang, t } from "../i18n.js";
 
 const guildService = createGuildService(prisma);
 // Exported so tests can stub settings lookups.
@@ -78,11 +79,12 @@ export function welcomeEnabled(settings: Pick<GuildSettings, "welcomeDelivery" |
 // The welcome message: text plus up to 5 role buttons ("which game are you
 // here for?"). Button ids carry the server id so they also work in DMs.
 export function buildWelcomeMessage(
-  settings: Pick<GuildSettings, "welcomeMessageTemplate" | "welcomeRoleIds" | "welcomeRolePrompt">,
+  settings: Pick<GuildSettings, "welcomeMessageTemplate" | "welcomeRoleIds" | "welcomeRolePrompt"> & { language?: string | null },
   discordGuild: Pick<DiscordGuild, "id" | "name" | "memberCount" | "roles">,
   member: { id: string; username: string }
 ) {
-  const text = renderTemplate(settings.welcomeMessageTemplate ?? DEFAULT_WELCOME_TEMPLATE, {
+  const lang = asLang(settings.language);
+  const text = renderTemplate(settings.welcomeMessageTemplate ?? t(lang, "welcome.default"), {
     mention: `<@${member.id}>`,
     username: member.username,
     guildName: discordGuild.name,
@@ -100,7 +102,7 @@ export function buildWelcomeMessage(
       .setStyle(ButtonStyle.Primary)));
   return {
     content: text,
-    embeds: [new EmbedBuilder().setColor(0xd4af37).setDescription(settings.welcomeRolePrompt ?? DEFAULT_WELCOME_ROLE_PROMPT)],
+    embeds: [new EmbedBuilder().setColor(0xd4af37).setDescription(settings.welcomeRolePrompt ?? t(lang, "welcome.rolePrompt"))],
     components: [row]
   };
 }
@@ -157,10 +159,8 @@ export async function handleWelcomeRoleButton(interaction: ButtonInteraction): P
     await interaction.reply({ content: `I couldn't change "${role.name}". An officer needs to move my role above it (Server Settings > Roles).`, ephemeral: true });
     return;
   }
-  await interaction.reply({
-    content: had ? `Removed **${role.name}**. Click again to get it back.` : `Added **${role.name}**. You can pick more, or click again to remove it.`,
-    ephemeral: true
-  });
+  const lang = asLang(settings.language);
+  await interaction.reply({ content: t(lang, had ? "welcome.removed" : "welcome.added", { role: role.name }), ephemeral: true });
 }
 
 export async function handleMemberLeave(discordGuild: DiscordGuild, member: GuildMember | PartialGuildMember): Promise<void> {

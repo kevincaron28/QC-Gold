@@ -1,29 +1,31 @@
 import { EmbedBuilder, type Guild as DiscordGuild } from "discord.js";
 import { prisma } from "../database.js";
+import { t, type Lang } from "../i18n.js";
 import { notifyEmbed } from "../services/notify.js";
 import { buildRaidReport, formatDuration, type RaidReport } from "../services/raid-report.js";
 
-export function raidReportEmbed(report: RaidReport): EmbedBuilder {
+export function raidReportEmbed(report: RaidReport, lang: Lang = "en"): EmbedBuilder {
+  const none = t(lang, "report.noneRecorded");
   const bosses = report.bossesPlanned > 0
     ? `${report.bossesKilled}/${report.bossesPlanned}${report.killedNames.length ? `\n${report.killedNames.join(", ")}` : ""}`
-    : report.killedNames.length ? report.killedNames.join(", ") : "none recorded";
+    : report.killedNames.length ? report.killedNames.join(", ") : none;
   const embed = new EmbedBuilder()
-    .setTitle(`⚜️ Quebec Gold — ${report.title}`)
-    .setDescription(report.endedAt ? "Raid completed" : "Raid in progress")
+    .setTitle(t(lang, "report.title", { raid: report.title }))
+    .setDescription(t(lang, report.endedAt ? "report.completed" : "report.inProgress"))
     .addFields(
-      { name: "🕐 Duration", value: formatDuration(report.durationMinutes), inline: true },
-      { name: "👥 Raiders", value: `${report.raiders}${report.late ? ` (${report.late} late)` : ""}`, inline: true },
-      { name: "🏆 Bosses killed", value: bosses.slice(0, 1000), inline: true },
+      { name: t(lang, "report.duration"), value: formatDuration(report.durationMinutes), inline: true },
+      { name: t(lang, "report.raiders"), value: `${report.raiders}${report.late ? ` (${t(lang, "report.late", { count: report.late })})` : ""}`, inline: true },
+      { name: t(lang, "report.bosses"), value: bosses.slice(0, 1000), inline: true },
       {
-        name: "💰 EPGP",
-        value: report.epRecipients ? `+${report.epAwarded} EP to ${report.epRecipients} raider(s)` : "EP not approved yet",
+        name: t(lang, "report.epgp"),
+        value: report.epRecipients ? t(lang, "report.epValue", { ep: report.epAwarded, count: report.epRecipients }) : t(lang, "report.epPending"),
         inline: true
       },
-      { name: "🎁 Loot", value: report.lootCount ? `${report.lootCount} item(s), ${report.gpSpent} GP spent` : "none recorded", inline: true }
+      { name: t(lang, "report.loot"), value: report.lootCount ? t(lang, "report.lootValue", { count: report.lootCount, gp: report.gpSpent }) : none, inline: true }
     );
   if (report.topLoot.length) {
     embed.addFields({
-      name: "Top items",
+      name: t(lang, "report.topItems"),
       value: report.topLoot.map((loot) => `${loot.item} → ${loot.winner} (${loot.gp} GP)`).join("\n").slice(0, 1000)
     });
   }
@@ -31,9 +33,9 @@ export function raidReportEmbed(report: RaidReport): EmbedBuilder {
   return embed;
 }
 
-// Posts the report to the announcements channel. Returns false when no
-// channel is configured (callers then show it to the officer instead).
+// Posts the report to the announcements channel, in the guild's language.
+// Returns false when no channel is configured.
 export async function postRaidReport(discordGuild: DiscordGuild | null, guildId: string, raidId: string): Promise<boolean> {
   const report = await buildRaidReport(prisma, guildId, raidId);
-  return notifyEmbed(discordGuild, raidReportEmbed(report));
+  return notifyEmbed(discordGuild, (lang) => raidReportEmbed(report, lang));
 }

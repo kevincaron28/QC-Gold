@@ -236,24 +236,24 @@ within priority. Update the checkbox the moment an item lands.
 
 **Quality of life — recommended 2026-09-25 (not started, easiest first)**
 
-24. [ ] **S — Raid ID autocomplete.** Every `raid:` option (and auction /
+24. [x] **S — Raid ID autocomplete.** *(Done 2026-09-25: raid, auction, bank, craft, EPGP entry, application, import options; `src/services/autocomplete.ts`.)* Every `raid:` option (and auction /
     bank / craft IDs) suggests upcoming raids by title and date as you
     type, so nobody copies IDs again.
-25. [ ] **S — Friendly raid times.** `/raid create time:` accepts
+25. [x] **S — Friendly raid times.** *(Done 2026-09-25: `src/services/raid-time.ts`, EN+FR, DST-safe; timezone in /setup and `/config timezone`.)* `/raid create time:` accepts
     "tonight 8pm", "friday 20:00", "2026-10-01 20:00" in the guild's
     timezone (new setting in /setup), instead of strict ISO-8601 — the
     biggest remaining trap for non-technical officers.
-26. [ ] **M — Signup buttons on the raid post.** Tank / Healer / DPS /
+26. [x] **M — Signup buttons on the raid post.** *(Done 2026-09-25.)* Tank / Healer / DPS /
     Maybe / Can't come buttons on the live signup embed; no command needed.
-27. [ ] **S — Bot auto-restart.** The desktop shortcut restarts the bot if
+27. [x] **S — Bot auto-restart.** *(Done 2026-09-25: start-bot.bat loop.)* The desktop shortcut restarts the bot if
     it crashes, and the console shows a clear "bot stopped, restarting"
     line.
-28. [ ] **S — One-click companion setup.** A script that finds the WoW
+28. [x] **S — One-click companion setup.** *(Done 2026-09-25: `npm run companion:setup`, start-companion.bat.)* A script that finds the WoW
     folder, generates the upload token, and writes both `.env.local` and
     `companion.config.json` (today this is manual and error-prone).
-29. [ ] **M — French language option.** Bot replies and addon text in
+29. [~] **M — French language option.** *(In progress 2026-09-25: `language` setting + /setup picker done.)* Bot replies and addon text in
     French for a Quebec guild (`/setup` language choice).
-30. [ ] **S — Nightly database backup** (export key tables to a dated file,
+30. [x] **S — Nightly database backup** *(Done 2026-09-25: `src/services/backup.ts`, backups/ gitignored.)* (export key tables to a dated file,
     keep the last 14).
 
 **P1 — second wave**

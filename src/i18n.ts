@@ -1,0 +1,116 @@
+// Member-facing text in English and French (GuildSettings.language).
+// Officer/admin replies stay in English. Placeholders look like {name}.
+
+export type Lang = "en" | "fr";
+
+export function asLang(value: string | null | undefined): Lang {
+  return value === "fr" ? "fr" : "en";
+}
+
+const STRINGS = {
+  // Raid signup post
+  "signup.status": { en: "Status", fr: "Statut" },
+  "signup.start": { en: "Start", fr: "Début" },
+  "signup.total": { en: "Total signed up", fr: "Inscrits" },
+  "signup.roles": { en: "Roles", fr: "Rôles" },
+  "signup.maybe": { en: "Maybe", fr: "Peut-être" },
+  "signup.waitlist": { en: "Waitlist (in order)", fr: "Liste d'attente (en ordre)" },
+  "signup.footer.open": { en: "Click a button below to sign up, or use /raid signup.", fr: "Cliquez un bouton ci-dessous pour vous inscrire, ou utilisez /raid signup." },
+  "signup.footer.closed": { en: "Raid ID: {id}", fr: "ID du raid : {id}" },
+  "status.PLANNED": { en: "Planned", fr: "Prévu" },
+  "status.ACTIVE": { en: "In progress", fr: "En cours" },
+  "status.COMPLETED": { en: "Completed", fr: "Terminé" },
+  "status.CANCELLED": { en: "Cancelled", fr: "Annulé" },
+  "role.TANK": { en: "Tank", fr: "Tank" },
+  "role.HEALER": { en: "Healer", fr: "Soigneur" },
+  "role.DPS": { en: "DPS", fr: "DPS" },
+  "button.tank": { en: "🛡️ Tank", fr: "🛡️ Tank" },
+  "button.healer": { en: "💚 Healer", fr: "💚 Soigneur" },
+  "button.dps": { en: "⚔️ DPS", fr: "⚔️ DPS" },
+  "button.maybe": { en: "❔ Maybe", fr: "❔ Peut-être" },
+  "button.cancel": { en: "✖ Can't come", fr: "✖ Absent" },
+  "reply.signedUp": { en: "You're signed up as **{role}**. Click another role to switch, or Can't come to drop out.", fr: "Vous êtes inscrit comme **{role}**. Cliquez un autre rôle pour changer, ou Absent pour vous retirer." },
+  "reply.maybe": { en: "You're marked as **maybe** ({role}). Click a role when you're sure.", fr: "Vous êtes noté **peut-être** ({role}). Cliquez un rôle quand vous serez certain." },
+  "reply.waitlisted": { en: "{role} is full, so you're on the **waitlist**. You'll get a DM if a spot opens.", fr: "{role} est complet : vous êtes sur la **liste d'attente**. Vous recevrez un message privé si une place se libère." },
+  "reply.notSignedUp": { en: "You weren't signed up, so there's nothing to cancel.", fr: "Vous n'étiez pas inscrit, rien à annuler." },
+  "reply.cancelled": { en: "Got it, you're marked as not coming.", fr: "C'est noté, vous ne venez pas." },
+  "dm.promoted": { en: "A {role} slot opened in **{raid}** ({when}). You're off the waitlist and signed up.", fr: "Une place de {role} s'est libérée pour **{raid}** ({when}). Vous n'êtes plus en attente : vous êtes inscrit." },
+
+  // Reminders
+  "reminder": { en: "⏰ **{raid}** starts {when}. See you there: {mentions}", fr: "⏰ **{raid}** commence {when}. On vous attend : {mentions}" },
+
+  // Notifications
+  "notify.raidStarted": { en: "⚔️ Raid started: **{raid}**", fr: "⚔️ Raid commencé : **{raid}**" },
+  "notify.raidEnded": { en: "🏁 Raid ended: **{raid}**", fr: "🏁 Raid terminé : **{raid}**" },
+  "notify.bossKilled": { en: "💀 **{boss}** killed ({raid})", fr: "💀 **{boss}** vaincu ({raid})" },
+  "notify.loot": { en: "🎁 **{item}** → {winner} for **{gp} GP**", fr: "🎁 **{item}** → {winner} pour **{gp} GP**" },
+  "notify.epgp": { en: "💰 {who}: {change} ({reason})", fr: "💰 {who} : {change} ({reason})" },
+  "notify.decay": { en: "📉 EPGP decay of {percent}% applied to {count} member(s)", fr: "📉 Dépréciation EPGP de {percent} % appliquée à {count} membre(s)" },
+  "notify.import": { en: "📥 Addon import applied: {count} EPGP entries{raids}", fr: "📥 Import de l'addon appliqué : {count} entrée(s) EPGP{raids}" },
+  "notify.importRaids": { en: ", attendance for {count} raid(s)", fr: ", présences pour {count} raid(s)" },
+  "notify.epAwarded": { en: "💰 EP awarded for **{raid}**: {count} raider(s), {total} EP total", fr: "💰 EP attribués pour **{raid}** : {count} raideur(s), {total} EP au total" },
+
+  // Raid report
+  "report.title": { en: "⚜️ Quebec Gold — {raid}", fr: "⚜️ Quebec Gold — {raid}" },
+  "report.completed": { en: "Raid completed", fr: "Raid terminé" },
+  "report.inProgress": { en: "Raid in progress", fr: "Raid en cours" },
+  "report.duration": { en: "🕐 Duration", fr: "🕐 Durée" },
+  "report.raiders": { en: "👥 Raiders", fr: "👥 Raideurs" },
+  "report.late": { en: "{count} late", fr: "{count} en retard" },
+  "report.bosses": { en: "🏆 Bosses killed", fr: "🏆 Boss vaincus" },
+  "report.noneRecorded": { en: "none recorded", fr: "aucun" },
+  "report.epgp": { en: "💰 EPGP", fr: "💰 EPGP" },
+  "report.epValue": { en: "+{ep} EP to {count} raider(s)", fr: "+{ep} EP à {count} raideur(s)" },
+  "report.epPending": { en: "EP not approved yet", fr: "EP pas encore approuvés" },
+  "report.loot": { en: "🎁 Loot", fr: "🎁 Butin" },
+  "report.lootValue": { en: "{count} item(s), {gp} GP spent", fr: "{count} objet(s), {gp} GP dépensés" },
+  "report.topItems": { en: "Top items", fr: "Meilleurs objets" },
+
+  // Weekly stats
+  "stats.titleDays": { en: "⚜️ Quebec Gold — last {days} day(s)", fr: "⚜️ Quebec Gold — {days} dernier(s) jour(s)" },
+  "stats.titleWeekly": { en: "⚜️ Quebec Gold — weekly report", fr: "⚜️ Quebec Gold — rapport de la semaine" },
+  "stats.since": { en: "Since {date}", fr: "Depuis le {date}" },
+  "stats.raids": { en: "⚔️ Raids", fr: "⚔️ Raids" },
+  "stats.raidsValue": { en: "{count} (avg {avg} raiders)", fr: "{count} (moy. {avg} raideurs)" },
+  "stats.kills": { en: "💀 Boss kills", fr: "💀 Boss vaincus" },
+  "stats.ep": { en: "💰 EP awarded", fr: "💰 EP attribués" },
+  "stats.loot": { en: "🎁 Loot", fr: "🎁 Butin" },
+  "stats.newMembers": { en: "👋 New members", fr: "👋 Nouveaux membres" },
+  "stats.applications": { en: "📝 Applications", fr: "📝 Candidatures" },
+  "stats.mostRaids": { en: "Most raids attended", fr: "Plus de raids" },
+  "stats.mostLoot": { en: "Most loot", fr: "Plus de butin" },
+
+  // Welcome
+  "welcome.default": {
+    en: "Welcome to {guild}, {mention}! Run `/apply` to submit a recruitment application, or `/character add` to link a character if you're already a member.",
+    fr: "Bienvenue sur {guild}, {mention} ! Utilisez `/apply` pour postuler, ou `/character add` pour lier votre personnage si vous êtes déjà membre."
+  },
+  "welcome.rolePrompt": {
+    en: "Pick what you're here for (you can pick more than one, click again to remove):",
+    fr: "Choisissez ce qui vous intéresse (plusieurs choix possibles, cliquez de nouveau pour retirer) :"
+  },
+  "welcome.added": { en: "Added **{role}**. You can pick more, or click again to remove it.", fr: "**{role}** ajouté. Vous pouvez en choisir d'autres, ou recliquer pour le retirer." },
+  "welcome.removed": { en: "Removed **{role}**. Click again to get it back.", fr: "**{role}** retiré. Recliquez pour le récupérer." },
+
+  // Getting started guide
+  "guide.title": { en: "⚜️ Getting started with Quebec Gold", fr: "⚜️ Bien commencer avec Quebec Gold" },
+  "guide.body": {
+    en: "**1. Link your character** — `/character add` (name and realm exactly as in game).\n**2. Sign up for raids** — click the buttons on the raid posts in the raid signups channel.\n**3. Install the addon** (optional but recommended) — download the zip from {url}, unzip into `World of Warcraft\\_forever_\\Interface\\AddOns\\`, restart the game, click the gold coin on the minimap.\n**4. See your standing** — `/epgp balance`, `/profile`, `/raid progress`.\n**5. Need something?** — `/bank request` for the guild bank, `/craft request` for crafters.\n\n`/help` lists every command.",
+    fr: "**1. Liez votre personnage** — `/character add` (nom et royaume exactement comme en jeu).\n**2. Inscrivez-vous aux raids** — cliquez les boutons sur les annonces de raid dans le salon des inscriptions.\n**3. Installez l'addon** (optionnel mais recommandé) — téléchargez le zip sur {url}, décompressez-le dans `World of Warcraft\\_forever_\\Interface\\AddOns\\`, redémarrez le jeu, cliquez la pièce d'or près de la minicarte.\n**4. Voyez votre classement** — `/epgp balance`, `/profile`, `/raid progress`.\n**5. Besoin de quelque chose ?** — `/bank request` pour la banque de guilde, `/craft request` pour les artisans.\n\n`/help` liste toutes les commandes."
+  },
+
+  // Help
+  "help.title": { en: "⚜️ Quebec Gold — commands", fr: "⚜️ Quebec Gold — commandes" },
+  "help.everyone": { en: "Everyone", fr: "Tout le monde" },
+  "help.raidLeaders": { en: "Raid Leaders", fr: "Chefs de raid" },
+  "help.epgpOfficers": { en: "EPGP Officers", fr: "Officiers EPGP" },
+  "help.officers": { en: "Officers", fr: "Officiers" },
+  "help.footer": { en: "In game: click the gold coin on the minimap, or type /qg help.", fr: "En jeu : cliquez la pièce d'or près de la minicarte, ou tapez /qg help." }
+} satisfies Record<string, Record<Lang, string>>;
+
+export type StringKey = keyof typeof STRINGS;
+
+export function t(lang: Lang, key: StringKey, vars: Record<string, string | number> = {}): string {
+  const template = STRINGS[key][lang] ?? STRINGS[key].en;
+  return template.replace(/\{(\w+)\}/g, (match, name: string) => (name in vars ? String(vars[name]) : match));
+}

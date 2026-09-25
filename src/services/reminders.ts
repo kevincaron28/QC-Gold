@@ -1,5 +1,6 @@
 import type { Client } from "discord.js";
 import type { PrismaClient } from "@prisma/client";
+import { asLang, t } from "../i18n.js";
 
 // Due once the raid is within `minutes` of starting, until it starts, and
 // only if no reminder was sent yet.
@@ -35,8 +36,11 @@ export async function runRaidReminders(client: Client, database: PrismaClient, n
       if (!channel?.isTextBased()) continue;
       const userIds = raid.signups.map((signup) => signup.member.discordUserId);
       await channel.send({
-        content: `⏰ **${raid.title}** starts <t:${Math.floor(raid.scheduledAt.getTime() / 1000)}:R>. `
-          + `See you there: ${userIds.map((id) => `<@${id}>`).join(" ")}`.slice(0, 1900),
+        content: t(asLang(settings?.language), "reminder", {
+          raid: raid.title,
+          when: `<t:${Math.floor(raid.scheduledAt.getTime() / 1000)}:R>`,
+          mentions: userIds.map((id) => `<@${id}>`).join(" ")
+        }).slice(0, 1900),
         allowedMentions: { users: userIds.slice(0, 100) }
       });
       sent += 1;
