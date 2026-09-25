@@ -28,6 +28,7 @@ typed command. Names are case-insensitive (`bob` = `Bob`).
 | `/qg attune <key> clear` | Mark it not done |
 | `/qg diag` | Show recent addon errors / blocked actions (send this when reporting a bug) |
 | `/qg menu` | Open the tools window |
+| `/qg calendar check` | Checks whether the in-game guild calendar can be synced (send the result to an officer) |
 | `/qg lang en` / `fr` / `auto` | Language of your window and bid popup (auto = same as your game client) |
 | `/qg standings [player]` | EPGP standings from Discord (top 10, or one player) |
 | `/qg version` | Your addon version. You're also told automatically when a guildmate has a newer one |

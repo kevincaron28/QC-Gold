@@ -267,6 +267,20 @@ within priority. Update the checkbox the moment an item lands.
     works from DMs; DM falls back to the channel if closed; only roles still
     configured are honoured. /setup step 3 + `/config welcome send_to
     role_prompt preview`. `tests/welcome.test.ts`.)*
+32. [~] **M — In-game guild calendar sync** *(Requested 2026-09-25.)* Only
+    if WoW Forever's client has the calendar and lets addons use it.
+    Discord stays the one official signup list.
+    - [~] **S — `/qg calendar check`** (addon v1.6.1): reports whether the
+      calendar API exists, whether you can create events, and lists guild
+      events for the next 14 days. **Waiting on the user to run it in
+      game** — the answer decides the next two steps.
+    - [ ] **M — In game → Discord:** addon exports guild events and each
+      member's response; `/import-apply` creates/updates the matching
+      Discord raid and signups (accepted → signed up, tentative → Maybe,
+      declined → Can't come) with the normal caps/waitlist rules.
+    - [ ] **S/M — Discord → in game:** companion writes upcoming Discord
+      raids into the addon folder; officer's Raid tab gets a "Create
+      in-game event" button (calendar event creation needs a real click).
 30. [x] **S — Nightly database backup** *(Done 2026-09-25: `src/services/backup.ts`, backups/ gitignored.)* (export key tables to a dated file,
     keep the last 14).
 
