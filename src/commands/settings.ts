@@ -80,6 +80,10 @@ export const configCommand = new SlashCommandBuilder()
     .addChannelOption((o) => o.setName("channel").setDescription("Craft board channel")
       .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
     .addBooleanOption((o) => o.setName("disable").setDescription("Go back to using the officer log")))
+  .addSubcommand((sub) => sub.setName("readiness-channel").setDescription("Private channel where raid readiness (gear checks) is posted.")
+    .addChannelOption((o) => o.setName("channel").setDescription("Readiness channel (make it visible to officers and raid leaders only)")
+      .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
+    .addBooleanOption((o) => o.setName("disable").setDescription("Stop posting readiness to a channel")))
   .addSubcommand((sub) => sub.setName("dungeon-leaderboard-channel").setDescription("Channel with the auto-updated dungeon leaderboard.")
     .addChannelOption((o) => o.setName("channel").setDescription("Leaderboard channel")
       .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
@@ -120,6 +124,7 @@ export async function executeConfig(interaction: ChatInputCommandInteraction): P
         `Dungeon posts: ${settings.dungeonChannelId ? `<#${settings.dungeonChannelId}>` : "notify channel"}`,
         `Raid logs: ${settings.raidLogChannelId ? `<#${settings.raidLogChannelId}>` : "notify channel"}`,
         `Loot and EP log: ${settings.lootChannelId ? `<#${settings.lootChannelId}>` : "notify channel"}`,
+        `Readiness channel: ${settings.readinessChannelId ? `<#${settings.readinessChannelId}>` : "not set"}`,
         `Craft board: ${settings.craftChannelId ? `<#${settings.craftChannelId}>` : "officer log"}`,
         `Dungeon leaderboard: ${settings.dungeonLeaderboardChannelId ? `<#${settings.dungeonLeaderboardChannelId}>` : "not set"}`,
         `Dungeon signups: ${settings.dungeonSignupChannelId ? `<#${settings.dungeonSignupChannelId}>` : "not set"}`,
@@ -256,7 +261,8 @@ export async function executeConfig(interaction: ChatInputCommandInteraction): P
     return;
   }
 
-  const channelSettings: Record<string, { field: "raidLogChannelId" | "dungeonLeaderboardChannelId" | "dungeonSignupChannelId" | "lootChannelId" | "craftChannelId"; label: string }> = {
+  const channelSettings: Record<string, { field: "raidLogChannelId" | "dungeonLeaderboardChannelId" | "dungeonSignupChannelId" | "lootChannelId" | "craftChannelId" | "readinessChannelId"; label: string }> = {
+    "readiness-channel": { field: "readinessChannelId", label: "Raid readiness" },
     "loot-channel": { field: "lootChannelId", label: "Loot and EP/GP changes" },
     "craft-channel": { field: "craftChannelId", label: "Craft requests" },
     "raid-log-channel": { field: "raidLogChannelId", label: "Raid summaries" },

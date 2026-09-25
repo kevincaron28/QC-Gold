@@ -212,7 +212,7 @@ After each import, completed runs and new records are posted once in the dungeon
 | `/raid boss <raid> <name> <Killed\|Pending>` | Boss status |
 | `/raid attendance <raid> <player> <status> [notes]` | Record attendance |
 | `/raid note <raid> <text> [boss]` | Officer note (general, per boss, what to improve); shown in `/raid status` to raid leaders |
-| `/readiness member <player>` / `/readiness raid` | Check other people's readiness (also Guild Master, Loot Leader, Class Leader) |
+| `/readiness member <player>` / `/readiness raid` | Check other people's readiness (also Guild Master, Loot Leader, Class Leader). `/readiness raid` posts the whole-guild board in the private **raid-readiness** channel when one is set (otherwise it replies only to you). The board is also refreshed after every `/import-apply` that carries gear checks |
 
 Proposed EP = attendance EP (present or late) + boss kills × boss EP + a
 full-clear bonus, all from `/config set`. Only EPGP officers can press
@@ -264,6 +264,7 @@ Approve, and a raid can never be paid twice.
 | `/config log-channel` | Where join/leave/moderation logs go |
 | `/config raid-log-channel` | Where raid summaries (raid reports, Warcraft Logs) go; default: the notify channel |
 | `/config loot-channel` | Where loot awards and EP/GP changes go; default: the notify channel |
+| `/config readiness-channel` | Private channel (officers and raid leaders only) where the raid readiness board is posted. `/setup` step 4 can create it with the right permissions |
 | `/config craft-channel` | Where craft requests are posted so crafters see them; default: the officer log |
 | `/config dungeon-leaderboard-channel` | Channel with one auto-updated dungeon leaderboard message (refreshed after every dungeon import) |
 | `/config dungeon-signup-channel` | Channel for dungeon signups (channel only; no dungeon signup flow yet) |

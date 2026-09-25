@@ -3,6 +3,7 @@ import { createAddonImportService } from "../services/addon-import.js";
 import { createAuditService } from "../services/audit.js";
 import { notifications, notify, notifyDungeon } from "../services/notify.js";
 import { updateDungeonLeaderboard } from "../services/dungeon-leaderboard.js";
+import { postReadinessBoard } from "../services/readiness-board.js";
 import { dungeonAnnouncement } from "../services/dungeon-announce.js";
 import type { RaidImportSummary } from "../services/raid-import.js";
 import type { DungeonImportSummary } from "../services/dungeon-import.js";
@@ -91,4 +92,5 @@ export async function executeImportApply(interaction: ChatInputCommandInteractio
   const dungeonPost = dungeonAnnouncement(result.dungeons, "en");
   if (dungeonPost) await notifyDungeon(interaction.guild, (lang) => dungeonAnnouncement(result.dungeons, lang) ?? dungeonPost);
   if (dungeonPost) await updateDungeonLeaderboard(interaction.guild);
+  if (result.readinessSnapshots.length > 0) await postReadinessBoard(interaction.guild, context.guildId, "updated after an addon import");
 }

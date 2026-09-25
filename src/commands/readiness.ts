@@ -1,6 +1,7 @@
 import { SlashCommandBuilder, type ChatInputCommandInteraction } from "discord.js";
 import { prisma } from "../database.js";
 import { hasPermission } from "../permissions.js";
+import { buildReadinessLines, chunkLines, postReadinessBoard } from "../services/readiness-board.js";
 import { requireGuildContext } from "./context.js";
 
 export const readinessCommand = new SlashCommandBuilder()
@@ -51,10 +52,13 @@ export async function executeReadiness(interaction: ChatInputCommandInteraction)
     await interaction.reply({ content: format(snapshot, user.username), ephemeral: true });
     return;
   }
-  const members = await prisma.member.findMany({ where: { guildId: context.guildId, status: "ACTIVE" }, orderBy: { displayName: "asc" } });
-  const rows = await Promise.all(members.map(async (member) => {
-    const snapshot = await prisma.inspectedCharacterSnapshot.findFirst({ where: { memberId: member.id }, orderBy: { inspectedAt: "desc" }, include: { findings: true, character: true } });
-    return format(snapshot, member.displayName);
-  }));
-  await interaction.reply({ content: rows.join("\n\n") || "No guild members found." });
+  // The whole-guild board goes to the private readiness channel when there is one,
+  // so gear problems aren't shown to everyone; otherwise back to you only.
+  if (await postReadinessBoard(interaction.guild, context.guildId, `requested by ${interaction.user.username}`)) {
+    await interaction.reply({ content: "Posted the raid readiness in the readiness channel.", ephemeral: true });
+    return;
+  }
+  const chunks = chunkLines(await buildReadinessLines(prisma, context.guildId), 1900);
+  await interaction.reply({ content: chunks[0] ?? "No guild members found.", ephemeral: true });
+  for (const chunk of chunks.slice(1)) await interaction.followUp({ content: chunk, ephemeral: true });
 }

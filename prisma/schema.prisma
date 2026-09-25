@@ -423,6 +423,8 @@ model GuildSettings {
   lootChannelId            String?
   // Craft requests post here (crafters see them); falls back to the officer log.
   craftChannelId           String?
+  // Private (officers and raid leaders) channel where gear/readiness checks are posted.
+  readinessChannelId       String?
   createdAt                DateTime  @default(now())
   updatedAt                DateTime  @updatedAt
   guild                    Guild     @relation(fields: [guildId], references: [id], onDelete: Cascade)

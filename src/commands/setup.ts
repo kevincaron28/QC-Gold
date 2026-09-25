@@ -152,7 +152,7 @@ export async function renderStep(step: number, guild: DiscordGuild, guildId: str
       "**1. Roles** — who counts as Guild Master, Officer, Raid Leader, DKP Officer.",
       "**2. Channels** — where announcements, raid signups, raid logs, and officer logs go.",
       "**3. Dungeon channels** — the dungeon leaderboard and dungeon signups (optional).",
-      "**4. Extra channels** — loot log, craft board, recruitment (optional).",
+      "**4. Extra channels** — raid readiness (private), loot log, craft board, recruitment (optional).",
       "**5. Welcome** — optional welcome message (in a channel or by DM) with buttons to pick game roles.",
       "**6. New member roles** — optional automatic Applicant / Member roles.",
       "**7. EPGP, time & language** — point values, reminders, your timezone, English or French.",
@@ -235,6 +235,7 @@ export async function renderStep(step: number, guild: DiscordGuild, guildId: str
     embed.setDescription([
       "**Optional.** Skip with **Next** if you don't want these. They keep the busy feeds out of announcements.",
       "",
+      `🛡️ **Raid readiness** — private, for officers and raid leaders only: who is ready for raid night (gear checks): ${settings.readinessChannelId ? `<#${settings.readinessChannelId}>` : "*not set*"}`,
       `🎁 **Loot & EP log** — every loot award and EP/GP change: ${settings.lootChannelId ? `<#${settings.lootChannelId}>` : "same as announcements"}`,
       `🔨 **Craft board** — craft requests, so crafters see them (bank requests stay in the officer log): ${settings.craftChannelId ? `<#${settings.craftChannelId}>` : "the officer log"}`,
       `📣 **Recruitment** — where the recurring recruitment post goes (set the text and timing with \`/config recruitment\`): ${channelLabel(settings.recruitmentChannelId)}`
@@ -243,6 +244,7 @@ export async function renderStep(step: number, guild: DiscordGuild, guildId: str
       new ChannelSelectMenuBuilder().setCustomId(`setup:${id}`).setPlaceholder(placeholder)
         .setChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement).setMinValues(1).setMaxValues(1));
     components.push(
+      select("ch-readiness", "🛡️ Pick the raid readiness channel (keep it private)"),
       select("ch-loot", "🎁 Pick the loot & EP log channel"),
       select("ch-craft", "🔨 Pick the craft board channel"),
       select("ch-recruit", "📣 Pick the recruitment channel"),
@@ -373,11 +375,11 @@ async function createMissingRoles(guild: DiscordGuild): Promise<string> {
 
 type ChannelField = "notifyChannelId" | "raidSignupChannelId" | "raidLogChannelId" | "logChannelId"
   | "dungeonLeaderboardChannelId" | "dungeonSignupChannelId" | "dungeonChannelId"
-  | "lootChannelId" | "craftChannelId" | "recruitmentChannelId";
+  | "lootChannelId" | "craftChannelId" | "recruitmentChannelId" | "readinessChannelId";
 
 // How each channel is created. "readonly": members can read, only the bot and
 // officers post. "officers": hidden from everyone but officers.
-const CHANNEL_SPECS: Record<ChannelField, { name: string; topic: string; access: "open" | "readonly" | "officers" }> = {
+const CHANNEL_SPECS: Record<ChannelField, { name: string; topic: string; access: "open" | "readonly" | "officers" | "leaders" }> = {
   notifyChannelId: { name: "qg-announcements", topic: "Raid, boss and guild announcements from Quebec Gold", access: "open" },
   raidSignupChannelId: { name: "raid-signups", topic: "Raid signups (/raid signup) and reminders", access: "open" },
   raidLogChannelId: { name: "raid-logs", topic: "Raid summaries and Warcraft Logs, posted after each raid", access: "readonly" },
@@ -387,12 +389,13 @@ const CHANNEL_SPECS: Record<ChannelField, { name: string; topic: string; access:
   dungeonChannelId: { name: "dungeon-runs", topic: "Completed dungeon runs and new records", access: "readonly" },
   lootChannelId: { name: "loot-log", topic: "Loot awards and EP/GP changes", access: "readonly" },
   craftChannelId: { name: "craft-board", topic: "Craft requests (/craft request): crafters claim them here", access: "open" },
-  recruitmentChannelId: { name: "recruitment", topic: "Recruitment posts", access: "readonly" }
+  recruitmentChannelId: { name: "recruitment", topic: "Recruitment posts", access: "readonly" },
+  readinessChannelId: { name: "raid-readiness", topic: "Who is ready for raid night: gear checks from the addon (officers and raid leaders only)", access: "leaders" }
 };
 
 const CORE_CHANNELS: ChannelField[] = ["notifyChannelId", "raidSignupChannelId", "raidLogChannelId", "logChannelId"];
 const DUNGEON_CHANNELS: ChannelField[] = ["dungeonLeaderboardChannelId", "dungeonSignupChannelId", "dungeonChannelId"];
-const EXTRA_CHANNELS: ChannelField[] = ["lootChannelId", "craftChannelId", "recruitmentChannelId"];
+const EXTRA_CHANNELS: ChannelField[] = ["readinessChannelId", "lootChannelId", "craftChannelId", "recruitmentChannelId"];
 const SECTION_NAME = "⚜️ Quebec Gold";
 
 // One category holds every channel the bot makes, so the WoW section stays tidy.
@@ -410,9 +413,19 @@ async function createSectionChannels(guild: DiscordGuild, guildId: string, field
   await guild.roles.fetch();
   const category = await sectionCategory(guild);
   const officerRoles = guild.roles.cache.filter((role) => role.name === permissionRoles.guildMaster || role.name === permissionRoles.officer);
+  const leaderNames: string[] = [permissionRoles.guildMaster, permissionRoles.officer, permissionRoles.raidLeader, permissionRoles.lootLeader, permissionRoles.classLeader];
+  const leaderRoles = guild.roles.cache.filter((role) => leaderNames.includes(role.name));
   const me = guild.members.me;
   const botAllow = me ? [{ id: me.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.EmbedLinks] }] : [];
-  const overwritesFor = (access: "open" | "readonly" | "officers"): OverwriteResolvable[] | undefined => {
+  const overwritesFor = (access: "open" | "readonly" | "officers" | "leaders"): OverwriteResolvable[] | undefined => {
+    if (access === "leaders") {
+      // Hidden from everyone except the leadership roles (and the bot).
+      return [
+        { id: guild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel] },
+        ...leaderRoles.map((role) => ({ id: role.id, allow: [PermissionFlagsBits.ViewChannel] })),
+        ...botAllow
+      ];
+    }
     if (access === "officers") {
       return [
         { id: guild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel] },
@@ -440,7 +453,7 @@ async function createSectionChannels(guild: DiscordGuild, guildId: string, field
       ...(overwrites ? { permissionOverwrites: overwrites } : {})
     });
     update[field] = channel.id;
-    made.push(`<#${channel.id}>${spec.access === "officers" ? " (officers only)" : ""}`);
+    made.push(`<#${channel.id}>${spec.access === "officers" ? " (officers only)" : spec.access === "leaders" ? " (officers and raid leaders only)" : ""}`);
   }
   await guildService.updateSettings(guildId, update);
   if (update.dungeonLeaderboardChannelId) await updateDungeonLeaderboard(guild);
@@ -514,7 +527,7 @@ export async function executeSetup(interaction: ChatInputCommandInteraction): Pr
         else if (action === "create-all-channels") note = await createSectionChannels(guild, guildId, [...CORE_CHANNELS, ...DUNGEON_CHANNELS, ...EXTRA_CHANNELS]);
         else if (i.isChannelSelectMenu()) {
           const channelId = i.values[0];
-          const field = { "ch-notify": "notifyChannelId", "ch-raid": "raidSignupChannelId", "ch-raidlog": "raidLogChannelId", "ch-log": "logChannelId", "ch-welcome": "welcomeChannelId", "ch-dungeon": "dungeonChannelId", "ch-dungeon-lb": "dungeonLeaderboardChannelId", "ch-dungeon-signup": "dungeonSignupChannelId", "ch-loot": "lootChannelId", "ch-craft": "craftChannelId", "ch-recruit": "recruitmentChannelId" }[action];
+          const field = { "ch-notify": "notifyChannelId", "ch-raid": "raidSignupChannelId", "ch-raidlog": "raidLogChannelId", "ch-log": "logChannelId", "ch-welcome": "welcomeChannelId", "ch-dungeon": "dungeonChannelId", "ch-dungeon-lb": "dungeonLeaderboardChannelId", "ch-dungeon-signup": "dungeonSignupChannelId", "ch-readiness": "readinessChannelId", "ch-loot": "lootChannelId", "ch-craft": "craftChannelId", "ch-recruit": "recruitmentChannelId" }[action];
           if (channelId && field) {
             await guildService.updateSettings(guildId, { [field]: channelId });
             note = `Saved <#${channelId}>.`;

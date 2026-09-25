@@ -531,6 +531,12 @@ D10. [x] **S — Test path** *(Done 2026-09-25: /testraid dungeon through the re
     when it joins one.
 37. [x] **S — Companion export carries the exporter's character** *(Done
     2026-09-26; part of #33.)*
+41. [x] **S — Private raid readiness channel** *(Done 2026-09-26.)* `raid-readiness`
+    (Guild Master, Officer, Raid Leader, Loot Leader, Class Leader only; created by
+    /setup step 4 or set with `/config readiness-channel`). `/readiness raid`
+    posts the guild board there; `/import-apply` refreshes it when gear checks
+    arrive. `src/services/readiness-board.ts`. Enchant/flask checks are still
+    open (G2, ID2, plus an enchant check in the addon).
 38. [ ] **S — Warcraft Logs in the launch test** — checklist section 8
     (account, client, "do Forever logs reach WCL", `/wcl report`).
 39. [ ] **M — Real dungeon signups.** The signup channel exists but nothing
