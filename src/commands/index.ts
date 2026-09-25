@@ -19,6 +19,8 @@ import { selfRolesCommand } from "./selfroles.js";
 import { whoCommand } from "./who.js";
 import { statsCommand } from "./stats.js";
 import { bankCommand } from "./bank.js";
+import { testRaidCommand } from "./testraid.js";
+import { craftCommand } from "./craft.js";
 
 export const commands = [
   healthCommand,
@@ -43,6 +45,8 @@ export const commands = [
   , whoCommand
   , statsCommand
   , bankCommand
+  , testRaidCommand
+  , craftCommand
 ];
 
 const commandNames = commands.map((command) => command.name);

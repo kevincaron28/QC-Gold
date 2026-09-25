@@ -9,4 +9,5 @@ Core.lua
 Standings.lua
 Modules\Casino.lua
 Modules\Sync.lua
+Modules\Sim.lua
 Modules\Minimap.lua

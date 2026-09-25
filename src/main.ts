@@ -31,6 +31,8 @@ import { EP_AWARD_PREFIX, handleEpAwardButton } from "./commands/ep-award.js";
 import { executeWho } from "./commands/who.js";
 import { executeStats, runWeeklyReports } from "./commands/stats.js";
 import { executeBank } from "./commands/bank.js";
+import { executeTestRaid } from "./commands/testraid.js";
+import { executeCraft } from "./commands/craft.js";
 import { prisma } from "./database.js";
 import { runRecruitmentPosts } from "./services/recruitment.js";
 import { runRaidReminders } from "./services/reminders.js";
@@ -66,6 +68,8 @@ handlers.set("selfroles", executeSelfRoles);
 handlers.set("who", executeWho);
 handlers.set("stats", executeStats);
 handlers.set("bank", executeBank);
+handlers.set("testraid", executeTestRaid);
+handlers.set("craft", executeCraft);
 
 client.once(Events.ClientReady, (readyClient) => {
   console.info(`Logged in as ${readyClient.user.tag}`);

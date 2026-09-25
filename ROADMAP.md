@@ -107,6 +107,15 @@ within priority. Update the checkbox the moment an item lands.
 > **#0 raid test environment** (below), then decide between #19 crafting
 > requests and #21 in-game GP bidding.
 >
+> **#0 — [x] DONE 2026-09-25.** Bot: `/testraid start|finish|cleanup`
+> (`src/services/simulation.ts`, `src/commands/testraid.ts`; `isTest` on
+> Member/Raid, migration `20260925095244_test_raid_flags`). Verified end to
+> end against the live Postgres in a throwaway guild: 7 signed up / 2
+> maybe / 1 waitlisted, late + no-show + walk-in, 3/3 kills, 2 loot
+> auctions, both attendance paths (direct and via addon import), EP
+> approve twice = paid once, report, stats, cleanup left 0 rows. Addon:
+> `/qg sim start|end|bids|clear` (`Modules/Sim.lua`, same fake names).
+>
 > **#0 — P0 / M — Raid test environment / simulation (requested
 > 2026-09-24 for tomorrow).** No raids are released in WoW Forever yet, so
 > the whole raid flow can't be tested for real. Build a way to run a fake
@@ -256,7 +265,13 @@ within priority. Update the checkbox the moment an item lands.
 
 **P2 — later / optional**
 
-19. [ ] Profession cooldown tracking and crafting requests.
+19. [~] Profession cooldown tracking and crafting requests. *(Crafting
+    requests done 2026-09-25: `/craft request|list|mine|claim|done|
+    release|cancel`; request shows guild crafters with that profession;
+    DMs on claim/done/cancel; claim is race-safe (verified on live DB with
+    two simultaneous claims). `CraftRequest` model, migration
+    `20260925095707_craft_requests`. Cooldown tracking still open — needs
+    addon data.)*
 20. [ ] Guild achievements, progression graphs, historical analytics.
 21. [ ] In-game GP bidding tied to the bot (see section A; L, needs a raid
     to test).

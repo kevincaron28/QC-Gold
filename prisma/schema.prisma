@@ -125,6 +125,7 @@ model Guild {
   lootAwards       LootAward[]
   tags             Tag[]
   bankRequests     BankRequest[]
+  craftRequests    CraftRequest[]
 }
 
 model Member {
@@ -133,6 +134,8 @@ model Member {
   discordUserId      String
   displayName        String
   status             MembershipStatus             @default(ACTIVE)
+  // Created by /testraid; removed by /testraid cleanup.
+  isTest             Boolean                      @default(false)
   createdAt          DateTime                     @default(now())
   updatedAt          DateTime                     @updatedAt
   guild              Guild                        @relation(fields: [guildId], references: [id], onDelete: Cascade)
@@ -145,6 +148,8 @@ model Member {
   bids               AuctionBid[]
   lootAwards         LootAward[]
   applications       Application[]
+  craftRequests      CraftRequest[]               @relation("CraftRequester")
+  craftsClaimed      CraftRequest[]               @relation("CraftCrafter")
   bankRequests       BankRequest[]
 
   @@unique([guildId, discordUserId])
@@ -462,6 +467,8 @@ model Raid {
   description     String?
   scheduledAt     DateTime
   status          RaidStatus       @default(PLANNED)
+  // Created by /testraid; removed by /testraid cleanup.
+  isTest          Boolean          @default(false)
   createdBy       String
   startedAt       DateTime?
   endedAt         DateTime?
@@ -593,4 +600,36 @@ model BankRequest {
 
   @@index([guildId, status, createdAt])
   @@index([memberId, createdAt])
+}
+
+enum CraftRequestStatus {
+  OPEN
+  CLAIMED
+  DONE
+  CANCELLED
+}
+
+// A member asking a guild crafter to make something; a crafter claims it.
+model CraftRequest {
+  id                String             @id @default(cuid())
+  guildId           String
+  requesterId       String
+  crafterId         String?
+  item              String
+  profession        String?
+  quantity          Int                @default(1)
+  note              String?
+  materialsProvided Boolean            @default(false)
+  status            CraftRequestStatus @default(OPEN)
+  claimedAt         DateTime?
+  doneAt            DateTime?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  guild             Guild              @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  requester         Member             @relation("CraftRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  crafter           Member?            @relation("CraftCrafter", fields: [crafterId], references: [id], onDelete: SetNull)
+
+  @@index([guildId, status, createdAt])
+  @@index([requesterId])
+  @@index([crafterId])
 }

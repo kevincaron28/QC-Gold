@@ -98,7 +98,7 @@ function parseRaidTime(value: string): Date {
   return date;
 }
 
-async function syncSignupEmbed(discordGuild: DiscordGuild, guildId: string, raidId: string): Promise<void> {
+export async function syncSignupEmbed(discordGuild: DiscordGuild, guildId: string, raidId: string): Promise<void> {
   try {
     const raid = await raidService.getStatus(raidId, guildId);
     const everyone = await raidService.signups(raidId, guildId);
