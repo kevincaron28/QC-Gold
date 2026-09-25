@@ -6,6 +6,7 @@ import { createMeritService, meritScore } from "../services/merit.js";
 import { notifications, notify } from "../services/notify.js";
 import { hasPermission } from "../permissions.js";
 import { guildService, requireGuildContext } from "./context.js";
+import { BRAND } from "../brand.js";
 
 const epgpService = createEpgpService(prisma);
 const meritService = createMeritService(prisma);
@@ -77,7 +78,7 @@ export async function executeEpgp(interaction: ChatInputCommandInteraction): Pro
       return { ...row, rate, score: merit ? meritScore(row.standing.pr, rate) : row.standing.pr };
     });
     scored.sort((a, b) => b.score - a.score);
-    await interaction.reply({ embeds: [new EmbedBuilder().setTitle("⚜️ Quebec Gold EPGP").setDescription(
+    await interaction.reply({ embeds: [new EmbedBuilder().setTitle(`${BRAND.emoji} ${BRAND.name} EPGP`).setDescription(
       scored.length
         ? scored.map((row, i) => `${i + 1}. ${row.member.displayName} - EP ${row.standing.ep} | GP ${row.standing.gp} | PR ${row.standing.pr.toFixed(3)} | Att ${Math.round(row.rate * 100)}%${merit ? ` | Merit ${row.score.toFixed(3)}` : ""}`).join("\n")
         : "No EPGP recorded."

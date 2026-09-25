@@ -26,6 +26,7 @@ import { isValidTimeZone } from "../services/raid-time.js";
 import { updateDungeonLeaderboard } from "../services/dungeon-leaderboard.js";
 import { syncAllCoreRosters } from "../services/raid-core.js";
 import { asLang, t, type Lang } from "../i18n.js";
+import { BRAND } from "../brand.js";
 
 // Guided first-time setup. One private message that walks an admin through
 // seven steps with buttons and dropdowns only (no IDs, no typing):
@@ -35,7 +36,7 @@ import { asLang, t, type Lang } from "../i18n.js";
 
 export const setupCommand = new SlashCommandBuilder()
   .setName("setup")
-  .setDescription("Guided setup for Quebec Gold (admins). Safe to run again any time.")
+  .setDescription(`Guided setup for ${BRAND.name} (admins). Safe to run again any time.`)
   .addBooleanOption((o) => o.setName("status").setDescription("Only show the setup checklist"));
 
 const REQUIRED_ROLES: string[] = [permissionRoles.guildMaster, permissionRoles.officer, permissionRoles.raidLeader, permissionRoles.dkpOfficer];
@@ -143,7 +144,7 @@ const roleLabel = (id: string | null) => id ? `<@&${id}>` : "*not set*";
 export async function renderStep(step: number, guild: DiscordGuild, guildId: string, note: string) {
   const settings = await guildService.getSettings(guildId);
   if (!settings) throw new Error("Guild settings are missing.");
-  const embed = new EmbedBuilder().setTitle(`⚜️ Quebec Gold setup — ${STEP_TITLES[step]}`).setColor(0xd4af37);
+  const embed = new EmbedBuilder().setTitle(`${BRAND.emoji} ${BRAND.name} setup — ${STEP_TITLES[step]}`).setColor(BRAND.color);
   const components: ActionRowBuilder<ButtonBuilder | ChannelSelectMenuBuilder | RoleSelectMenuBuilder | StringSelectMenuBuilder>[] = [];
 
   if (step === 0) {
@@ -369,7 +370,7 @@ async function createMissingRoles(guild: DiscordGuild): Promise<string> {
   const created: string[] = [];
   for (const name of REQUIRED_ROLES) {
     if (guild.roles.cache.some((role) => role.name === name)) continue;
-    await guild.roles.create({ name, reason: "Quebec Gold /setup" });
+    await guild.roles.create({ name, reason: `${BRAND.name} /setup` });
     created.push(name);
   }
   return created.length ? `Created roles: ${created.join(", ")}. Now give them to your officers.` : "All roles already existed.";
@@ -391,7 +392,7 @@ const CATEGORY_NAMES: Record<CategoryKey, string> = {
 };
 
 const CHANNEL_SPECS: Record<ChannelField, { name: string; topic: string; access: Access; category: CategoryKey }> = {
-  notifyChannelId: { name: "qg-announcements", topic: "Raid, boss and guild announcements from Quebec Gold", access: "readonly", category: "guild" },
+  notifyChannelId: { name: `${BRAND.channelPrefix}-announcements`, topic: `Raid, boss and guild announcements from ${BRAND.name}`, access: "readonly", category: "guild" },
   recruitmentChannelId: { name: "recruitment", topic: "Recruitment posts", access: "readonly", category: "guild" },
   raidSignupChannelId: { name: "raid-signups", topic: "Raid signups: use the buttons under each raid post", access: "readonly", category: "raid" },
   coreChannelId: { name: "raid-roster", topic: "Raid core rosters: core members get signup priority", access: "readonly", category: "raid" },
@@ -415,7 +416,7 @@ async function ensureCategory(guild: DiscordGuild, key: CategoryKey) {
   await guild.channels.fetch();
   const name = CATEGORY_NAMES[key];
   const existing = guild.channels.cache.find((channel) => channel.type === ChannelType.GuildCategory && channel.name === name);
-  return existing ?? guild.channels.create({ name, type: ChannelType.GuildCategory, reason: "Quebec Gold /setup" });
+  return existing ?? guild.channels.create({ name, type: ChannelType.GuildCategory, reason: `${BRAND.name} /setup` });
 }
 
 // The permission overwrites for a kind of channel. Leadership can always
@@ -490,7 +491,7 @@ async function organizeChannels(guild: DiscordGuild, guildId: string): Promise<s
     if (channel.name !== spec.name) { skipped.push(`<#${channel.id}>`); continue; }
     const category = await ensureCategory(guild, spec.category);
     const overwrites = overwritesFor(guild, spec.access);
-    await channel.edit({ parent: category.id, permissionOverwrites: overwrites ?? [], reason: "Quebec Gold /setup organize" });
+    await channel.edit({ parent: category.id, permissionOverwrites: overwrites ?? [], reason: `${BRAND.name} /setup organize` });
     tidied.push(`<#${channel.id}>`);
   }
   return `${tidied.length ? `Tidied ${tidied.join(", ")}.` : "Nothing of mine to tidy yet: run \"Create the whole WoW section\" in step 2 first."}`
@@ -555,7 +556,7 @@ export async function executeSetup(interaction: ChatInputCommandInteraction): Pr
           const role = guild.roles.cache.find((r) => r.name === permissionRoles.guildMaster);
           const member = await guild.members.fetch(i.user.id);
           if (role) {
-            await member.roles.add(role, "Quebec Gold /setup");
+            await member.roles.add(role, `${BRAND.name} /setup`);
             note = `Gave you ${role.name}.`;
           }
         } else if (action === "create-channels") note = await createSectionChannels(guild, guildId, CORE_CHANNELS);
@@ -660,7 +661,7 @@ export async function greetNewGuild(guild: DiscordGuild): Promise<void> {
   const channel = guild.systemChannel;
   if (!channel) return;
   await channel.send({
-    embeds: [new EmbedBuilder().setTitle("⚜️ Thanks for adding Quebec Gold!").setColor(0xd4af37)
+    embeds: [new EmbedBuilder().setTitle(`${BRAND.emoji} Thanks for adding ${BRAND.name}!`).setColor(BRAND.color)
       .setDescription("A server admin should run **`/setup`** now — it's a 2-minute, click-through guide (no typing).\n\n`/help` lists every command.")]
   }).catch(() => undefined);
 }

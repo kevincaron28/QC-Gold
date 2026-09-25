@@ -6,10 +6,11 @@ import { permissionRoles, hasPermission } from "../permissions.js";
 import { guildService, requireGuildContext } from "./context.js";
 import { sendWelcome, welcomeDelivery } from "../services/housekeeping.js";
 import { isValidTimeZone } from "../services/raid-time.js";
+import { BRAND } from "../brand.js";
 
 export const configCommand = new SlashCommandBuilder()
   .setName("config")
-  .setDescription("View or update Quebec Gold guild settings.")
+  .setDescription(`View or update ${BRAND.name} guild settings.`)
   .addSubcommand((subcommand) => subcommand
     .setName("view")
     .setDescription("View current guild settings."))

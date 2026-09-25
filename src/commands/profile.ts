@@ -3,13 +3,14 @@ import { createDkpService } from "../services/dkp.js";
 import { createEpgpService } from "../services/epgp.js";
 import { prisma } from "../database.js";
 import { guildService, requireGuildContext } from "./context.js";
+import { BRAND } from "../brand.js";
 
 const dkpService = createDkpService(prisma);
 const epgpService = createEpgpService(prisma);
 
 export const profileCommand = new SlashCommandBuilder()
   .setName("profile")
-  .setDescription("View your Quebec Gold member profile.");
+  .setDescription(`View your ${BRAND.name} member profile.`);
 
 export async function executeProfile(interaction: ChatInputCommandInteraction): Promise<void> {
   const context = await requireGuildContext(interaction);

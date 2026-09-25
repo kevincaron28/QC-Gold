@@ -5,6 +5,7 @@ import { createAuditService } from "../services/audit.js";
 import { createDkpService } from "../services/dkp.js";
 import { hasPermission } from "../permissions.js";
 import { guildService, requireGuildContext } from "./context.js";
+import { BRAND } from "../brand.js";
 
 const dkpService = createDkpService(prisma);
 const auditService = createAuditService(prisma);
@@ -52,7 +53,7 @@ export async function executeDkp(interaction: ChatInputCommandInteraction): Prom
     const description = rows.length
       ? rows.map((row, index) => `${index + 1}. ${row.member.displayName} — **${row.balance} DKP**`).join("\n")
       : "No active guild members have DKP yet.";
-    await interaction.reply({ embeds: [new EmbedBuilder().setTitle("⚜️ Quebec Gold DKP").setDescription(description)] });
+    await interaction.reply({ embeds: [new EmbedBuilder().setTitle(`${BRAND.emoji} ${BRAND.name} DKP`).setDescription(description)] });
     return;
   }
 

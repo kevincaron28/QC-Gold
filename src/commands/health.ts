@@ -1,9 +1,10 @@
 import { SlashCommandBuilder, type ChatInputCommandInteraction } from "discord.js";
+import { BRAND } from "../brand.js";
 
 export const healthCommand = new SlashCommandBuilder()
   .setName("health")
-  .setDescription("Check whether Quebec Gold Bot is online.");
+  .setDescription(`Check whether ${BRAND.botName} is online.`);
 
 export async function executeHealth(interaction: ChatInputCommandInteraction): Promise<void> {
-  await interaction.reply({ content: "⚜️ Quebec Gold Bot is online.", ephemeral: true });
+  await interaction.reply({ content: `${BRAND.emoji} ${BRAND.botName} is online.`, ephemeral: true });
 }

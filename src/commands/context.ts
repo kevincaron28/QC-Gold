@@ -1,6 +1,7 @@
 import type { ChatInputCommandInteraction } from "discord.js";
 import { prisma } from "../database.js";
 import { createGuildService } from "../services/guild.js";
+import { BRAND } from "../brand.js";
 
 export const guildService = createGuildService(prisma);
 
@@ -9,7 +10,7 @@ export async function requireGuildContext(
 ): Promise<{ guildId: string; memberId: string } | null> {
   if (!interaction.guild || !interaction.guildId || !interaction.member) {
     await interaction.reply({
-      content: "This command can only be used inside the Quebec Gold Discord server.",
+      content: `This command can only be used inside the ${BRAND.name} Discord server.`,
       ephemeral: true
     });
     return null;

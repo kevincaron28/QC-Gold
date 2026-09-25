@@ -8,6 +8,7 @@ import { prisma } from "../database.js";
 import { hasPermission, permissionRoles } from "../permissions.js";
 import { createDungeonGroupService, GROUP_CAPS, GROUP_SIZE, shouldDeleteVoice, shouldExpireOpenGroup } from "../services/dungeon-group.js";
 import { guildService, requireGuildContext } from "./context.js";
+import { BRAND } from "../brand.js";
 
 // /dungeon group: a 5-player signup with Tank/Healer/DPS buttons. When it is
 // full (or the leader presses Start) the bot creates a private temporary
@@ -95,7 +96,7 @@ async function createVoice(guild: DiscordGuild, groupId: string): Promise<string
   const parent = signupChannel && "parentId" in signupChannel ? signupChannel.parentId : null;
   const channel = await guild.channels.create({
     name: `🎧 ${group.title}`.slice(0, 100), type: ChannelType.GuildVoice, userLimit: 5,
-    ...(parent ? { parent } : {}), permissionOverwrites: overwrites, reason: `Quebec Gold dungeon group ${group.id}`
+    ...(parent ? { parent } : {}), permissionOverwrites: overwrites, reason: `${BRAND.name} dungeon group ${group.id}`
   });
   return channel.id;
 }
@@ -118,7 +119,7 @@ async function closeGroup(guild: DiscordGuild, groupId: string): Promise<void> {
   const group = await prisma.dungeonGroup.findUnique({ where: { id: groupId } });
   if (group?.voiceChannelId) {
     const channel = await guild.channels.fetch(group.voiceChannelId).catch(() => null);
-    await channel?.delete("Quebec Gold dungeon group closed").catch(() => undefined);
+    await channel?.delete(`${BRAND.name} dungeon group closed`).catch(() => undefined);
   }
   await service.close(groupId);
   await syncGroupPost(guild, groupId);

@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@prisma/client";
 import { findCharacter } from "./character-match.js";
 import { createGuildService } from "./guild.js";
+import { BRAND } from "../brand.js";
 
 // Turns what the addon captured about a character into a linked Character,
 // so members paste one line instead of typing name, realm, class, race, ...
@@ -39,7 +40,7 @@ export function normalizeRaceName(raw: string): string {
 
 export function parseCharacterString(input: string): ParsedCharacter {
   const parts = input.trim().split("|").map((part) => part.trim());
-  if (parts[0] !== "QG1") throw new Error("That doesn't look like a Quebec Gold character line. In game, type /qg character and copy the line it shows.");
+  if (parts[0] !== "QG1") throw new Error(`That doesn't look like a ${BRAND.name} character line. In game, type /qg character and copy the line it shows.`);
   const [, name = "", realm = "", className = "", race = "", levelText = "", spec = "", professionText = ""] = parts;
   if (!name || !realm || !className) throw new Error("The character line is missing the name, realm or class. Run /qg character again in game.");
   if (name.length > 24 || realm.length > 64) throw new Error("The character line looks damaged. Run /qg character again in game.");

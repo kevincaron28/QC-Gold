@@ -1,6 +1,7 @@
 import type { PrismaClient, ReadinessStatus } from "@prisma/client";
 import { importCharacter, parseCharacterString, type ImportOutcome, type ParsedCharacter } from "./character-import.js";
 import { deriveReadinessStatus } from "./readiness.js";
+import { BRAND } from "../brand.js";
 
 // `/qg share` in game produces "QGEXP1:" + base64 of newline-separated lines:
 //   QG1|name|realm|CLASS|race|level|spec|professions   (the character line)
@@ -24,7 +25,7 @@ const MAX_LINES = 200;
 
 export function parseSelfExport(input: string): SelfExport {
   const text = input.trim();
-  if (!text.startsWith("QGEXP1:")) throw new Error("That is not a Quebec Gold share code. In game, type /qg share and copy the code it shows.");
+  if (!text.startsWith("QGEXP1:")) throw new Error(`That is not a ${BRAND.name} share code. In game, type /qg share and copy the code it shows.`);
   const encoded = text.slice("QGEXP1:".length).replace(/\s+/g, "");
   if (!/^[A-Za-z0-9+/]*={0,2}$/.test(encoded) || encoded.length < 8) throw new Error("The share code looks damaged. Run /qg share again and copy the whole code.");
   const lines = Buffer.from(encoded, "base64").toString("utf8").split("\n").slice(0, MAX_LINES);

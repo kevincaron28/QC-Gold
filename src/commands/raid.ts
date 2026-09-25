@@ -15,6 +15,7 @@ import { createRaidService, type SignupAvailability } from "../services/raid.js"
 import { createRaidCoreService } from "../services/raid-core.js";
 import { hasPermission } from "../permissions.js";
 import { guildService, requireGuildContext } from "./context.js";
+import { BRAND } from "../brand.js";
 
 const raidService = createRaidService(prisma);
 
@@ -260,7 +261,7 @@ export async function executeRaid(interaction: ChatInputCommandInteraction): Pro
       if (text.length + line.length > 3900) break;
       text += `${line}\n`;
     }
-    await interaction.reply({ embeds: [new EmbedBuilder().setTitle("⚜️ Quebec Gold progression")
+    await interaction.reply({ embeds: [new EmbedBuilder().setTitle(`${BRAND.emoji} ${BRAND.name} progression`)
       .setDescription(text || "No boss kills recorded yet. Mark kills with /raid boss.")
       .setFooter({ text: `${progress.length} boss(es) killed` })] });
     return;
