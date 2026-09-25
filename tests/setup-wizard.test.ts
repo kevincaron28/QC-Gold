@@ -1,0 +1,67 @@
+import { describe, expect, it, vi } from "vitest";
+
+const settings = {
+  notifyChannelId: "c1", raidSignupChannelId: null, logChannelId: null, welcomeChannelId: null,
+  applicantRoleId: null, memberRoleId: null, attendanceDkp: 10, lateAttendanceDkp: 5, bossKillDkp: 5,
+  epCompletionBonus: 0, baseGp: 0, epgpDecayPercent: 0.1, raidReminderMinutes: 60, weeklyReportEnabled: false
+};
+vi.mock("../src/commands/context.js", () => ({
+  guildService: { getSettings: vi.fn(async () => settings), updateSettings: vi.fn() },
+  requireGuildContext: vi.fn()
+}));
+vi.mock("../src/database.js", () => ({ prisma: { character: { count: vi.fn(async () => 0) } } }));
+vi.mock("../src/config.js", () => ({ config: { COMPANION_UPLOAD_TOKEN: undefined } }));
+
+const roles = [{ id: "r1", name: "Officer", comparePositionTo: () => -1 }];
+const rolesCache = {
+  some: (fn: (r: unknown) => boolean) => roles.some(fn),
+  map: (fn: (r: { name: string }) => string) => roles.map(fn),
+  filter: (fn: (r: unknown) => boolean) => roles.filter(fn),
+  find: (fn: (r: unknown) => boolean) => roles.find(fn),
+  get: (id: string) => roles.find((r) => r.id === id)
+};
+const guild = {
+  roles: { fetch: vi.fn(), cache: rolesCache, everyone: { id: "everyone" } },
+  channels: { fetch: vi.fn(async () => ({ name: "announcements", permissionsFor: () => ({ has: () => true }) })) },
+  members: { me: { id: "bot", permissions: { has: () => true }, roles: { highest: { comparePositionTo: () => 1 } } } }
+};
+
+describe("setup wizard screens", () => {
+  it("every step builds a payload Discord will accept", async () => {
+    const { renderStep } = await import("../src/commands/setup.js");
+    for (let step = 0; step <= 5; step++) {
+      const screen = await renderStep(step, guild as never, "g1", step === 2 ? "Saved <#c1>." : "");
+      expect(screen.components.length).toBeLessThanOrEqual(5);
+      const ids = new Set<string>();
+      for (const row of screen.components) {
+        const json = row.toJSON();
+        expect(json.components.length).toBeGreaterThan(0);
+        expect(json.components.length).toBeLessThanOrEqual(5);
+        for (const component of json.components) {
+          const id = (component as { custom_id?: string }).custom_id ?? "";
+          expect(id.length).toBeLessThanOrEqual(100);
+          expect(ids.has(id)).toBe(false);
+          ids.add(id);
+        }
+      }
+      const embed = screen.embeds[0]!.toJSON();
+      expect((embed.description ?? "").length).toBeLessThanOrEqual(4096);
+      expect(embed.title).toContain("Quebec Gold setup");
+    }
+  });
+
+  it("step 1 offers to create exactly the missing required roles", async () => {
+    const { renderStep } = await import("../src/commands/setup.js");
+    const screen = await renderStep(1, guild as never, "g1", "");
+    const labels = screen.components.flatMap((row) => row.toJSON().components.map((c) => (c as { label?: string }).label));
+    expect(labels).toContain("Create missing roles (3)");
+  });
+
+  it("the checklist step lists what's missing with a fix", async () => {
+    const { renderStep } = await import("../src/commands/setup.js");
+    const text = (await renderStep(5, guild as never, "g1", "")).embeds[0]!.toJSON().description ?? "";
+    expect(text).toContain("❌ Raid signups channel");
+    expect(text).toContain("Run /setup, step 2");
+    expect(text).toContain("✅ Announcements channel (#announcements)");
+  });
+});

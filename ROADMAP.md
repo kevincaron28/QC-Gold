@@ -221,6 +221,41 @@ within priority. Update the checkbox the moment an item lands.
     imported gear checks and from being seen in a raid group that matched a
     Discord raid; shown in `/profile` and `/character list`.)*
 
+23. [x] **M — Guided first-time setup (`/setup`).** *(Done 2026-09-25,
+    requested: "a complete idiot can set it up". Private click-through
+    wizard: roles (create missing, give yourself Guild Master), channels
+    (pick or auto-create announcements / raid signups / private officer
+    log), welcome + auto-roles (warns if the bot's role is too low), EPGP
+    recommended values + reminders + weekly report toggles, then a
+    checklist where every ❌ says how to fix it, plus a "post getting
+    started guide" button. Also: `/help` (rank-aware), greeting in the
+    system channel when the bot joins a server, and a setup status line
+    in the bot console at startup. `src/commands/setup.ts`,
+    `src/services/setup-status.ts`, `src/commands/help.ts`; tests check
+    every wizard screen against Discord's component limits.)*
+
+**Quality of life — recommended 2026-09-25 (not started, easiest first)**
+
+24. [ ] **S — Raid ID autocomplete.** Every `raid:` option (and auction /
+    bank / craft IDs) suggests upcoming raids by title and date as you
+    type, so nobody copies IDs again.
+25. [ ] **S — Friendly raid times.** `/raid create time:` accepts
+    "tonight 8pm", "friday 20:00", "2026-10-01 20:00" in the guild's
+    timezone (new setting in /setup), instead of strict ISO-8601 — the
+    biggest remaining trap for non-technical officers.
+26. [ ] **M — Signup buttons on the raid post.** Tank / Healer / DPS /
+    Maybe / Can't come buttons on the live signup embed; no command needed.
+27. [ ] **S — Bot auto-restart.** The desktop shortcut restarts the bot if
+    it crashes, and the console shows a clear "bot stopped, restarting"
+    line.
+28. [ ] **S — One-click companion setup.** A script that finds the WoW
+    folder, generates the upload token, and writes both `.env.local` and
+    `companion.config.json` (today this is manual and error-prone).
+29. [ ] **M — French language option.** Bot replies and addon text in
+    French for a Quebec guild (`/setup` language choice).
+30. [ ] **S — Nightly database backup** (export key tables to a dated file,
+    keep the last 14).
+
 **P1 — second wave**
 
 12. [ ] **M — Warcraft Logs, manual import first**: `/wcl <report url>`

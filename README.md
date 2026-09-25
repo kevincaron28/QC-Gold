@@ -139,6 +139,21 @@ docker compose up -d postgres
 
 Commands are registered against `DISCORD_GUILD_ID` in development. A production deployment should use the global registration path once command definitions stabilize.
 
+### First run in Discord: `/setup`
+
+Once the bot is online, a server admin runs **`/setup`**. It's a private,
+click-through guide (buttons and menus, no typing) in four steps: permission
+roles (can create them and give you Guild Master), channels (can create
+announcements, raid signups, and a private officer log for you), optional
+welcome message and auto-roles, and EPGP values / raid reminders / weekly
+report. It ends with a checklist that says exactly how to fix anything still
+missing, and can post a pinned-ready "getting started" guide for members.
+Re-running it is safe; `/setup status:true` shows only the checklist.
+
+When the bot starts, its console window also prints whether setup is
+finished for each server, and when it's added to a new server it posts a
+note in the system channel asking an admin to run `/setup`.
+
 ## Scripts
 
 | Script | Purpose |

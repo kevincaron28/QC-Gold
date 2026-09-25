@@ -123,6 +123,7 @@ Casino games can't be started while you're in combat.
 
 | Command | What it does |
 | --- | --- |
+| `/help` | The commands you can use (shows more for officers and leaders) |
 | `/health` | Is the bot online? |
 | `/profile` | Your profile: characters (race, class, professions, last seen), EP/GP/PR |
 | `/who <character>` | Look anyone up: main and alts, professions, EP/GP/PR, 30-day attendance, last seen |
@@ -183,6 +184,7 @@ Approve, and a raid can never be paid twice.
 
 | Command | What it does |
 | --- | --- |
+| `/setup` | **Start here.** Guided setup: roles, channels, welcome, EPGP values. `/setup status:true` shows the checklist |
 | `/testraid start [raiders] [starts_in] [realm]` | Fake `[TEST]` raid with fake raiders signed up (hits role caps, Maybe, waitlist) |
 | `/testraid finish <raid> [via_addon]` | Play it: attendance (late, no-show, walk-in), boss kills, loot, end, EP proposal. `via_addon` sends attendance through `/import-apply` instead |
 | `/testraid cleanup` | Delete every test raid and fake raider with their EPGP and loot. Real data is untouched |

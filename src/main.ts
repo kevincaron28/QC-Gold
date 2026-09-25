@@ -33,6 +33,8 @@ import { executeStats, runWeeklyReports } from "./commands/stats.js";
 import { executeBank } from "./commands/bank.js";
 import { executeTestRaid } from "./commands/testraid.js";
 import { executeCraft } from "./commands/craft.js";
+import { executeSetup, greetNewGuild, logSetupStatus } from "./commands/setup.js";
+import { executeHelp } from "./commands/help.js";
 import { prisma } from "./database.js";
 import { runRecruitmentPosts } from "./services/recruitment.js";
 import { runRaidReminders } from "./services/reminders.js";
@@ -70,9 +72,12 @@ handlers.set("stats", executeStats);
 handlers.set("bank", executeBank);
 handlers.set("testraid", executeTestRaid);
 handlers.set("craft", executeCraft);
+handlers.set("setup", executeSetup);
+handlers.set("help", executeHelp);
 
 client.once(Events.ClientReady, (readyClient) => {
   console.info(`Logged in as ${readyClient.user.tag}`);
+  logSetupStatus(readyClient.guilds.cache.values()).catch(() => undefined);
   // Scheduled recruitment posts: checked every 10 minutes while the bot is running.
   setInterval(() => {
     // Background job: a failed check just waits for the next one, so log a
@@ -97,6 +102,11 @@ client.once(Events.ClientReady, (readyClient) => {
       console.warn(`Weekly report check skipped, will retry in an hour: ${text}`);
     });
   }, 60 * 60 * 1000);
+});
+
+// Bot just added to a server: point whoever invited it at /setup.
+client.on(Events.GuildCreate, (guild) => {
+  greetNewGuild(guild).catch((error: unknown) => console.error("Greeting new guild failed", error));
 });
 
 client.on(Events.GuildMemberAdd, async (member) => {

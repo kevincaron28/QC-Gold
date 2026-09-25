@@ -21,6 +21,8 @@ import { statsCommand } from "./stats.js";
 import { bankCommand } from "./bank.js";
 import { testRaidCommand } from "./testraid.js";
 import { craftCommand } from "./craft.js";
+import { setupCommand } from "./setup.js";
+import { helpCommand } from "./help.js";
 
 export const commands = [
   healthCommand,
@@ -47,6 +49,8 @@ export const commands = [
   , bankCommand
   , testRaidCommand
   , craftCommand
+  , setupCommand
+  , helpCommand
 ];
 
 const commandNames = commands.map((command) => command.name);
