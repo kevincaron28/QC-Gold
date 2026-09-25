@@ -17,6 +17,7 @@
     "test": "vitest run",
     "prisma:generate": "node scripts/with-env.mjs prisma generate",
     "prisma:migrate": "node scripts/with-env.mjs prisma migrate dev",
+    "db:update": "node scripts/with-env.mjs prisma migrate deploy && node scripts/with-env.mjs prisma generate",
     "companion:setup": "node scripts/setup-companion.mjs"
   },
   "dependencies": {

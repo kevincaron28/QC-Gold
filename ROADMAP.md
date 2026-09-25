@@ -20,11 +20,11 @@ priority (P0 = do first) · **S/M/L** = rough size
   (not released).
 - **Tonight (user):** run `LUNCH_TEST_CHECKLIST.md` (untracked, sections
   0-8; section 8 is **Warcraft Logs**: create the API client, confirm Forever
-  logs reach WCL, `/wcl report`). Before that: stop the bot, `npx prisma
-  migrate deploy` + `npm run prisma:generate` (two new migrations), restart,
-  install v1.8.0. Also send the output of `/qg calendar check` (decides #32).
+  logs reach WCL, `/wcl report`). Before that: restart the bot with the desktop shortcut (it now updates
+  the database and opens the companion itself), install v1.8.0. Also send the output of `/qg calendar check` (decides #32).
   Then push, GitHub release v1.8.0, refresh the install page.
-- **Next (build):** review the GuildOS ideas (G1–G12 below) and pick;
+- **Next (build):** pick from the GuildOS review (G1–G13) and the eight-addon
+  review (PM, LR, VG, RF, ID, GP, IR, GK series, with "common themes" at the end);
   #18 WCL auto-discovery once the manual import proves useful; M3
   CurseForge packaging when the user wants a public listing; #32 calendar
   sync after the check result; a real dungeon-signup flow (#39).
@@ -36,9 +36,8 @@ priority (P0 = do first) · **S/M/L** = rough size
   calendar 9, dungeon 29, sim dungeon + module gating 37. The new
   `/qg character` box has only been syntax-checked, not run in game.
 - **Live DB migrations applied** through
-  `20260925190000_dungeon_achievements`. **Pending (apply before
-  restarting):** `20260926090000_setup_channels`,
-  `20260926120000_warcraft_logs_and_channels`.
+  `20260926120000_warcraft_logs_and_channels` (applied 2026-09-26).
+  `start-bot.bat` now runs `npm run db:update` on every start.
 
 ## History — where we were on 2026-09-24 (kept for reference)
 
@@ -603,6 +602,176 @@ none is started.
 - **Deliberately skipping:** hooking the J key to replace Blizzard's guild
   frame (fragile across clients), and rank-checkbox officer config (we use
   Discord roles, which is already how the bot decides).
+
+### Eight more addons reviewed (2026-09-26)
+
+Reviewed from their CurseForge pages, plus GitHub where a repo exists.
+Repos found: Profession Master <https://github.com/Kurki/ProfessionMaster>,
+Guild Paragon <https://github.com/Earthenmist/Guild-Paragon>, iRC: Guild Connect
+<https://github.com/Crasling/iRCGuildConnect>, LibGuildRoster (its CurseForge
+page names `Pimptasty/GuildRoster`, but that URL 404s, so it may be private or
+renamed). **No public repo found:** vGambler, iddqd, GuildKit. Raidify's addon
+has none, but its desktop companion is open source (MIT). Only the feature
+lists were read for the ones without source; nothing was copied. Licenses vary
+(several are All Rights Reserved), so these are ideas to build ourselves, never
+code to lift.
+
+**Profession Master** (guild crafters, cooldowns, leveling planner; Classic
+through Forever). Overlaps our `/craft` and `/profession`.
+- **PM1. [ ] M — Full recipe database per guild member** (what each person can
+  craft, not just skill level), synced with a compressed relay so it doesn't
+  spam raids. Feeds `/craft request` autocomplete and "who can make X". Same
+  work as G5; do them together.
+- **PM2. [ ] M — Profession cooldown tracking** (transmute, cloth, salt, etc.):
+  addon reads cooldowns, exports them, and the bot pings the owner when ready
+  and lists guild cooldowns. Finishes roadmap #19.
+- **PM3. [ ] S — `!who <item>` style lookup in guild chat:** a member types
+  it, the addon of any crafter replies (or the bot answers in Discord with
+  `/craft who`). Small, very visible.
+- **PM4. [ ] S/M — Missing recipes and shopping list:** "recipes you could still
+  learn and where", plus a materials list for a crafting request. Optional;
+  needs a static recipe source we'd have to maintain, so low priority.
+- **Skip:** leveling planner, profit checker and auction scanning. They need
+  live auction data and price sources we don't have and don't need.
+
+**LibGuildRoster** (a library other addons use for reliable roster data).
+- **LR1. [ ] M — Event-driven roster instead of polling:** build the roster at
+  login, then keep it current from system chat messages (joined, left,
+  promoted, kicked), so we don't call `GuildRoster()` on a timer. Our
+  Compat layer already guards roster APIs; this reduces load and gives us a
+  join/leave/promotion event stream for free.
+- **LR2. [ ] S — Real officer permissions:** read what the guild master actually
+  granted (`C_GuildInfo` / `GuildControlGetRankFlags`) instead of guessing
+  officers from rank position. Fixes wrong officer detection for
+  `/qg modules guild` and officer-only commands.
+- **LR3. [ ] M — Alt groups from the game itself:** treat characters on the same
+  account as one player. Ties into #40 and G9; helps auto-linking characters.
+- **LR4. [ ] S — Connected-realm name handling** (`Name-Realm` normalisation),
+  needed if Forever ever merges realms. We already normalise names in
+  `Core.lua`; add tests for the connected-realm forms.
+- **Skip:** sister-guild rosters and mailbox autocomplete. Only useful to
+  multi-guild communities.
+
+**vGambler** (roll-off gold gambling: lowest roller pays the highest). Same
+idea as our Casino module, which is a superset (pot, blackjack, ledger).
+- **VG1. [ ] S — Player ban list in the Casino module** (`/qg casino ban|unban|
+  bans`): host can exclude people; persists in the SavedVariables. vGambler has
+  it, we don't.
+- **VG2. [ ] S — Session statistics** (`/qg casino stats`): games, biggest win,
+  net per player for the session. We keep a ledger already; this is a view.
+- **VG3. [ ] S — Default stake and a "1 to join" prompt line** matching
+  vGambler's flow so players who know it feel at home. Only if guildmates ask.
+- **Watch:** gambling on real gold can violate a realm's terms in some
+  regions. Keep the "guild fun only" wording in the Casino README.
+
+**Raidify** (raid roster from a web app, mass invite, group layout, assignments,
+attendance, bench credit).
+- **RF1. [ ] M — Mass invite from the signup list:** `/qg invite raid <id>`
+  (officer) invites everyone signed up for a Discord raid, fuzzy-matching names,
+  with a "whisper `inv` to be invited" option for late arrivals. Our signup
+  data is already in Standings.lua-style exports; needs the raid roster sent
+  to the addon (bot to addon, so via the companion's Standings file).
+- **RF2. [ ] M/L — Group layout:** the bot lets the raid leader arrange groups
+  (tanks/healers/DPS per group) in Discord or the in-game panel; the addon
+  applies them with `SetRaidSubgroup`/`SwapRaidSubgroup` (guard the API; it can
+  be protected during combat).
+- **RF3. [ ] M — Assignments** (interrupts, soulstones, tranq rotations, CC) as
+  a note synced between officers and answerable by whisper (`!assign`).
+  Overlaps `/raid note`; start by syncing that note in game.
+- **RF4. [ ] S — Bench credit:** benched players keep full attendance. A
+  "BENCHED" attendance status that counts as present for `/epgp leaderboard`
+  and EP proposals. Small change in `raid-import` and the attendance rates.
+- **RF5. [ ] S — Attendance without a button:** we already sample presence;
+  make sure it starts on group invite/raid start automatically (verify in the
+  checklist, section 2).
+- **Skip for now:** combat-log interrupt/soulstone tracking (the combat log is
+  blocked for addons since 12.0.0), and a separate web app.
+
+**iddqd** (loot voting, ready check with consumables, attendance snapshots,
+auto-marking, profession sync, gambling, plus a Discord bot and web dashboard).
+The closest thing to us; it's a competitor to watch, not to copy.
+- **ID1. [ ] M — Loot response voting** (BiS / Upgrade / Minor / Off-spec / PvP /
+  Pass) in our bidding popup, so raiders declare need before bidding, and the
+  officer sees responses next to PR. Fits `Bidding.lua` and loot history.
+- **ID2. [ ] M — Ready check with consumables** (same as G2): flask/food/buffs
+  shown on the ready-check reply, exported to `/readiness raid`.
+- **ID3. [ ] S — Attendance snapshots:** an officer button/`/qg snapshot` that
+  records who's in the raid *now* with a label ("pre-pull", "after Ragnaros").
+  Complements our automatic presence sampling; useful for disputes.
+- **ID4. [ ] S/M — Auto-marking profiles** (`/qg mark <profile>`): set raid
+  target icons on named mobs. Marking in combat is limited; low priority.
+- **ID5. [ ] M — Permission model in the addon:** raid-leader-controlled access
+  with assists, guild ranks, or both. We use officer detection; add "assistants
+  can start/end raids" as a setting (ties to LR2).
+
+**Guild Paragon** (roster, alt/main tagging, event log, recruitment queue, ban
+list, backups, TSV export; Retail and Forever).
+- **GP1. [ ] M — Guild event log** (joins, leaves, rank changes, level-ups, alt
+  assignments, note changes), exported and shown in Discord as `/guildlog` and
+  in the officer-log channel. Builds on LR1's event stream and
+  `postToLogChannel`.
+- **GP2. [ ] S — "Do Not Invite" / ban list shared by officers** with rejoin
+  warnings (when a listed person joins the Discord or the guild, the officer
+  log says so). We have `/mod` for Discord; this is the WoW side.
+- **GP3. [ ] S — Alt/main tagging with nicknames and aliases,** shown in chat
+  hints and `/who`. Our Discord link already gives main/alts; add an in-game
+  read of it (same source as G9).
+- **GP4. [ ] S — TSV/CSV export** of roster, attendance and loot (`/export`),
+  for officers who live in spreadsheets. We have backups; this is readable.
+- **GP5. [ ] S — Backup and restore in the addon** (before risky operations
+  like a season reset), with confirmation for destructive actions.
+- **GP6. [ ] M — Recruitment queue:** track prospects the officers whisper,
+  follow-up reminders, and stats. Our `/application` covers Discord
+  applicants; this covers in-game prospects. Keep it manual (the addon
+  can't auto-whisper).
+- **GP7. [ ] S — "Officer-only sections hidden from members":** apply to our
+  tools panel tabs so members never see officer-only buttons (they're refused
+  already; hiding is polish).
+
+**iRC: Guild Connect** (guild home page, member verification, guild bank
+overview, shared professions, guild map, challenge-guild rules). It does not
+bridge to IRC or Discord despite the name.
+- **IR1. [ ] M — Guild bank overview:** the addon snapshots the guild bank
+  character's inventory (guild bank tab data when open, or a designated bank
+  alt's bags) and the bot lists what's in stock, so `/bank request` can say
+  "in stock: 12". Needs the API guarded (`Compat.lua`).
+- **IR2. [ ] S — Onboarding for new guild members in game:** a welcome whisper
+  with the Discord invite and `/character import` instructions (same as G8).
+- **IR3. [ ] M — Member verification:** prove a Discord member owns a WoW
+  character with a one-time code typed in a guild note or `/qg verify <code>`
+  (bot-issued). This is the safe way to do #40's auto-linking and stops people
+  claiming someone else's character.
+- **IR4. [ ] S — Guild statistics view** (class/race distribution, level
+  ranges, activity) in the weekly report. We have `/stats`; add the
+  distribution numbers once the roster is exported.
+- **Skip:** guild map, server-wide guild directory/leaderboard, racial chat
+  styles, challenge-guild enforcement (race-locked, self-found rules).
+
+**GuildKit** (guild-window toolkit: roster search, analytics, activity feed,
+auto-invite phrase, ban list, purge tools; Retail/Classic/Forever).
+- **GK1. [ ] S — Auto-invite phrase** (`ginv`-style whisper triggers a guild
+  invite) with optional level/class/race gates and an officer on/off switch.
+  Pairs with the recruitment work in G8/GP6. Guild invites are protected in
+  combat only; fine out of combat.
+- **GK2. [ ] M — Inactivity report and purge helper:** list members inactive for
+  N days (from last-seen data we already export) with rank and note filters.
+  **Read-only in Discord/addon output**; kicking stays a human action.
+- **GK3. [ ] S — Activity feed with notification filters** (level-ups, joins,
+  rank changes) as an in-game panel; same event stream as GP1.
+- **GK4. [ ] S — Composition charts** (class/level/rank/race/zone) in the addon
+  and in `/stats`; same data as IR4.
+
+**Common themes to prioritise**
+1. **Roster events and real officer permissions (LR1, LR2)** unlock GP1, GK3,
+   G8 and GP2. Best foundation to build first.
+2. **Recipes, cooldowns and bank stock (PM1, PM2, IR1, G5)** all need addon
+   data the companion doesn't carry yet; one shared "extra export" design.
+3. **Verification (IR3)** is what makes fully automatic character linking (#40)
+   safe.
+4. **Loot responses and consumables (ID1, ID2, G2)** improve raid night the
+   most and reuse the bidding module.
+5. Anything using the combat log (interrupt tracking, soulstones) is blocked
+   by the platform since 12.0.0; don't plan around it.
 
 ---
 

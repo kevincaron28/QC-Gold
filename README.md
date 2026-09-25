@@ -255,8 +255,10 @@ in `.env.local`, copy `companion/companion.config.example.json` to
 `companion/companion.config.json` with the same token, and run
 `npm run companion:watch`.
 
-The bot's own shortcut (`start-bot.bat`) also restarts the bot automatically
-if it crashes, and the bot saves a daily database backup to `backups/`
+The bot's own shortcut (`start-bot.bat`) first runs `npm run db:update`
+(applies any missing database migrations and regenerates the Prisma client;
+it refuses to start the bot if that fails), opens the companion in its own
+window, then restarts the bot automatically if it crashes, and the bot saves a daily database backup to `backups/`
 (last 14 days kept).
 
 The API binds to `127.0.0.1` only. It records validated imports but does not apply DKP, EPGP, or readiness data without officer review via `/import-apply`. If `COMPANION_UPLOAD_TOKEN` is not set, the companion API rejects every request rather than allowing them through — always set a real token before running the watcher.
