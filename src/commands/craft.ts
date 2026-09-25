@@ -58,7 +58,7 @@ export async function executeCraft(interaction: ChatInputCommandInteraction): Pr
       ephemeral: true
     });
     if (interaction.guild) {
-      await postToLogChannel(interaction.guild, `🔨 Craft request from ${interaction.user.username}: ${describe(request)} — /craft claim id:${request.id}`);
+      await postToLogChannel(interaction.guild, `🔨 Craft request from ${interaction.user.username}: ${describe(request)} — /craft claim id:${request.id}`, "craft");
     }
     return;
   }

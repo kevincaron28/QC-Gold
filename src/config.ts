@@ -12,6 +12,11 @@ const environmentSchema = z.object({
   DATABASE_URL: z.string().url(),
   COMPANION_API_PORT: z.coerce.number().int().min(1).max(65535).default(8787),
   COMPANION_UPLOAD_TOKEN: z.string().min(32).optional(),
+  // Warcraft Logs API v2 client (https://www.warcraftlogs.com/api/clients). Optional: /wcl stays off without it.
+  WCL_CLIENT_ID: z.string().min(1).optional(),
+  WCL_CLIENT_SECRET: z.string().min(1).optional(),
+  // Site used when /wcl gets a bare report code instead of a full link.
+  WCL_BASE_URL: z.string().url().default("https://www.warcraftlogs.com"),
   LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info")
 });
 

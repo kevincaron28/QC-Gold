@@ -120,7 +120,7 @@ export async function executeEpgp(interaction: ChatInputCommandInteraction): Pro
       ephemeral: true
     });
     const reversedMember = await prisma.member.findUnique({ where: { id: reversal.memberId }, select: { displayName: true } });
-    await notify(interaction.guild, notifications.epgpChanged(reversedMember?.displayName ?? "member", reversal.epAmount, reversal.gpAmount, `correction: ${reason}`));
+    await notify(interaction.guild, notifications.epgpChanged(reversedMember?.displayName ?? "member", reversal.epAmount, reversal.gpAmount, `correction: ${reason}`), "loot");
     return;
   }
   const target = interaction.options.getUser("player", true);
@@ -132,5 +132,5 @@ export async function executeEpgp(interaction: ChatInputCommandInteraction): Pro
     : await epgpService.awardItem({ guildId: context.guildId, memberId: targetMember.id, gp: amount, reason, createdBy: interaction.user.id });
   await auditService.record({ guildId: context.guildId, actorId: interaction.user.id, action: "EPGP_TRANSACTION_CREATED", entityId: transaction.id, metadata: { memberId: targetMember.id, epAmount: transaction.epAmount, gpAmount: transaction.gpAmount, reason } });
   await interaction.reply({ content: `Recorded ${transaction.epAmount ? `${transaction.epAmount} EP` : `${transaction.gpAmount} GP`} for ${target.username}.`, ephemeral: true });
-  await notify(interaction.guild, notifications.epgpChanged(targetMember.displayName, transaction.epAmount, transaction.gpAmount, reason));
+  await notify(interaction.guild, notifications.epgpChanged(targetMember.displayName, transaction.epAmount, transaction.gpAmount, reason), "loot");
 }

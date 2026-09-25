@@ -1,4 +1,6 @@
 import { SlashCommandBuilder, type ChatInputCommandInteraction } from "discord.js";
+import { prisma } from "../database.js";
+import { importCharacter, parseCharacterString } from "../services/character-import.js";
 import { guildService, requireGuildContext } from "./context.js";
 
 export const characterCommand = new SlashCommandBuilder()
@@ -15,6 +17,11 @@ export const characterCommand = new SlashCommandBuilder()
     .addIntegerOption((option) => option.setName("level").setDescription("Character level").setMinValue(1).setMaxValue(100))
     .addStringOption((option) => option.setName("race").setDescription("Race, e.g. Dwarf")))
   .addSubcommand((subcommand) => subcommand
+    .setName("import")
+    .setDescription("Link a character from the line the addon gives you (no typing details).")
+    .addStringOption((option) => option.setName("code").setDescription("Paste the line from /qg character in game").setRequired(true))
+    .addBooleanOption((option) => option.setName("main").setDescription("Set as your main (default: main only if you have none)")))
+  .addSubcommand((subcommand) => subcommand
     .setName("list")
     .setDescription("List your linked characters."));
 
@@ -28,6 +35,18 @@ export async function executeCharacter(interaction: ChatInputCommandInteraction)
       content: characters.length === 0
         ? "You have no linked characters."
         : characters.map((character) => `${character.isMain ? "⭐" : "•"} ${character.name} — ${character.race ? `${character.race} ` : ""}${character.className}${character.spec ? ` (${character.spec})` : ""}${character.lastSeenAt ? ` · last seen <t:${Math.floor(character.lastSeenAt.getTime() / 1000)}:R>` : ""}`).join("\n"),
+      ephemeral: true
+    });
+    return;
+  }
+
+  if (subcommand === "import") {
+    const parsed = parseCharacterString(interaction.options.getString("code", true));
+    const outcome = await importCharacter(prisma, context.memberId, parsed, interaction.options.getBoolean("main") ?? undefined);
+    const details = [parsed.race, parsed.className, parsed.spec ? `(${parsed.spec})` : "", parsed.level ? `level ${parsed.level}` : ""].filter(Boolean).join(" ");
+    await interaction.reply({
+      content: `${outcome.action === "created" ? "Linked" : "Updated"} **${outcome.name}** (${parsed.realm}) as ${outcome.isMain ? "your main character" : "an alt"}: ${details}.`
+        + (parsed.professions.length ? `\nProfessions: ${parsed.professions.map((p) => `${p.name} ${p.skillLevel}`).join(", ")}.` : ""),
       ephemeral: true
     });
     return;

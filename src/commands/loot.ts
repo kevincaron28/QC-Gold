@@ -67,7 +67,7 @@ export async function executeLoot(interaction: ChatInputCommandInteraction): Pro
       ? `Auction closed. **${result.award.itemName}** awarded for **${result.award.amount} GP**.`
       : "Auction closed with no bids.");
     if (result.award) {
-      await notify(interaction.guild, notifications.lootAwarded(result.award.itemName, result.award.member.displayName, result.award.amount));
+      await notify(interaction.guild, notifications.lootAwarded(result.award.itemName, result.award.member.displayName, result.award.amount), "loot");
     }
     return;
   }

@@ -86,6 +86,7 @@ After login, an officer (guild rank 0 or 1 by default) can use:
 /qg deduct Player 5 Mistake
 /qg loot Player [Tier Item] 25
 /qg inspect
+/qg character
 /qg attune Onyxia Key
 /qg attune Player "Onyxia Key"
 /qg attune Player "Onyxia Key" clear

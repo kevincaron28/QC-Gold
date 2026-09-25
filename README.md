@@ -27,7 +27,7 @@ Phase 2 adds:
 - Persistent guild settings for attendance, boss, bid, and auction rules
 - Member bootstrap from Discord guild context
 - `/profile`
-- `/character add` and `/character list`
+- `/character add`, `/character import` and `/character list`
 - `/profession set` and `/profession list`
 - `/config view` and officer-only `/config set`
 - Explicit command error handling
@@ -97,13 +97,19 @@ Phase 11 adds (bot-side only, no addon changes):
 - `/epgp leaderboard` now shows 30-day attendance (Present = 1, Late = 0.5); `/config merit enabled:true` orders it by PR x attendance instead of raw PR (display only, the ledger is never touched)
 - `/config recruitment`: a recurring recruitment post on an interval. It only fires while the bot process is running (checked every 10 minutes), so a missed window posts on the next check
 
-Dungeon Challenge (addon v1.7.0, roadmap D1–D10):
+Dungeon Challenge (addon v1.7.0+, roadmap D1–D10):
 
 - The addon records dungeon runs (state machine, one recorder per group, peer-reported deaths, survives reloads and missing APIs through `Compat.lua`) and exports them with the rest of the SavedVariables
 - `/import-apply` validates every run on the server (protocol, 1–5 players, 3 min–4 h, no future timestamps), drops duplicates by run id and by near-duplicate reports, stores it, and gives configurable points with a weekly repeat share; one post per import lists runs, records and achievements
 - `/dungeon leaderboard|records|player|history|season` for everyone; `/dungeon-admin invalidate|award|audit|config|target|season-start` for officers, every change an append-only point transaction plus an audit entry
 - Permanent achievements (First Blood, No One Dies, Speed Demon, Record Breaker, Guild Squad, Dungeon Master, Season Champion), revoked with the run that earned them if it is invalidated
 - In game: a Dungeons tab (live run, recent runs and their sync state, season top 10 from Discord); `/testraid dungeon` and `/qg sim dungeon` for testing, removed by `/testraid cleanup`
+
+Character import and Warcraft Logs (addon v1.8.0):
+
+- `/qg character` in game shows one line (name, realm, class, race, level, spec, professions); `/character import code:<line>` links or refreshes the character from it, no typing. The addon export also carries your own character block, which `/import-apply` uses to keep an already-linked character current
+- `/wcl report url:<link> [raid:<id>] [post:false]` (officers) pulls a Warcraft Logs report through the v2 API (zone, duration, bosses killed and wipes, player list; no per-player performance numbers), saves it, posts it to the raid logs channel, and links it to a Discord raid so that raid's report shows the log link. `/wcl list` shows recent ones. Needs `WCL_CLIENT_ID` / `WCL_CLIENT_SECRET` in `.env.local` (create a client at warcraftlogs.com/api/clients); without them `/wcl` explains how to set it up
+- New channel settings (`/setup` or `/config`): `raid-log-channel`, `loot-channel`, `craft-channel`, `dungeon-leaderboard-channel` (one message the bot edits after every dungeon import), `dungeon-signup-channel`
 
 Addon modules (roadmap M1–M3): the addon stays **one** download. Casino, GP bidding, Dungeons, Calendar and the test tools can be switched off per player (`/qg modules off casino`) or for the whole guild by an officer (`/qg modules guild off casino`, shared in game); raids, EPGP, loot, the gear check and standings always run. See `addon/QuebecGold/README.md`. Splitting it into separate CurseForge addons was considered and rejected: every part depends on the same core and talks to the others, so separate downloads would add version mismatches without giving guilds anything the switches don't.
 
@@ -124,6 +130,7 @@ Deliberately not built: message edit/delete logging (needs the privileged Messag
 npm install
 Copy-Item .env.example .env
 # Set DISCORD_TOKEN, DISCORD_CLIENT_ID, DISCORD_GUILD_ID, and DATABASE_URL
+# (optional: WCL_CLIENT_ID and WCL_CLIENT_SECRET to turn on /wcl)
 npm run prisma:generate
 npm run prisma:migrate -- --name init
 npm run dev
@@ -152,11 +159,14 @@ Commands are registered against `DISCORD_GUILD_ID` in development. A production 
 ### First run in Discord: `/setup`
 
 Once the bot is online, a server admin runs **`/setup`**. It's a private,
-click-through guide (buttons and menus, no typing) in four steps: permission
-roles (can create them and give you Guild Master), channels (can create
-announcements, raid signups, and a private officer log for you), optional
-welcome message and auto-roles, and EPGP values / raid reminders / weekly
-report. It ends with a checklist that says exactly how to fix anything still
+click-through guide (buttons and menus, no typing) in seven steps: permission
+roles (can create them and give you Guild Master), channels (announcements,
+raid signups, raid logs, and a private officer log), dungeon channels
+(leaderboard, signups, runs), extra channels (loot and EP log, craft board,
+recruitment), an optional welcome message, optional auto-roles, and EPGP
+values / raid reminders / weekly report. "Create the whole WoW section"
+makes every missing channel at once, grouped under one "Quebec Gold"
+category, with feeds that only the bot posts in set read-only for members. It ends with a checklist that says exactly how to fix anything still
 missing, and can post a pinned-ready "getting started" guide for members.
 Re-running it is safe; `/setup status:true` shows only the checklist.
 

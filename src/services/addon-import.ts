@@ -4,6 +4,7 @@ import { normalizeAddonSnapshot, parseAddonSnapshot, type AddonSnapshot } from "
 import { deriveReadinessStatus } from "./readiness.js";
 import { applyAddonLoot, applyRaidAttendance, touchLastSeen } from "./raid-import.js";
 import { importDungeonRuns } from "./dungeon-import.js";
+import { normalizeClassName, normalizeRaceName } from "./character-import.js";
 
 export function createAddonImportService(database: PrismaClient) {
   return {
@@ -109,6 +110,34 @@ export function createAddonImportService(database: PrismaClient) {
               createdBy: appliedBy
             }
           }));
+        }
+
+        // The exporter's own character: keep an already-linked one current
+        // (class, race, level, spec, professions). Never creates a character.
+        if (snapshot.character) {
+          const own = snapshot.character;
+          const linked = characters.find((candidate) =>
+            candidate.name.toLowerCase() === own.name.toLowerCase() &&
+            candidate.realm.toLowerCase() === own.realm.toLowerCase()
+          );
+          if (linked) {
+            await tx.character.update({
+              where: { id: linked.id },
+              data: {
+                ...(own.class ? { className: normalizeClassName(own.class) } : {}),
+                ...(own.race ? { race: normalizeRaceName(own.race) } : {}),
+                ...(own.level >= 1 ? { level: own.level } : {}),
+                ...(own.spec ? { spec: own.spec } : {})
+              }
+            });
+            for (const profession of own.professions) {
+              await tx.professionSkill.upsert({
+                where: { characterId_profession: { characterId: linked.id, profession: profession.name } },
+                create: { characterId: linked.id, profession: profession.name, skillLevel: profession.skillLevel },
+                update: { skillLevel: profession.skillLevel }
+              });
+            }
+          }
         }
 
         // Readiness is best-effort: an unlinked character shouldn't block the

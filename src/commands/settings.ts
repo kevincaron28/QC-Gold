@@ -1,3 +1,4 @@
+import { updateDungeonLeaderboard } from "../services/dungeon-leaderboard.js";
 import { ChannelType, SlashCommandBuilder, type ChatInputCommandInteraction } from "discord.js";
 import { permissionRoles, hasPermission } from "../permissions.js";
 import { guildService, requireGuildContext } from "./context.js";
@@ -67,6 +68,26 @@ export const configCommand = new SlashCommandBuilder()
     .addChannelOption((o) => o.setName("channel").setDescription("Dungeon channel")
       .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
     .addBooleanOption((o) => o.setName("disable").setDescription("Go back to using the notify channel")))
+  .addSubcommand((sub) => sub.setName("raid-log-channel").setDescription("Channel for raid summaries (default: the notify channel).")
+    .addChannelOption((o) => o.setName("channel").setDescription("Raid logs channel")
+      .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
+    .addBooleanOption((o) => o.setName("disable").setDescription("Go back to using the notify channel")))
+  .addSubcommand((sub) => sub.setName("loot-channel").setDescription("Channel for loot awards and EP/GP changes (default: the notify channel).")
+    .addChannelOption((o) => o.setName("channel").setDescription("Loot log channel")
+      .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
+    .addBooleanOption((o) => o.setName("disable").setDescription("Go back to using the notify channel")))
+  .addSubcommand((sub) => sub.setName("craft-channel").setDescription("Channel for craft requests (default: the officer log).")
+    .addChannelOption((o) => o.setName("channel").setDescription("Craft board channel")
+      .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
+    .addBooleanOption((o) => o.setName("disable").setDescription("Go back to using the officer log")))
+  .addSubcommand((sub) => sub.setName("dungeon-leaderboard-channel").setDescription("Channel with the auto-updated dungeon leaderboard.")
+    .addChannelOption((o) => o.setName("channel").setDescription("Leaderboard channel")
+      .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
+    .addBooleanOption((o) => o.setName("disable").setDescription("Stop updating the leaderboard message")))
+  .addSubcommand((sub) => sub.setName("dungeon-signup-channel").setDescription("Channel for dungeon signups.")
+    .addChannelOption((o) => o.setName("channel").setDescription("Dungeon signups channel")
+      .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
+    .addBooleanOption((o) => o.setName("disable").setDescription("Clear the dungeon signups channel")))
   .addSubcommand((sub) => sub.setName("merit").setDescription("Rank /epgp leaderboard by PR x 30-day attendance instead of raw PR.")
     .addBooleanOption((o) => o.setName("enabled").setDescription("Use merit ranking").setRequired(true)))
   .addSubcommand((sub) => sub.setName("recruitment").setDescription("Schedule a recurring recruitment post.")
@@ -97,6 +118,11 @@ export async function executeConfig(interaction: ChatInputCommandInteraction): P
         `Raid reminders: ${settings.raidReminderMinutes > 0 ? `${settings.raidReminderMinutes} min before start` : "off"}`,
         `Notifications: ${settings.notifyChannelId ? `<#${settings.notifyChannelId}>` : "disabled"}`,
         `Dungeon posts: ${settings.dungeonChannelId ? `<#${settings.dungeonChannelId}>` : "notify channel"}`,
+        `Raid logs: ${settings.raidLogChannelId ? `<#${settings.raidLogChannelId}>` : "notify channel"}`,
+        `Loot and EP log: ${settings.lootChannelId ? `<#${settings.lootChannelId}>` : "notify channel"}`,
+        `Craft board: ${settings.craftChannelId ? `<#${settings.craftChannelId}>` : "officer log"}`,
+        `Dungeon leaderboard: ${settings.dungeonLeaderboardChannelId ? `<#${settings.dungeonLeaderboardChannelId}>` : "not set"}`,
+        `Dungeon signups: ${settings.dungeonSignupChannelId ? `<#${settings.dungeonSignupChannelId}>` : "not set"}`,
         `Welcome messages: ${settings.welcomeChannelId ? `<#${settings.welcomeChannelId}>` : "disabled"}`,
         `Farewell messages: ${settings.farewellChannelId ? `<#${settings.farewellChannelId}>` : "disabled"}`,
         `Applicant role: ${settings.applicantRoleId ? `<@&${settings.applicantRoleId}>` : "not set"}`,
@@ -227,6 +253,34 @@ export async function executeConfig(interaction: ChatInputCommandInteraction): P
     if (!channel) throw new Error("Provide a channel, or use disable:true to go back to the notify channel.");
     await guildService.updateSettings(context.guildId, { dungeonChannelId: channel.id });
     await interaction.reply({ content: `Dungeon runs and records will post in <#${channel.id}>.`, ephemeral: true });
+    return;
+  }
+
+  const channelSettings: Record<string, { field: "raidLogChannelId" | "dungeonLeaderboardChannelId" | "dungeonSignupChannelId" | "lootChannelId" | "craftChannelId"; label: string }> = {
+    "loot-channel": { field: "lootChannelId", label: "Loot and EP/GP changes" },
+    "craft-channel": { field: "craftChannelId", label: "Craft requests" },
+    "raid-log-channel": { field: "raidLogChannelId", label: "Raid summaries" },
+    "dungeon-leaderboard-channel": { field: "dungeonLeaderboardChannelId", label: "The dungeon leaderboard" },
+    "dungeon-signup-channel": { field: "dungeonSignupChannelId", label: "Dungeon signups" }
+  };
+  const channelSetting = channelSettings[subcommand];
+  if (channelSetting) {
+    if (interaction.options.getBoolean("disable")) {
+      await guildService.updateSettings(context.guildId, {
+        [channelSetting.field]: null,
+        ...(channelSetting.field === "dungeonLeaderboardChannelId" ? { dungeonLeaderboardMessageId: null } : {})
+      });
+      await interaction.reply({ content: `${channelSetting.label}: channel cleared.`, ephemeral: true });
+      return;
+    }
+    const channel = interaction.options.getChannel("channel");
+    if (!channel) throw new Error("Provide a channel, or use disable:true to clear it.");
+    await guildService.updateSettings(context.guildId, {
+      [channelSetting.field]: channel.id,
+      ...(channelSetting.field === "dungeonLeaderboardChannelId" ? { dungeonLeaderboardMessageId: null } : {})
+    });
+    if (channelSetting.field === "dungeonLeaderboardChannelId") await updateDungeonLeaderboard(interaction.guild);
+    await interaction.reply({ content: `${channelSetting.label} will use <#${channel.id}>.`, ephemeral: true });
     return;
   }
 

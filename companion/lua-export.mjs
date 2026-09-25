@@ -215,6 +215,17 @@ export async function readAddonExport(path, realm) {
   return {
     source: "QuebecGold",
     exportedAt,
+    ...(database.character?.name ? {
+      character: {
+        name: String(database.character.name),
+        realm: String(database.character.realm || realm),
+        class: String(database.character.class ?? ""),
+        race: String(database.character.race ?? ""),
+        level: Number(database.character.level) || 0,
+        spec: String(database.character.spec ?? ""),
+        professions: Array.isArray(database.character.professions) ? database.character.professions : []
+      }
+    } : {}),
     transactions,
     epgpTransactions,
     readiness: [

@@ -34,12 +34,14 @@ export function renderTemplate(template: string, vars: TemplateVars): string {
 // Posts a plain-text line to the configured log channel, if any. Never pings
 // anyone and never throws: logging must not be able to break the action that
 // triggered it.
-export async function postToLogChannel(discordGuild: DiscordGuild, content: string): Promise<void> {
+export async function postToLogChannel(discordGuild: DiscordGuild, content: string, kind: "log" | "craft" = "log"): Promise<void> {
   try {
     const guild = await guildService.ensureGuild(discordGuild.id, discordGuild.name);
     const settings = await guildService.getSettings(guild.id);
-    if (!settings?.logChannelId) return;
-    const channel = await discordGuild.channels.fetch(settings.logChannelId).catch(() => null);
+    // Craft requests go to the craft board when there is one, so crafters see them.
+    const channelId = (kind === "craft" ? settings?.craftChannelId : null) ?? settings?.logChannelId;
+    if (!channelId) return;
+    const channel = await discordGuild.channels.fetch(channelId).catch(() => null);
     if (!channel?.isTextBased()) return;
     await channel.send({ content, allowedMentions: { parse: [] } });
   } catch (error) {

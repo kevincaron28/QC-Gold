@@ -8,11 +8,14 @@ const guildService = createGuildService(prisma);
 // Text that's rendered in the guild's language when it's posted.
 export type Localized<T = string> = (lang: Lang) => T;
 
-async function notifyTarget(discordGuild: DiscordGuild) {
+type NotifyKind = "notify" | "raidLog" | "loot";
+
+async function notifyTarget(discordGuild: DiscordGuild, kind: NotifyKind = "notify") {
   const guild = await guildService.ensureGuild(discordGuild.id, discordGuild.name);
   const settings = await guildService.getSettings(guild.id);
-  if (!settings?.notifyChannelId) return null;
-  const channel = await discordGuild.channels.fetch(settings.notifyChannelId).catch(() => null);
+  const channelId = (kind === "raidLog" ? settings?.raidLogChannelId : kind === "loot" ? settings?.lootChannelId : null) ?? settings?.notifyChannelId;
+  if (!settings || !channelId) return null;
+  const channel = await discordGuild.channels.fetch(channelId).catch(() => null);
   if (!channel?.isTextBased()) return null;
   return { channel, lang: asLang(settings.language) };
 }
@@ -40,10 +43,10 @@ export async function notifyDungeon(discordGuild: DiscordGuild | null, embed: Lo
 // channel set with /config notify-channel. One line per event (batched
 // commands post one line, not one per player). Never pings anyone and never
 // throws: a failed announcement must not undo the action it describes.
-export async function notify(discordGuild: DiscordGuild | null, content: string | Localized): Promise<void> {
+export async function notify(discordGuild: DiscordGuild | null, content: string | Localized, kind: NotifyKind = "notify"): Promise<void> {
   if (!discordGuild) return;
   try {
-    const target = await notifyTarget(discordGuild);
+    const target = await notifyTarget(discordGuild, kind);
     if (!target) return;
     const text = typeof content === "string" ? content : content(target.lang);
     await target.channel.send({ content: text.slice(0, 1900), allowedMentions: { parse: [] } });
@@ -52,11 +55,12 @@ export async function notify(discordGuild: DiscordGuild | null, content: string 
   }
 }
 
-// Same channel and rules as notify(), for richer posts like the raid report.
-export async function notifyEmbed(discordGuild: DiscordGuild | null, embed: EmbedBuilder | Localized<EmbedBuilder>): Promise<boolean> {
+// Same rules as notify(), for richer posts like the raid report. Pass
+// "raidLog" to prefer the raid-logs channel (falls back to announcements).
+export async function notifyEmbed(discordGuild: DiscordGuild | null, embed: EmbedBuilder | Localized<EmbedBuilder>, channel: NotifyKind = "notify"): Promise<boolean> {
   if (!discordGuild) return false;
   try {
-    const target = await notifyTarget(discordGuild);
+    const target = await notifyTarget(discordGuild, channel);
     if (!target) return false;
     await target.channel.send({ embeds: [typeof embed === "function" ? embed(target.lang) : embed], allowedMentions: { parse: [] } });
     return true;

@@ -7,6 +7,8 @@ export interface SetupFacts {
   notifyChannel: ChannelFact | null;
   raidChannel: ChannelFact | null;
   logChannel: ChannelFact | null;
+  raidLogChannel?: ChannelFact | null;
+  dungeonLeaderboardChannel?: ChannelFact | null;
   welcomeChannel: ChannelFact | null;
   // Auto-roles the bot must be able to hand out (null when not configured).
   autoRoles: { name: string; botCanAssign: boolean }[];
@@ -49,7 +51,9 @@ export function setupChecks(facts: SetupFacts): SetupCheck[] {
     channelCheck("Announcements channel", facts.notifyChannel, false, "Run /setup, step 2 (Channels)."),
     channelCheck("Raid signups channel", facts.raidChannel, false, "Run /setup, step 2 (Channels)."),
     channelCheck("Officer log channel", facts.logChannel, false, "Run /setup, step 2 (Channels)."),
-    channelCheck("Welcome channel", facts.welcomeChannel, true, "Optional: run /setup, step 3 (Welcome)."),
+    channelCheck("Raid logs channel", facts.raidLogChannel ?? null, true, "Optional: run /setup, step 2 (Channels). Raid summaries use announcements until then."),
+    channelCheck("Dungeon leaderboard channel", facts.dungeonLeaderboardChannel ?? null, true, "Optional: run /setup, step 3 (Dungeon channels)."),
+    channelCheck("Welcome channel", facts.welcomeChannel, true, "Optional: run /setup, step 5 (Welcome)."),
     ...facts.autoRoles.map((role) => ({
       label: `Auto-role "${role.name}"`,
       ok: role.botCanAssign,
@@ -60,10 +64,10 @@ export function setupChecks(facts: SetupFacts): SetupCheck[] {
       label: "EPGP point values (base GP set)",
       ok: facts.epgpConfigured,
       optional: true,
-      fix: "Defaults work, but base GP is 0: run /setup step 4 and press \"Use recommended values\"."
+      fix: "Defaults work, but base GP is 0: run /setup step 7 and press \"Use recommended values\"."
     },
-    { label: "Raid reminders", ok: facts.remindersOn, optional: true, fix: "Optional: turn them on in /setup step 4." },
-    { label: "Weekly guild report", ok: facts.weeklyReportOn, optional: true, fix: "Optional: turn it on in /setup step 4." },
+    { label: "Raid reminders", ok: facts.remindersOn, optional: true, fix: "Optional: turn them on in /setup step 7." },
+    { label: "Weekly guild report", ok: facts.weeklyReportOn, optional: true, fix: "Optional: turn it on in /setup step 7." },
     {
       label: "Companion link to the WoW addon",
       ok: facts.companionTokenSet,

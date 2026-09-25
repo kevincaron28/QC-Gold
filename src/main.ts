@@ -29,6 +29,7 @@ import { executeWishlist } from "./commands/wishlist.js";
 import { executeSelfRoles, handleSelfRoleButton, SELF_ROLE_PREFIX } from "./commands/selfroles.js";
 import { EP_AWARD_PREFIX, handleEpAwardButton } from "./commands/ep-award.js";
 import { executeWho } from "./commands/who.js";
+import { executeWcl } from "./commands/wcl.js";
 import { executeStats, runWeeklyReports } from "./commands/stats.js";
 import { executeBank } from "./commands/bank.js";
 import { executeTestRaid } from "./commands/testraid.js";
@@ -72,6 +73,7 @@ handlers.set("tag", executeTag);
 handlers.set("wishlist", executeWishlist);
 handlers.set("selfroles", executeSelfRoles);
 handlers.set("who", executeWho);
+handlers.set("wcl", executeWcl);
 handlers.set("stats", executeStats);
 handlers.set("bank", executeBank);
 handlers.set("testraid", executeTestRaid);
@@ -82,6 +84,7 @@ handlers.set("dungeon", executeDungeon);
 handlers.set("dungeon-admin", executeDungeonAdmin);
 
 client.once(Events.ClientReady, (readyClient) => {
+  registerCommandsEverywhere().catch((error: unknown) => console.error("Command registration failed", error));
   console.info(`Logged in as ${readyClient.user.tag}`);
   logSetupStatus(readyClient.guilds.cache.values()).catch(() => undefined);
   // Daily database backup to backups/ (keeps 14 days). Runs now if today's
@@ -119,6 +122,7 @@ client.once(Events.ClientReady, (readyClient) => {
 
 // Bot just added to a server: point whoever invited it at /setup.
 client.on(Events.GuildCreate, (guild) => {
+  registerCommands(guild.id).catch((error: unknown) => console.error("Registering commands for new guild failed", error));
   greetNewGuild(guild).catch((error: unknown) => console.error("Greeting new guild failed", error));
 });
 
@@ -193,13 +197,20 @@ client.on(Events.InteractionCreate, async (interaction) => {
   }
 });
 
-async function registerCommands(): Promise<void> {
+async function registerCommands(guildId: string): Promise<void> {
   const rest = new REST({ version: "10" }).setToken(config.DISCORD_TOKEN);
   await rest.put(
-    Routes.applicationGuildCommands(config.DISCORD_CLIENT_ID, config.DISCORD_GUILD_ID),
+    Routes.applicationGuildCommands(config.DISCORD_CLIENT_ID, guildId),
     { body: commands.map((command) => command.toJSON()) }
   );
 }
 
-await registerCommands();
+// Commands are per-guild, so every server the bot is in needs them registered.
+async function registerCommandsEverywhere(): Promise<void> {
+  const guildIds = new Set<string>([config.DISCORD_GUILD_ID, ...client.guilds.cache.keys()]);
+  for (const guildId of guildIds) {
+    await registerCommands(guildId).catch((error: unknown) => console.warn(`Command registration failed for guild ${guildId}`, error));
+  }
+}
+
 await client.login(config.DISCORD_TOKEN);

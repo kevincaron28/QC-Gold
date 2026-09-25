@@ -457,6 +457,79 @@ local function collectProfessions()
   return result
 end
 
+-- Who this character is, for the Discord bot's /character import. Class and
+-- race use the English file tokens (WARRIOR, NightElf) so the bot reads them
+-- the same on any client language.
+local function collectCharacter()
+  local _, classFile = UnitClass("player")
+  local _, raceFile = UnitRace("player")
+  local spec
+  if GetSpecialization and GetSpecializationInfo then
+    local index = GetSpecialization()
+    if index then
+      local _, specName = GetSpecializationInfo(index)
+      spec = specName
+    end
+  end
+  return {
+    name = playerName(),
+    realm = (GetRealmName and GetRealmName()) or "",
+    class = classFile or "",
+    race = raceFile or "",
+    level = UnitLevel("player") or 0,
+    spec = spec or "",
+    professions = collectProfessions(),
+    capturedAt = now()
+  }
+end
+
+-- One line the player pastes into Discord: /character import code:<line>
+local function characterString(info)
+  local professions = {}
+  for _, profession in ipairs(info.professions or {}) do
+    table.insert(professions, string.gsub(profession.name, "[|,:]", "") .. ":" .. tostring(profession.skillLevel))
+  end
+  local function clean(value) return (string.gsub(tostring(value or ""), "|", "")) end
+  return "QG1|" .. table.concat({
+    clean(info.name), clean(info.realm), clean(info.class), clean(info.race),
+    tostring(info.level or 0), clean(info.spec), table.concat(professions, ",")
+  }, "|")
+end
+
+local exportFrame
+local function showCharacterExport(text)
+  if not exportFrame then
+    exportFrame = CreateFrame("Frame", "QuebecGoldCharacterExport", UIParent)
+    exportFrame:SetSize(520, 110)
+    exportFrame:SetPoint("CENTER")
+    exportFrame:SetFrameStrata("DIALOG")
+    exportFrame:EnableMouse(true)
+    local background = exportFrame:CreateTexture(nil, "BACKGROUND")
+    background:SetAllPoints()
+    background:SetColorTexture(0, 0, 0, 0.85)
+    local title = exportFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    title:SetPoint("TOP", 0, -10)
+    title:SetText("Quebec Gold - copy this line (Ctrl+C), then in Discord: /character import")
+    local box = CreateFrame("EditBox", nil, exportFrame)
+    box:SetSize(490, 24)
+    box:SetPoint("CENTER", 0, 0)
+    box:SetAutoFocus(true)
+    box:SetFontObject(ChatFontNormal or GameFontNormal)
+    box:SetScript("OnEscapePressed", function() exportFrame:Hide() end)
+    box:SetScript("OnEnterPressed", function() exportFrame:Hide() end)
+    local close = CreateFrame("Button", nil, exportFrame, "UIPanelButtonTemplate")
+    close:SetSize(80, 22)
+    close:SetPoint("BOTTOM", 0, 10)
+    close:SetText("Close")
+    close:SetScript("OnClick", function() exportFrame:Hide() end)
+    exportFrame.box = box
+  end
+  exportFrame.box:SetText(text)
+  exportFrame:Show()
+  exportFrame.box:SetFocus()
+  exportFrame.box:HighlightText()
+end
+
 local READINESS_SLOTS = {
   { 1, "Head" }, { 3, "Shoulder" }, { 5, "Chest" }, { 6, "Waist" },
   { 7, "Legs" }, { 8, "Feet" }, { 9, "Wrist" }, { 10, "Hands" },
@@ -676,6 +749,7 @@ local function showHelp()
   local officer = isOfficer()
   message("/qg menu (or click the minimap coin) | inspect | status | roster | standings [player] | diag | version")
   message("/qg attune <key> [clear] - mark your own attunement")
+  message("/qg character - copy a line to link this character in Discord (/character import)")
   if officer then
     message("Officer: /qg start [title] | end | attendance <name>|group|seen [PRESENT|ABSENT|LATE] | boss <name>")
     message("Officer: /qg award <name>|group <amount> [reason] | gp <name> <amount> [reason] | deduct <name> <amount> [reason]")
@@ -831,6 +905,12 @@ local function command(text)
     for name in pairs(db.roster) do table.insert(names, name) end
     table.sort(names)
     message(#names .. " known character(s): " .. table.concat(names, ", "))
+  elseif action == "character" then
+    local info = collectCharacter()
+    db.character = info
+    local line = characterString(info)
+    message("Your character line (also shown in a box to copy): " .. line)
+    showCharacterExport(line)
   elseif action == "start" then if requireOfficer() then raidStart(table.concat(args, " ", 2)) end
   elseif action == "end" then if requireOfficer() then raidEnd() end
   elseif action == "attendance" and string.lower(args[2] or "") == "group" then
@@ -926,6 +1006,9 @@ end
 local function onEvent(_, event, ...)
   if event == "PLAYER_LOGIN" then
     ensureDb()
+    -- Keep the character block fresh for the companion export.
+    local capturedOk, captured = pcall(collectCharacter)
+    if capturedOk then db.character = captured end
     snapshotModules()
     registerPrefix()
     message("Loaded. /qg help for commands" .. (activeRaid and (" - raid '" .. activeRaid.title .. "' is still active.") or "."))

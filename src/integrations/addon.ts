@@ -106,9 +106,22 @@ export const addonLootSchema = z.object({
 
 export type AddonLoot = z.infer<typeof addonLootSchema>;
 
+// The exporting player's own character (name, realm, class, level...). Used
+// to refresh the matching linked character; never creates one on its own.
+export const addonCharacterSchema = z.object({
+  name: z.string().min(1),
+  realm: z.string().min(1),
+  class: z.string().default(""),
+  race: z.string().default(""),
+  level: z.number().int().min(0).max(100).default(0),
+  spec: z.string().default(""),
+  professions: z.array(z.object({ name: z.string().min(1), skillLevel: z.number().int().nonnegative() })).default([])
+});
+
 export const addonSnapshotSchema = z.object({
   source: z.string().min(1),
   exportedAt: z.coerce.date(),
+  character: addonCharacterSchema.optional(),
   transactions: z.array(addonTransactionSchema).default([]),
   epgpTransactions: z.array(addonEpgpTransactionSchema).default([]),
   readiness: z.array(addonReadinessSchema).default([]),

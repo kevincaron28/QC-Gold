@@ -3,6 +3,7 @@ import { prisma } from "../database.js";
 import { hasPermission } from "../permissions.js";
 import { dungeonAnnouncement } from "../services/dungeon-announce.js";
 import { notifyDungeon } from "../services/notify.js";
+import { updateDungeonLeaderboard } from "../services/dungeon-leaderboard.js";
 import { cleanupTestRaids, finishTestRaid, SIM_CHARACTERS, simulateDungeonRun, startTestRaid } from "../services/simulation.js";
 import { dungeonReport } from "./import-apply.js";
 import { requireGuildContext } from "./context.js";
@@ -58,6 +59,7 @@ export async function executeTestRaid(interaction: ChatInputCommandInteraction):
     });
     const post = dungeonAnnouncement(result.dungeons, "en");
     const posted = post ? await notifyDungeon(interaction.guild, (lang) => dungeonAnnouncement(result.dungeons, lang) ?? post) : false;
+    if (post) await updateDungeonLeaderboard(interaction.guild);
     await interaction.reply({
       content: `Simulated a **Test Dungeon** run through the real import.${dungeonReport(result.dungeons)}
 

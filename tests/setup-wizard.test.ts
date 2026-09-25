@@ -36,7 +36,7 @@ beforeAll(async () => {
 
 describe("setup wizard screens", () => {
   it("every step builds a payload Discord will accept", async () => {
-    for (let step = 0; step <= 6; step++) {
+    for (let step = 0; step <= 8; step++) {
       const screen = await renderStep(step, guild as never, "g1", step === 2 ? "Saved <#c1>." : "");
       expect(screen.components.length).toBeLessThanOrEqual(5);
       const ids = new Set<string>();
@@ -64,7 +64,7 @@ describe("setup wizard screens", () => {
   });
 
   it("the checklist step lists what's missing with a fix", async () => {
-    const text = (await renderStep(6, guild as never, "g1", "")).embeds[0]!.toJSON().description ?? "";
+    const text = (await renderStep(8, guild as never, "g1", "")).embeds[0]!.toJSON().description ?? "";
     expect(text).toContain("❌ Raid signups channel");
     expect(text).toContain("Run /setup, step 2");
     expect(text).toContain("✅ Announcements channel (#announcements)");

@@ -147,6 +147,8 @@ messages follow the language chosen in `/setup` (English or French).
 | `/profile` | Your profile: characters (race, class, professions, last seen), EP/GP/PR |
 | `/who <character>` | Look anyone up: main and alts, professions, EP/GP/PR, 30-day attendance, last seen |
 | `/character add <name> <realm> <class> <main> [spec] [level] [race]` / `/character list` | Link your WoW characters (needed before imports can match you) |
+| `/character import <code> [main]` | Link or refresh a character from the line `/qg character` shows in game (name, realm, class, race, level, spec, professions), no typing |
+| `/wcl list` | The latest Warcraft Logs reports the officers pulled in |
 | `/apply` | Submit a guild application |
 | `/raid signup <raid> <role> [availability]` | Sign up (Tank, Healer, DPS). `availability:Maybe` doesn't take a slot. If your role is full you go on the **waitlist** and get a DM when a slot opens |
 | `/raid cancel-signup <raid>` | Drop out (the next waitlisted player moves up) |
@@ -231,7 +233,8 @@ Approve, and a raid can never be paid twice.
 
 | Command | What it does |
 | --- | --- |
-| `/setup` | **Start here.** Guided setup: roles, channels, welcome, EPGP values. `/setup status:true` shows the checklist |
+| `/setup` | **Start here.** Guided setup: roles, channels (core, dungeon, extras; one button makes the whole WoW section under a "Quebec Gold" category), welcome, EPGP values. `/setup status:true` shows the checklist |
+| `/wcl report <url> [raid] [post]` | Pull a Warcraft Logs report (link or code): zone, duration, boss kills and wipes, player list. Saved, posted to the raid logs channel, and linked to a Discord raid if you give its id. Needs `WCL_CLIENT_ID` / `WCL_CLIENT_SECRET` in `.env.local` |
 | `/testraid start [raiders] [starts_in] [realm]` | Fake `[TEST]` raid with fake raiders signed up (hits role caps, Maybe, waitlist) |
 | `/testraid finish <raid> [via_addon]` | Play it: attendance (late, no-show, walk-in), boss kills, loot, end, EP proposal. `via_addon` sends attendance through `/import-apply` instead |
 | `/testraid dungeon [minutes] [deaths]` | Fake dungeon run by 5 test characters through the real import: points, records, `[TEST]` announcement. Run twice to see the weekly repeat share |
@@ -259,6 +262,11 @@ Approve, and a raid can never be paid twice.
 | `/config roles` | Auto-assigned applicant/member roles |
 | `/config raid-channel` | Where raid signup embeds and raid reminders go |
 | `/config log-channel` | Where join/leave/moderation logs go |
+| `/config raid-log-channel` | Where raid summaries (raid reports, Warcraft Logs) go; default: the notify channel |
+| `/config loot-channel` | Where loot awards and EP/GP changes go; default: the notify channel |
+| `/config craft-channel` | Where craft requests are posted so crafters see them; default: the officer log |
+| `/config dungeon-leaderboard-channel` | Channel with one auto-updated dungeon leaderboard message (refreshed after every dungeon import) |
+| `/config dungeon-signup-channel` | Channel for dungeon signups (channel only; no dungeon signup flow yet) |
 | `/config merit <true\|false>` | Rank the leaderboard by PR x attendance |
 | `/config recruitment` | Recurring recruitment post |
 

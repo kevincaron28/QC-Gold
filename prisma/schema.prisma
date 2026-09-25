@@ -131,6 +131,7 @@ model Guild {
   dungeonRuns         DungeonRun[]
   dungeonPoints       DungeonPointTransaction[]
   dungeonAchievements DungeonAchievement[]
+  warcraftLogsReports WarcraftLogsReport[]
 }
 
 model Member {
@@ -412,6 +413,16 @@ model GuildSettings {
   // keys use the built-in defaults).
   dungeonChannelId         String?
   dungeonConfig            Json?
+  // Raid summaries (raid reports) post here; falls back to the notify channel.
+  raidLogChannelId         String?
+  // Dungeon challenge: an auto-updated leaderboard message, and a signups channel.
+  dungeonLeaderboardChannelId String?
+  dungeonLeaderboardMessageId String?
+  dungeonSignupChannelId   String?
+  // Loot awards and EP/GP changes post here; falls back to the notify channel.
+  lootChannelId            String?
+  // Craft requests post here (crafters see them); falls back to the officer log.
+  craftChannelId           String?
   createdAt                DateTime  @default(now())
   updatedAt                DateTime  @updatedAt
   guild                    Guild     @relation(fields: [guildId], references: [id], onDelete: Cascade)
@@ -776,4 +787,28 @@ model DungeonAchievement {
 
   @@unique([guildId, memberId, key])
   @@index([runId])
+}
+
+// A Warcraft Logs report pulled with /wcl report: a compact summary kept so
+// the raid report can link to it. No per-player performance numbers.
+model WarcraftLogsReport {
+  id        String   @id @default(cuid())
+  guildId   String
+  code      String
+  url       String
+  title     String
+  zone      String?
+  owner     String?
+  startedAt DateTime
+  endedAt   DateTime
+  summary   Json
+  // The Discord raid this log belongs to, when the officer linked one.
+  raidId    String?
+  createdBy String
+  createdAt DateTime @default(now())
+  guild     Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@unique([guildId, code])
+  @@index([guildId, startedAt])
+  @@index([raidId])
 }

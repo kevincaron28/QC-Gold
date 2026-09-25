@@ -11,27 +11,34 @@ priority (P0 = do first) · **S/M/L** = rough size
 
 ---
 
-## ⏸ Where we are — resume here (updated 2026-09-25)
+## ⏸ Where we are — resume here (updated 2026-09-26)
 
 - **Everything planned so far is built** except what's blocked or held:
-  backlog P0/P1/P2 (#1–31 minus #12, #17, #18, #20), Dungeon Challenge
-  D1–D10, and addon modules M1–M2 (below). Addon **v1.7.0**, zip in
-  `dist/` (built locally, not released).
-- **Next (user):** restart the bot, install v1.7.0, run
-  `LUNCH_TEST_CHECKLIST.md` (untracked; sections 1–6), send the output of
-  `/qg calendar check` (decides #32), then push, GitHub release v1.7.0,
-  refresh the install page.
-- **Next (build):** M3 CurseForge packaging when the user wants a public
-  listing; #32 calendar sync after the check result.
-- **Blocked / held:** #12 and #18 Warcraft Logs (API credentials, and
-  confirming Forever logs reach WCL); #17 web dashboard (held); #20 guild
-  achievements/graphs (open).
-- **Verification baseline:** 155 bot tests, `tsc`, `eslint`, addon
-  validator (now also a Lua syntax check), and Lua simulations in the
+  backlog P0/P1/P2 (#1–31 minus #17, #18, #20), Dungeon Challenge D1–D10,
+  addon modules M1–M2, and the 2026-09-26 batch (#33–#38 below: character
+  import, setup channels, WCL). Addon **v1.8.0**, zip built into `dist/`
+  (not released).
+- **Tonight (user):** run `LUNCH_TEST_CHECKLIST.md` (untracked, sections
+  0-8; section 8 is **Warcraft Logs**: create the API client, confirm Forever
+  logs reach WCL, `/wcl report`). Before that: stop the bot, `npx prisma
+  migrate deploy` + `npm run prisma:generate` (two new migrations), restart,
+  install v1.8.0. Also send the output of `/qg calendar check` (decides #32).
+  Then push, GitHub release v1.8.0, refresh the install page.
+- **Next (build):** review the GuildOS ideas (G1–G12 below) and pick;
+  #18 WCL auto-discovery once the manual import proves useful; M3
+  CurseForge packaging when the user wants a public listing; #32 calendar
+  sync after the check result; a real dungeon-signup flow (#39).
+- **Blocked / held:** #18 (needs #12 proven on real Forever logs); #17
+  web dashboard (held); #20 guild achievements/graphs (open).
+- **Verification baseline:** 165 bot tests, `tsc`, `eslint`, addon
+  validator (also a Lua syntax check), and Lua simulations in the
   session scratchpad: core 18, window/sync/modules 92, casino 28,
-  calendar 9, dungeon 29, sim dungeon + module gating 37.
+  calendar 9, dungeon 29, sim dungeon + module gating 37. The new
+  `/qg character` box has only been syntax-checked, not run in game.
 - **Live DB migrations applied** through
-  `20260925190000_dungeon_achievements`.
+  `20260925190000_dungeon_achievements`. **Pending (apply before
+  restarting):** `20260926090000_setup_channels`,
+  `20260926120000_warcraft_logs_and_channels`.
 
 ## History — where we were on 2026-09-24 (kept for reference)
 
@@ -414,14 +421,23 @@ D10. [x] **S — Test path** *(Done 2026-09-25: /testraid dungeon through the re
 
 **P1 — second wave**
 
-12. [ ] **M — Warcraft Logs, manual import first**: `/wcl <report url>`
+12. [x] **M — Warcraft Logs, manual import first** *(Built 2026-09-26, awaiting
+    the live test in checklist section 8. `/wcl report url:<link|code> [raid]
+    [post]` (officers) and `/wcl list`; `src/integrations/warcraftlogs.ts`
+    (client-credentials token cache, only warcraftlogs.com hosts are ever
+    contacted, site taken from the link so classic./www. both work),
+    `src/services/wcl.ts`, `src/commands/wcl.ts`, `WarcraftLogsReport` model,
+    tests/wcl.test.ts. Summary = zone, duration, per-boss kills/wipes/best
+    kill time, player list; posted to the raid logs channel; a linked raid's
+    report gets a Warcraft Logs field. Keys `WCL_CLIENT_ID` /
+    `WCL_CLIENT_SECRET` (+ optional `WCL_BASE_URL`) live only in `.env.local`.
+    Still unconfirmed: that Forever logs upload to WCL and on which site;
+    deaths are not pulled yet.)*: `/wcl <report url>`
     pulls the report through WCL API v2 (GraphQL, client-credentials
     auth, keys only in the bot's `.env`, never in the addon), stores a
     compact summary (zone, duration, bosses killed/wipes, deaths, player
     list) linked to the raid, posts a raid report embed, and links to WCL
-    for detail. **Blocked on:** WCL API client id/secret from the user, and
-    confirming WoW Forever logs upload to WCL at all. No DPS leaderboard /
-    "raid score" by design.
+    for detail. No DPS leaderboard / "raid score" by design.
 13. [x] **M — Automated raid report embed** (duration, raiders, bosses,
     EP awarded, loot and GP spent, WCL link) posted when a raid ends.
     *(Done 2026-09-24, minus the WCL link which waits for #12: posted to the
@@ -481,6 +497,112 @@ D10. [x] **S — Test path** *(Done 2026-09-25: /testraid dungeon through the re
     `20260925110000_addon_loot_history` (applied with `migrate deploy`
     because `migrate dev` needs an interactive prompt for the new unique
     column). Verified on live DB via `/testraid finish via_addon`.)*
+
+**P3 — added 2026-09-26**
+
+33. [x] **M — Character import instead of typing** *(Done 2026-09-26, addon
+    v1.8.0.)* `/qg character` in game shows one `QG1|name|realm|CLASS|race|
+    level|spec|professions` line (class/race as English tokens, so any client
+    language works); `/character import code:` links or refreshes the character
+    (professions too; never takes over another member's character). The
+    addon export also carries the exporter's own `character` block, which
+    `/import-apply` uses to refresh an already-linked character. Why not fully
+    automatic: the companion has one guild-wide token and can't tell which
+    Discord user a character belongs to. `src/services/character-import.ts`,
+    `tests/character-import.test.ts`. See **#40** for the fully automatic
+    version.
+34. [x] **M — More setup channels, one tidy WoW section** *(Done 2026-09-26.)*
+    `/setup` is now 7 steps: channels (announcements, raid signups, **raid
+    logs**, officer log), **dungeon channels** (leaderboard, signups, runs),
+    **extra channels** (loot and EP log, craft board, recruitment). A
+    "Create the whole WoW section" button makes every missing channel under
+    one "Quebec Gold" category; feeds only the bot posts in are read-only for
+    members. New `/config` commands: `raid-log-channel`, `loot-channel`,
+    `craft-channel`, `dungeon-leaderboard-channel`, `dungeon-signup-channel`.
+    Raid reports and Warcraft Logs go to raid logs; loot awards and EP/GP
+    changes to the loot log; craft requests to the craft board (bank requests
+    stay in the officer log). Each falls back to the older channel when unset.
+35. [x] **S — Auto-updating dungeon leaderboard** *(Done 2026-09-26.)* One
+    message in the leaderboard channel, edited after every dungeon import
+    and `/testraid dungeon`; re-posted if someone deletes it.
+    `src/services/dungeon-leaderboard.ts`.
+36. [x] **S — Commands register in every server** *(Done 2026-09-26.)* They
+    were only registered for `DISCORD_GUILD_ID`, so a second server never
+    saw `/setup`. Now registered on start for every guild the bot is in, and
+    when it joins one.
+37. [x] **S — Companion export carries the exporter's character** *(Done
+    2026-09-26; part of #33.)*
+38. [ ] **S — Warcraft Logs in the launch test** — checklist section 8
+    (account, client, "do Forever logs reach WCL", `/wcl report`).
+39. [ ] **M — Real dungeon signups.** The signup channel exists but nothing
+    posts there yet. A "form a dungeon group" post with Tank/Healer/DPS
+    buttons (reuse the raid signup embed) that the run tracker can match to
+    a completed run.
+40. [ ] **M — Fully automatic character import.** The officer's addon already
+    receives every online guildmate's readiness digest over addon messages;
+    extend it with class/race/level/spec so one officer export carries the
+    whole online guild, and let `/import-apply` create **unlinked** characters
+    that a member claims with one click (`/character claim`) or an officer
+    assigns. Removes the paste step for everyone who's ever been online with
+    the addon.
+
+### GuildOS review (2026-09-26)
+
+Reviewed <https://github.com/danielcosta42/guildos> (MIT; roster/attunement/
+loot/recruitment-focused addon for TBC Anniversary and WoW Forever, one build
+for both; no Discord, EPGP, bidding, calendar, dungeons or WCL). What it does
+better than us, and what we do that it doesn't, drove this list. Pick from it;
+none is started.
+
+- **Where we are ahead:** the Discord bot, EPGP with an append-only ledger,
+  GP bidding, loot history, raid signups with waitlist, dungeon challenge,
+  calendar, module switches, backups, French, a real test path.
+- **G1. [ ] S/M — Item tooltips:** show "GP cost / who wishlisted / your PR"
+  on item tooltips (GuildOS does wishlist tooltips). Data is already in
+  Standings.lua / wishlist; needs a `GameTooltip` post-hook via `Compat.lua`.
+- **G2. [ ] M — Consumable check before pulls:** a `/qg consumes` scan of the
+  group for flask/food/elixir/weapon buffs, feeding the readiness report
+  (GuildOS scores this into attendance). Our attendance stays Present/Late/
+  Absent; consumables would be a readiness signal, not a penalty.
+- **G3. [ ] M — Trial member tracker:** trial period, sponsor, auto-expiry
+  alert to officers. Fits next to `/application` (Discord) with an in-game
+  reminder; a new `Trial` model.
+- **G4. [ ] S/M — Officer notes in game,** synced between officers (we have
+  `/tag` and member tags on Discord only). Reuse the officer message channel
+  the module switches already use.
+- **G5. [ ] M — Guild recipe browser:** we track profession *skill*; GuildOS
+  keeps every known recipe. Needs a trade-skill window scan (guard
+  `C_TradeSkillUI` in `Compat.lua`) and `/craft request` autocomplete from it.
+  Ties into #19 cooldown tracking.
+- **G6. [ ] M/L — Sortable roster panel** in game (level, class, ilvl,
+  professions, attunements, attendance, last seen; search; online toggle).
+  Our Standings tab shows EPGP only. Highest-visibility feature if the addon
+  is ever listed publicly.
+- **G7. [ ] L — Sync compression:** GuildOS uses LibSerialize + LibDeflate +
+  ChatThrottleLib; our digests must fit 255 bytes. Worth it only if payloads
+  outgrow that (would happen with #40 or recipes). Bundling libraries is a
+  deliberate packaging change: decide before starting.
+- **G8. [ ] S/M — In-game recruitment helpers:** welcome message for new
+  guild joiners with the Discord invite link, and a periodic recruitment
+  reminder (must be a hardware-click post; addons can't auto-send to channels).
+  We already have the Discord-side recurring post.
+- **G9. [ ] M — Account-wide alt linking for attunements:** officers link alts
+  so one completion counts for all. We link characters to a Discord member,
+  so this is mostly reading that link into the addon via Standings.lua.
+- **G10. [ ] S — Per-guild SavedVariables isolation** (guild name + realm)
+  so one WoW install with alts in two guilds can't mix ledgers. Low risk,
+  do it before a public release.
+- **G11. [ ] S — TBC Anniversary support:** GuildOS ships one build for
+  Interface 20506 and 16001. Add `20506` to our TOC `## Interface:` and run
+  the Compat checks; only worth it if guildmates play Anniversary.
+- **G12. [ ] S — Public presence:** CurseForge and Wago listings (M3), a
+  screenshot set, a Discord support link, MIT-style license file, changelog.
+- **G13. [ ] M — That's My BiS (TMB) CSV import** into `/wishlist`, plus the
+  received-loot column into loot history. Guilds that already use TMB won't
+  retype wishlists.
+- **Deliberately skipping:** hooking the J key to replace Blizzard's guild
+  frame (fragile across clients), and rank-checkbox officer config (we use
+  Discord roles, which is already how the bot decides).
 
 ---
 
