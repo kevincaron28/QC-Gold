@@ -22,6 +22,7 @@ local warnedNewer = false
 local repliedTo = {}
 local lastShareAt = 0
 local incoming -- { updatedAt, total, parts = { [i] = text } }
+local peerVersions = {} -- sender -> addon version they announced this session
 
 local function getMetadata(field)
   if C_AddOns and C_AddOns.GetAddOnMetadata then return C_AddOns.GetAddOnMetadata(addonName, field) end
@@ -192,6 +193,30 @@ end
 ns.commandHandlers = ns.commandHandlers or {}
 ns.commandHandlers["standings"] = showStandings
 ns.commandHandlers["version"] = function() ns.message("Quebec Gold version " .. myVersion .. ".") end
+-- Who runs which version (this session). Messages are "KIND|field|..." and
+-- every receiver ignores kinds and trailing fields it doesn't know, so an
+-- older addon keeps working next to a newer one; this shows who is behind.
+ns.commandHandlers["peers"] = function()
+  local names = {}
+  for name in pairs(peerVersions) do table.insert(names, name) end
+  table.sort(names)
+  if #names == 0 then
+    ns.message("No guildmate with the addon has announced a version yet this session.")
+    return
+  end
+  local behind = 0
+  local parts = {}
+  for _, name in ipairs(names) do
+    local theirs = peerVersions[name]
+    local old = versionNewer(myVersion, theirs)
+    if old then behind = behind + 1 end
+    table.insert(parts, name .. " " .. theirs .. (old and " (older)" or ""))
+  end
+  ns.message(string.format("%d addon user(s) seen, you run %s, %d older: %s", #names, myVersion, behind, table.concat(parts, ", ")))
+end
+ns.peerVersions = function() return peerVersions end
+ns.commandHelp = ns.commandHelp or {}
+table.insert(ns.commandHelp, "/qg peers - which guildmates run which addon version (this session)")
 ns.getStanding = lookup
 ns.getStandingsUpdatedAt = function()
   local s = standings()
@@ -274,6 +299,7 @@ local function onEvent(_, event, ...)
     local kind = string.match(text, "^(%u+)|")
     if kind == "VERSION" then
       local theirs = string.match(text, "^VERSION|(.+)$")
+      if theirs then peerVersions[sender] = theirs end
       if versionNewer(theirs, myVersion) and not warnedNewer then
         warnedNewer = true
         ns.message("A newer Quebec Gold (" .. theirs .. ") is out - you have " .. myVersion .. ". Grab it from the guild's download link.")

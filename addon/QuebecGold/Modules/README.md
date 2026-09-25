@@ -9,6 +9,16 @@ sharing its namespace (`local addonName, ns = ...`). Core.lua exposes
 that modules register into to add `/qg <action> ...` subcommands. Help
 lines go in `ns.commandHelp` (a string, or `{ officer = true, text = ... }`).
 
+## Addon message protocol
+
+Every message is `KIND|field|field|...` on the module's own prefix. Receivers
+must **ignore kinds they don't know and fields past the ones they read**, and
+new optional fields are only ever **appended**, marked with a tag (like
+`F:` in the readiness digest) so an empty field before them can't shift the
+rest. That is what lets an older addon run next to a newer one. `/qg peers`
+lists who runs which version. Anything that would break older readers gets a
+new `KIND`, never a changed one.
+
 ## Rules every module follows
 
 - **Own channel.** Each module has its own addon-message prefix (16
