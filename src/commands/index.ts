@@ -21,6 +21,7 @@ import { wclCommand } from "./wcl.js";
 import { coreCommand } from "./core.js";
 import { inactiveCommand } from "./inactive.js";
 import { exportCommand } from "./export.js";
+import { guildHealthCommand } from "./guild-health.js";
 import { statsCommand } from "./stats.js";
 import { bankCommand } from "./bank.js";
 import { testRaidCommand } from "./testraid.js";
@@ -55,6 +56,7 @@ export const commands = [
   , coreCommand
   , inactiveCommand
   , exportCommand
+  , guildHealthCommand
   , statsCommand
   , bankCommand
   , testRaidCommand
