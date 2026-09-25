@@ -102,7 +102,8 @@ within priority. Update the checkbox the moment an item lands.
 > (1-11) and P1 #13-16 are done and tested (94 bot tests, `tsc`,
 > `eslint`). Not pushed, no new GitHub release yet (addon zip
 > `dist/QuebecGold-v1.4.0.zip` rebuilt locally). First thing next session:
-> restart the bot, live-test the new commands and addon v1.4.0, then build
+> (2026-09-25: user confirmed addon v1.4.0 works in game.)
+> restart the bot, live-test the new Discord commands, then build
 > **#0 raid test environment** (below), then decide between #19 crafting
 > requests and #21 in-game GP bidding.
 >
