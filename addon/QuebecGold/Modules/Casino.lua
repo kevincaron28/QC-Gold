@@ -760,6 +760,7 @@ for _, event in ipairs({ "PLAYER_LOGIN", "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_
 end
 for _, event in ipairs(GROUP_CHAT_EVENTS) do frame:RegisterEvent(event) end
 frame:SetScript("OnEvent", function(...)
+  if ns.moduleActive and not ns.moduleActive("casino") then return end -- /qg modules
   local ok, err = pcall(onEvent, ...)
   if not ok then ns.message("Casino error: " .. tostring(err)) end
 end)

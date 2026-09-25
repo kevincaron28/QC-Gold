@@ -410,6 +410,7 @@ frame:RegisterEvent("PLAYER_LOGIN")
 frame:RegisterEvent("CHAT_MSG_WHISPER")
 frame:RegisterEvent("CHAT_MSG_ADDON")
 frame:SetScript("OnEvent", function(...)
+  if ns.moduleActive and not ns.moduleActive("bidding") then return end -- /qg modules
   local ok, err = pcall(onEvent, ...)
   if not ok then ns.message("Bidding error: " .. tostring(err)) end
 end)

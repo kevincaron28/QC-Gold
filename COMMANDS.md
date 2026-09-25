@@ -37,6 +37,8 @@ typed command. Names are case-insensitive (`bob` = `Bob`).
 | `/qg version` | Your addon version. You're also told automatically when a guildmate has a newer one |
 | `/qg minimap show` / `hide` / `reset` | Control the minimap button |
 | `/qg officer list` | Show which ranks count as officers, and whether you do |
+| `/qg modules` | List the optional parts (casino, bidding, dungeon, calendar, sim) and whether each is on |
+| `/qg modules off\|on <module>` | Turn one off or back on just for you (also in the Tools tab). Back on after being off at login needs `/reload` |
 
 ### Officers: raid and EPGP
 
@@ -82,6 +84,12 @@ one for the winner.
 | `/qg sim end` | Kill 3 test bosses, mark attendance, give a test item, end it |
 | `/qg sim dungeon [minutes]` | Save a finished fake dungeon run (you + 4 fake players) to test the export, points and records |
 | `/qg sim clear` | Remove every test raid and the EP/GP it recorded, and test dungeon runs |
+
+### Officers: modules for the whole guild
+
+| Command | What it does |
+| --- | --- |
+| `/qg modules guild off\|on <module>` | Turn a module off (or back on) for everyone. Shared with online members and with members when they log in; nobody can turn a guild-off module back on for themselves |
 
 ### Guild master only
 

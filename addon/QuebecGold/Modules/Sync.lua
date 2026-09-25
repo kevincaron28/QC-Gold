@@ -199,6 +199,48 @@ ns.getStandingsUpdatedAt = function()
 end
 
 -- ---------------------------------------------------------------------
+-- Guild module switches (/qg modules guild off casino). Officers share
+-- them; everyone keeps the newest one an officer sent.
+-- MODS|<updatedAt>|<by>|<comma-separated keys that are off>
+-- ---------------------------------------------------------------------
+
+local function guildModules()
+  local settings = ns.getSettings and ns.getSettings()
+  return settings and settings.guildModules
+end
+
+local function shareModules(channel, target)
+  local g = guildModules()
+  if not g or not g.updatedAt then return end
+  local off = {}
+  for key, isOff in pairs(g.off or {}) do if isOff then table.insert(off, key) end end
+  table.sort(off)
+  send(string.format("MODS|%d|%s|%s", g.updatedAt, g.by or "?", table.concat(off, ",")), channel, target)
+end
+
+ns.onGuildModulesChanged = function() shareModules("GUILD") end
+
+local function receiveModules(text, sender)
+  if not ns.isOfficerName(sender) then return end
+  local updatedAt, by, list = string.match(text, "^MODS|(%d+)|([^|]*)|(.*)$")
+  updatedAt = tonumber(updatedAt)
+  if not updatedAt or not ns.applyGuildModules then return end
+  local off, names = {}, {}
+  for key in string.gmatch(list or "", "[%a]+") do
+    off[key] = true
+    table.insert(names, ns.moduleName and ns.moduleName(key) or key)
+  end
+  if not ns.applyGuildModules(off, updatedAt, by ~= "" and by or sender) then return end
+  ns.message("Guild module settings from " .. (by ~= "" and by or sender) .. ": " .. (#names > 0 and ("off: " .. table.concat(names, ", ")) or "everything on") .. ". /qg modules for details.")
+  for _, module in ipairs(ns.MODULES or {}) do
+    if ns.moduleEnabled(module.key) and not ns.moduleActive(module.key) then
+      ns.message(module.name .. " was turned back on - /reload to start it.")
+    end
+  end
+  if ns.onModulesChange then pcall(ns.onModulesChange) end
+end
+
+-- ---------------------------------------------------------------------
 -- Events
 -- ---------------------------------------------------------------------
 
@@ -220,6 +262,8 @@ local function onEvent(_, event, ...)
       send("VERSION|" .. myVersion, "GUILD")
       local s = standings()
       send("STANDREQ|" .. ((s and s.updatedAt) or "0"), "GUILD")
+      local g = guildModules()
+      send("MODSREQ|" .. ((g and g.updatedAt) or 0), "GUILD")
       if adopted and ns.isOfficer() then shareStandings() end
     end)
   elseif event == "CHAT_MSG_ADDON" then
@@ -244,6 +288,12 @@ local function onEvent(_, event, ...)
       if ns.isOfficer() and s and s.updatedAt and s.updatedAt > theirs then shareStandings() end
     elseif kind == "STAND" then
       receiveChunk(text, sender)
+    elseif kind == "MODSREQ" then
+      local theirs = tonumber(string.match(text, "^MODSREQ|(%d+)$")) or 0
+      local g = guildModules()
+      if ns.isOfficer() and g and (g.updatedAt or 0) > theirs then shareModules("WHISPER", sender) end
+    elseif kind == "MODS" then
+      receiveModules(text, sender)
     end
   end
 end

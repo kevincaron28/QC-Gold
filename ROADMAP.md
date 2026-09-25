@@ -11,7 +11,29 @@ priority (P0 = do first) · **S/M/L** = rough size
 
 ---
 
-## ⏸ Where we are — resume here (updated 2026-09-24, evening)
+## ⏸ Where we are — resume here (updated 2026-09-25)
+
+- **Everything planned so far is built** except what's blocked or held:
+  backlog P0/P1/P2 (#1–31 minus #12, #17, #18, #20), Dungeon Challenge
+  D1–D10, and addon modules M1–M2 (below). Addon **v1.7.0**, zip in
+  `dist/` (built locally, not released).
+- **Next (user):** restart the bot, install v1.7.0, run
+  `LUNCH_TEST_CHECKLIST.md` (untracked; sections 1–6), send the output of
+  `/qg calendar check` (decides #32), then push, GitHub release v1.7.0,
+  refresh the install page.
+- **Next (build):** M3 CurseForge packaging when the user wants a public
+  listing; #32 calendar sync after the check result.
+- **Blocked / held:** #12 and #18 Warcraft Logs (API credentials, and
+  confirming Forever logs reach WCL); #17 web dashboard (held); #20 guild
+  achievements/graphs (open).
+- **Verification baseline:** 155 bot tests, `tsc`, `eslint`, addon
+  validator (now also a Lua syntax check), and Lua simulations in the
+  session scratchpad: core 18, window/sync/modules 92, casino 28,
+  calendar 9, dungeon 29, sim dungeon + module gating 37.
+- **Live DB migrations applied** through
+  `20260925190000_dungeon_achievements`.
+
+## History — where we were on 2026-09-24 (kept for reference)
 
 - **Blocked-action popup: fixed.** Cause was registering
   `COMBAT_LOG_EVENT_UNFILTERED`, which addons can't do since 12.0.0
@@ -98,7 +120,7 @@ within priority. Update the checkbox the moment an item lands.
 
 **P0 — core gaps (bot-side, testable without the game)**
 
-> **Resume here (2026-09-25, committed):** everything in P0, P1 #13-16,
+> *(Superseded by "Where we are" at the top.)* **Resume here (2026-09-25, committed):** everything in P0, P1 #13-16,
 > #0 test raid, #19 crafting, #21-23, and all quality-of-life items #24-31
 > (autocomplete, friendly times, signup buttons, auto-restart, companion
 > setup, French, backups, welcome with role buttons) are done. 126 bot
@@ -284,6 +306,45 @@ within priority. Update the checkbox the moment an item lands.
 30. [x] **S — Nightly database backup** *(Done 2026-09-25: `src/services/backup.ts`, backups/ gitignored.)* (export key tables to a dated file,
     keep the last 14).
 
+**Addon modules and distribution (requested 2026-09-25)**
+
+Decision: **one addon with module switches, not separate CurseForge
+addons.** Every module runs on Core (saved data, officer checks, names,
+addon messaging, the tools window) and Sync (standings, version check).
+Split addons would each need Core as a dependency, several downloads for
+members, and version skew between parts that talk to each other
+(bidding/casino/dungeon protocols). One install with switches gives guilds
+the same choice. Casino, GP bidding and Dungeons are a single project on
+CurseForge; a guild that doesn't want the casino turns it off for everyone.
+
+M1. [x] **M — Module switches** *(Done 2026-09-25.)* `/qg modules`
+    (list), `/qg modules on|off <module>` (just you), officers
+    `/qg modules guild on|off <module>` (everyone, shared through Sync
+    as `MODS|updatedAt|by|off-list`, newest officer setting wins,
+    non-officer and stale messages ignored, members who log in later ask
+    with `MODSREQ`). Switchable: casino, bidding, dungeon, calendar, sim.
+    Always on: Core (raids, EPGP, loot, gear check) and Sync. Saved
+    settings load only at login, so every module file still loads and
+    stays dormant when off: events, tickers, commands, help lines, window
+    tabs and widgets check `ns.moduleActive`. Off works at once; turning a
+    module back on that was off at login needs `/reload`. Tools tab has a
+    row per module with your switch and (officers) the guild switch.
+M2. [x] **S — Module integration audit** *(Done 2026-09-25.)* Checked
+    every cross-module call (all guarded), event overlap (bidding reads
+    whispers, casino reads party/raid chat, only the casino parses rolls,
+    the dungeon tracker ignores raids), prefixes (one per module, ≤16
+    chars), and load order (UI harness now loads all 11 files in TOC
+    order). Fixed: an unguarded standings call in the window, a dead
+    `ns.simBidders`, sim sub-commands that needed a switched-off module.
+M3. [ ] **M — CurseForge packaging** (when the user wants a public
+    listing): CurseForge project + `## X-Curse-Project-ID` in the TOC,
+    a `.pkgmeta` (or a packaging step) that ships only
+    `addon/QuebecGold` without `validate-addon.mjs`, a license, the
+    description/screenshots page, and a GitHub Action with the BigWigs
+    packager on tags. Consider whether the Standings.lua file written by
+    the companion should move to SavedVariables-free delivery for guilds
+    without the companion (it already falls back to officer sync).
+
 **Dungeon Challenge system (requested 2026-09-25) — build in this order**
 
 Source: a detailed spec the user pasted (ChatGPT). Kept: permanent run
@@ -423,7 +484,7 @@ D10. [x] **S — Test path** *(Done 2026-09-25: /testraid dungeon through the re
 
 ---
 
-## Status snapshot (2026-09-24)
+## Status snapshot (2026-09-24, historical — see "Where we are" at the top)
 
 - Part 1 (correctness audit): **all 12 items fixed and verified.** `tsc`
   clean, 22/22 tests passing, `eslint` clean. Only the manual end-to-end

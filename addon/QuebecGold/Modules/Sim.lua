@@ -135,7 +135,6 @@ clearSimDungeons = function(root)
   return removed
 end
 
-ns.simBidders = function() return SIM_NAMES end
 
 ns.commandHandlers = ns.commandHandlers or {}
 ns.commandHandlers["sim"] = function(args)
@@ -144,9 +143,12 @@ ns.commandHandlers["sim"] = function(args)
   if action == "start" then simStart()
   elseif action == "end" then simEnd()
   elseif action == "clear" then simClear()
-  elseif action == "dungeon" then simDungeon(args[2])
+  elseif action == "dungeon" then
+    if ns.moduleActive and not ns.moduleActive("dungeon") then ns.message("The Dungeons module is off (/qg modules)."); return end
+    simDungeon(args[2])
   elseif action == "bids" then
-    if ns.simulateBids then ns.simulateBids() else ns.message("GP bidding is not loaded.") end
+    if ns.moduleActive and not ns.moduleActive("bidding") then ns.message("GP bidding is off (/qg modules).")
+    elseif ns.simulateBids then ns.simulateBids() else ns.message("GP bidding is not loaded.") end
   else
     ns.message("/qg sim start | end | bids (fake bids on open bidding) | dungeon [minutes] | clear")
   end

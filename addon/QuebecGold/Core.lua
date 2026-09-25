@@ -682,12 +682,14 @@ local function showHelp()
     message("Officer: /qg loot <name> <item> [cost] | export | attune <player> <key> [clear] | officer list|add|remove|rank")
   end
   for _, line in pairs(ns.commandHelp or {}) do
-    if type(line) == "table" then
-      if officer or not line.officer then message(line.text) end
-    else
-      message(line)
+    local text = type(line) == "table" and line.text or line
+    -- Lines for a module that is off are left out ("/qg casino ..." -> casino).
+    local key = ns.commandModuleOf and ns.commandModuleOf(string.match(text or "", "^/qg (%a+)"))
+    if not key or ns.moduleActive(key) then
+      if type(line) ~= "table" or officer or not line.officer then message(text) end
     end
   end
+  message("/qg modules - turn optional parts (casino, bidding, dungeons...) on or off")
 end
 
 -- Extension point for modules loaded after Core.lua (see Modules/Casino.lua):
@@ -695,6 +697,127 @@ end
 -- table.insert(ns.commandHelp, "...") adds a line to /qg help.
 ns.commandHandlers = ns.commandHandlers or {}
 ns.commandHelp = ns.commandHelp or {}
+
+-- Optional modules. Each can be turned off for yourself (/qg modules off
+-- casino) or for the whole guild by an officer (/qg modules guild off
+-- casino; shared through Modules/Sync.lua). Core (raids, EPGP, loot, gear
+-- check) and Sync (standings, version check) always run: everything else
+-- is built on them.
+--
+-- Saved settings only exist from PLAYER_LOGIN on, so modules are loaded
+-- either way and stay dormant when off: their events, commands, help lines
+-- and window tabs check ns.moduleActive(). Turning one off works at once;
+-- turning one back on needs a /reload (it has to set itself up at login).
+ns.MODULES = {
+  { key = "casino", name = "Casino", desc = "officer-hosted gold games", commands = { "casino" } },
+  { key = "bidding", name = "GP bidding", desc = "in-game GP bids on loot", commands = { "bid" } },
+  { key = "dungeon", name = "Dungeons", desc = "dungeon run tracking and points", commands = { "dungeon" } },
+  { key = "calendar", name = "Calendar", desc = "guild calendar check", commands = { "calendar" } },
+  { key = "sim", name = "Test tools", desc = "fake raid and dungeon runs for officers", commands = { "sim" } }
+}
+local MODULE_ALIASES = { bid = "bidding", bids = "bidding", gp = "bidding", dungeons = "dungeon", test = "sim", tests = "sim" }
+local moduleByKey, commandModule, activeAtLogin = {}, {}, {}
+for _, module in ipairs(ns.MODULES) do
+  moduleByKey[module.key] = module
+  for _, name in ipairs(module.commands) do commandModule[name] = module.key end
+end
+
+local function moduleSettings()
+  return QuebecGoldDB and QuebecGoldDB.settings
+end
+
+-- Wanted by this player and allowed by the guild.
+function ns.moduleEnabled(key)
+  if not moduleByKey[key] then return true end
+  local s = moduleSettings()
+  if not s then return true end
+  if s.modules and s.modules[key] == false then return false end
+  if s.guildModules and s.guildModules.off and s.guildModules.off[key] then return false end
+  return true
+end
+
+-- Enabled now AND was enabled at login (so it has set itself up).
+function ns.moduleActive(key)
+  if activeAtLogin[key] == nil then return ns.moduleEnabled(key) end
+  return activeAtLogin[key] and ns.moduleEnabled(key)
+end
+
+function ns.moduleName(key)
+  return moduleByKey[key] and moduleByKey[key].name or key
+end
+
+local function snapshotModules()
+  for _, module in ipairs(ns.MODULES) do activeAtLogin[module.key] = ns.moduleEnabled(module.key) end
+end
+
+local function moduleStateText(key)
+  local s = moduleSettings() or {}
+  local guildOff = s.guildModules and s.guildModules.off and s.guildModules.off[key]
+  if guildOff then return "off for the guild" .. (s.guildModules.by and (" (" .. s.guildModules.by .. ")") or "") end
+  if s.modules and s.modules[key] == false then return "off (your choice)" end
+  if not activeAtLogin[key] then return "on after /reload" end
+  return "on"
+end
+ns.moduleStateText = moduleStateText
+
+-- Guild-wide switches, shared by Sync.lua. Returns false for a stale update.
+function ns.applyGuildModules(off, updatedAt, by)
+  local s = moduleSettings()
+  if not s then return false end
+  local current = s.guildModules
+  if current and (current.updatedAt or 0) >= (updatedAt or 0) then return false end
+  s.guildModules = { off = off or {}, updatedAt = updatedAt, by = by }
+  return true
+end
+
+local function modulesCommand(args)
+  local s = moduleSettings()
+  if not s then return end
+  local action = string.lower(args[2] or "list")
+  local scope = "self"
+  if action == "guild" then scope = "guild"; table.remove(args, 2); action = string.lower(args[2] or "list") end
+  if action == "list" then
+    message("Modules (Core raid/EPGP/loot/gear and standings always run):")
+    for _, module in ipairs(ns.MODULES) do
+      message(string.format("  %s (%s) - %s: %s", module.name, module.key, module.desc, moduleStateText(module.key)))
+    end
+    message("/qg modules on|off <module> - just for you. Officers: /qg modules guild on|off <module> - for everyone.")
+    return
+  end
+  if action ~= "on" and action ~= "off" then message("Usage: /qg modules [list] | on|off <module> | guild on|off <module>"); return end
+  local wanted = string.lower(args[3] or "")
+  local key = MODULE_ALIASES[wanted] or wanted
+  if not moduleByKey[key] then
+    local keys = {}
+    for _, module in ipairs(ns.MODULES) do table.insert(keys, module.key) end
+    message("Unknown module '" .. wanted .. "'. Modules: " .. table.concat(keys, ", "))
+    return
+  end
+  local name = moduleByKey[key].name
+  if scope == "guild" then
+    if not requireOfficer() then return end
+    local off = {}
+    for k, v in pairs(s.guildModules and s.guildModules.off or {}) do off[k] = v end
+    off[key] = action == "off" or nil
+    ns.applyGuildModules(off, (GetServerTime and GetServerTime()) or time(), playerName())
+    if ns.onGuildModulesChanged then pcall(ns.onGuildModulesChanged) end
+    message(name .. " is now " .. action .. " for the whole guild (shared with online members).")
+  else
+    s.modules = s.modules or {}
+    if action == "on" then s.modules[key] = nil else s.modules[key] = false end
+    if action == "off" then
+      message(name .. " is off for you. /qg modules on " .. key .. " to turn it back on.")
+    elseif s.guildModules and s.guildModules.off and s.guildModules.off[key] then
+      message(name .. " is turned off for the whole guild by an officer, so it stays off.")
+    end
+  end
+  if action == "on" and ns.moduleEnabled(key) and not activeAtLogin[key] then
+    message(name .. " is on. Type /reload to start it.")
+  end
+  if ns.onModulesChange then pcall(ns.onModulesChange) end
+end
+
+ns.commandModuleOf = function(name) return name and commandModule[string.lower(name)] end
 
 local function command(text)
   if not db then message("Still loading, try again in a moment."); return end
@@ -745,6 +868,10 @@ local function command(text)
   elseif action == "export" then if requireOfficer() then exportData() end
   elseif action == "diag" then showDiagnostics()
   elseif action == "officer" then officerCommand(args)
+  elseif action == "modules" or action == "module" then modulesCommand(args)
+  elseif commandModule[action] and not ns.moduleActive(commandModule[action]) then
+    local key = commandModule[action]
+    message(ns.moduleName(key) .. " is " .. moduleStateText(key) .. ". /qg modules to see or change it.")
   elseif ns.commandHandlers[action] then
     -- args[1] is the action itself; hand the module the remaining tokens.
     table.remove(args, 1)
@@ -799,6 +926,7 @@ end
 local function onEvent(_, event, ...)
   if event == "PLAYER_LOGIN" then
     ensureDb()
+    snapshotModules()
     registerPrefix()
     message("Loaded. /qg help for commands" .. (activeRaid and (" - raid '" .. activeRaid.title .. "' is still active.") or "."))
     for _, pending in ipairs(pendingDiagnostics) do

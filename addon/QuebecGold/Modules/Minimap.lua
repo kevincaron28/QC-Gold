@@ -62,6 +62,18 @@ local function officerOnly(widget)
   return widget
 end
 
+-- Widgets that belong to an optional module (/qg modules): shown only while
+-- it is on (and, with officer = true, only to officers).
+local function forModule(key, widget, officer)
+  ui.moduleWidgets = ui.moduleWidgets or {}
+  table.insert(ui.moduleWidgets, { key = key, widget = widget, officer = officer })
+  return widget
+end
+
+local function moduleOn(key)
+  return not ns.moduleActive or ns.moduleActive(key)
+end
+
 local function newEdit(parent, width, numeric)
   local e = CreateFrame("EditBox", nil, parent, "InputBoxTemplate")
   e:SetWidth(width)
@@ -316,17 +328,17 @@ local function buildLootPage(page)
     at(newButton(page, tostring(preset), 44, function() ui.minGpBox:SetText(tostring(preset)) end), page, x, -48)
     x = x + 48
   end
-  at(newLabel(page, "Time"), page, 0, -84)
+  forModule("bidding", at(newLabel(page, "Time"), page, 0, -84))
   ui.bidSeconds = 30
   ui.secondsButtons = {}
   x = 60
   for _, seconds in ipairs({ 20, 30, 60 }) do
-    local b = at(newButton(page, seconds .. "s", 50, function()
+    local b = forModule("bidding", at(newButton(page, seconds .. "s", 50, function()
       ui.bidSeconds = seconds
       for s, button in pairs(ui.secondsButtons) do
         if s == seconds then button:LockHighlight() else button:UnlockHighlight() end
       end
-    end), page, x, -80)
+    end), page, x, -80))
     ui.secondsButtons[seconds] = b
     x = x + 54
   end
@@ -343,19 +355,19 @@ local function buildLootPage(page)
     return n
   end
 
-  at(newButton(page, "Open bidding", 110, function()
+  forModule("bidding", at(newButton(page, "Open bidding", 110, function()
     local link, n = item(), minGp()
     if link and n then run("bid start " .. n .. " " .. link .. " " .. ui.bidSeconds) end
-  end), page, 0, -114)
-  at(newButton(page, "Close now", 90, function() run("bid close") end), page, 114, -114)
-  at(newButton(page, "Award winner", 110, function()
+  end), page, 0, -114))
+  forModule("bidding", at(newButton(page, "Close now", 90, function() run("bid close") end), page, 114, -114))
+  forModule("bidding", at(newButton(page, "Award winner", 110, function()
     run("bid award")
     ui.itemBox:SetText("")
-  end), page, 208, -114)
-  local cancel = at(newButton(page, "Cancel", 80), page, 322, -114)
+  end), page, 208, -114))
+  local cancel = forModule("bidding", at(newButton(page, "Cancel", 80), page, 322, -114))
   confirmClick(cancel, "Cancel", function() run("bid cancel") end)
 
-  ui.bidStatus = at(newLabel(page, "", "GameFontHighlightSmall"), page, 0, -146)
+  ui.bidStatus = forModule("bidding", at(newLabel(page, "", "GameFontHighlightSmall"), page, 0, -146))
   ui.bidStatus:SetWidth(PANEL_WIDTH - 44)
 
   at(newLabel(page, "No bidding: give it to the selected Player for Min GP", "GameFontNormalSmall"), page, 0, -262)
@@ -368,7 +380,7 @@ local function buildLootPage(page)
       ui.itemBox:SetText("")
     end
   end), page, 0, -278)
-  at(newLabel(page, "Pugs without the addon bid by whispering you a number.", "GameFontDisableSmall"), page, 116, -283)
+  forModule("bidding", at(newLabel(page, "Pugs without the addon bid by whispering you a number.", "GameFontDisableSmall"), page, 116, -283))
 end
 
 local function buildCasinoPage(page)
@@ -494,15 +506,36 @@ local function buildToolsPage(page)
   officerOnly(at(newLabel(page, "Officer", "GameFontNormalSmall"), page, 0, -100))
   officerOnly(at(newButton(page, "Export data", 136, function() run("export") end), page, 0, -116))
   officerOnly(at(newButton(page, "Officer setup", 136, function() run("officer list") end), page, 142, -116))
-  officerOnly(at(newButton(page, "Casino help", 136, function() run("casino") end), page, 284, -116))
+  forModule("casino", at(newButton(page, "Casino help", 136, function() run("casino") end), page, 284, -116), true)
+  ui.exportHelp = officerOnly(at(newLabel(page,
+    "Export: press it, then /reload so the game saves; the companion uploads it to Discord.", "GameFontHighlightSmall"), page, 0, -142))
+  ui.exportHelp:SetWidth(PANEL_WIDTH - 44)
+
+  -- Optional modules: your own switch, and (officers) the guild-wide one.
+  at(newLabel(page, L("Modules"), "GameFontNormal"), page, 0, -164)
+  ui.moduleRows = {}
+  for i, module in ipairs(ns.MODULES or {}) do
+    local y = -182 - (i - 1) * 22
+    local row = { key = module.key }
+    row.label = at(newLabel(page, "", "GameFontHighlightSmall"), page, 0, y - 4)
+    row.label:SetWidth(330)
+    row.mine = at(newButton(page, "", 86, function()
+      local s = ns.getSettings and ns.getSettings()
+      local mineOff = s and s.modules and s.modules[module.key] == false
+      run("modules " .. (mineOff and "on " or "off ") .. module.key)
+    end), page, 334, y)
+    row.guild = officerOnly(at(newButton(page, "", 110, function()
+      local s = ns.getSettings and ns.getSettings()
+      local guildOff = s and s.guildModules and s.guildModules.off and s.guildModules.off[module.key]
+      run("modules guild " .. (guildOff and "on " or "off ") .. module.key)
+    end), page, 424, y))
+    ui.moduleRows[i] = row
+  end
 
   local help = at(newLabel(page,
-    L("Minimap button hidden? Type /qg minimap show.\n\nSomething wrong? Press Diagnostics and send a screenshot to an officer."),
-    "GameFontHighlightSmall"), page, 0, -156)
+    L("Minimap button hidden? /qg minimap show. Problem? Press Diagnostics and send a screenshot to an officer."),
+    "GameFontHighlightSmall"), page, 0, -300)
   help:SetWidth(PANEL_WIDTH - 44)
-  ui.exportHelp = officerOnly(at(newLabel(page,
-    "Export: press it, then /reload so the game saves; the companion uploads it to Discord.", "GameFontHighlightSmall"), page, 0, -210))
-  ui.exportHelp:SetWidth(PANEL_WIDTH - 44)
 end
 
 -- Dungeon challenge: the run being recorded, recent runs, and the
@@ -531,10 +564,10 @@ local TAB_DEFS = {
   { name = "Raid", officer = true, build = buildRaidPage },
   { name = "EPGP", officer = true, build = buildEpgpPage },
   { name = "Loot", officer = true, build = buildLootPage },
-  { name = "Casino", officer = true, build = buildCasinoPage },
+  { name = "Casino", officer = true, module = "casino", build = buildCasinoPage },
   { name = "Me", build = buildMePage },
   { name = "Standings", build = buildStandingsPage },
-  { name = "Dungeons", build = buildDungeonPage },
+  { name = "Dungeons", module = "dungeon", build = buildDungeonPage },
   { name = "Tools", build = buildToolsPage }
 }
 
@@ -614,7 +647,8 @@ local function layoutTabs(officer)
   local x = 18
   local firstVisible
   for i, tab in ipairs(ui.tabs) do
-    local visible = officer or not tab.officer
+    local visible = (officer or not tab.officer) and (not tab.module or moduleOn(tab.module))
+    tab.visible = visible
     if visible then
       at(tab.button, panel, x, -40)
       tab.button:Show()
@@ -626,7 +660,30 @@ local function layoutTabs(officer)
     end
   end
   local current = ui.tabs[ui.currentTab or 0]
-  if not current or (current.officer and not officer) then selectTab(firstVisible) end
+  if not current or not current.visible then selectTab(firstVisible) end
+end
+
+local function moduleSignature()
+  local parts = {}
+  for _, module in ipairs(ns.MODULES or {}) do table.insert(parts, moduleOn(module.key) and "1" or "0") end
+  return table.concat(parts)
+end
+
+-- Tools tab rows: "Casino - on", your switch, and the guild switch.
+local function refreshModuleRows()
+  local s = ns.getSettings and ns.getSettings() or {}
+  for _, row in ipairs(ui.moduleRows or {}) do
+    local guildOff = s.guildModules and s.guildModules.off and s.guildModules.off[row.key]
+    local mineOff = s.modules and s.modules[row.key] == false
+    local state
+    if guildOff then state = L("off for the whole guild")
+    elseif mineOff then state = L("off (your choice)")
+    elseif not moduleOn(row.key) then state = L("on after /reload")
+    else state = L("on") end
+    row.label:SetText(L(ns.moduleName(row.key)) .. " - " .. state)
+    row.mine:SetText(mineOff and L("Turn on") or L("Turn off"))
+    row.guild:SetText(guildOff and "Guild: on" or "Guild: off")
+  end
 end
 
 refresh = function()
@@ -634,13 +691,19 @@ refresh = function()
   local db = ns.getDb and ns.getDb()
   if not db then return end
   local officer = ns.isOfficer()
-  if ui.lastOfficer ~= officer then
+  local modules = moduleSignature()
+  if ui.lastOfficer ~= officer or ui.lastModules ~= modules then
     ui.lastOfficer = officer
+    ui.lastModules = modules
     for _, widget in ipairs(ui.officerOnly) do
       if officer then widget:Show() else widget:Hide() end
     end
+    for _, entry in ipairs(ui.moduleWidgets or {}) do
+      if moduleOn(entry.key) and (officer or not entry.officer) then entry.widget:Show() else entry.widget:Hide() end
+    end
     layoutTabs(officer)
   end
+  refreshModuleRows()
 
   local me = ns.playerName()
   local name = selectedPlayer()
@@ -664,10 +727,10 @@ refresh = function()
       ui.epgpInfo:SetText(table.concat(lines, "\n"))
     end
 
-    ui.casinoStatus:SetText(ns.casino and ns.casino.statusText and ns.casino.statusText() or "")
-    ui.bidStatus:SetText(ns.bidding and ns.bidding.statusText and ns.bidding.statusText() or "")
+    ui.casinoStatus:SetText(moduleOn("casino") and ns.casino and ns.casino.statusText and ns.casino.statusText() or "")
+    ui.bidStatus:SetText(moduleOn("bidding") and ns.bidding and ns.bidding.statusText and ns.bidding.statusText() or "")
     -- Keep the bid countdown moving while bidding is open.
-    local auction = ns.bidding and ns.bidding.current
+    local auction = moduleOn("bidding") and ns.bidding and ns.bidding.current
     if auction and auction.open and not ui.bidTickPending and C_Timer then
       ui.bidTickPending = true
       C_Timer.After(1, function() ui.bidTickPending = false; refresh() end)
@@ -705,7 +768,7 @@ refresh = function()
     ui.standingsPlayer:SetText(L("No standings yet."))
     ui.standingsList:SetText(L("They come from the Discord bot through an officer's addon. Check back after the next raid."))
   else
-    local row = name and ns.getStanding(name)
+    local row = name and ns.getStanding and ns.getStanding(name)
     ui.standingsPlayer:SetText(row and string.format("%s:  EP %d   GP %d   PR %.2f", name, row.ep, row.gp, row.pr)
       or string.format(L("%s: no standings (character not linked on Discord?)"), name or "?"))
     local lines = { string.format(L("Top by PR (from Discord, %s):"), updatedAt) }
@@ -775,7 +838,7 @@ local function buildPanel()
     def.build(page)
     page:Hide()
     local tabButton = newButton(panel, L(def.name), 72, function() selectTab(i) end)
-    ui.tabs[i] = { name = def.name, officer = def.officer, page = page, button = tabButton }
+    ui.tabs[i] = { name = def.name, officer = def.officer, module = def.module, page = page, button = tabButton }
   end
 
   -- Latest addon message, so results show here instead of only in chat.
@@ -789,6 +852,7 @@ local function buildPanel()
   ns.onCasinoChange = function() refresh() end
   ns.onBiddingChange = function() refresh() end
   ns.onDungeonChange = function() refresh() end
+  ns.onModulesChange = function() refresh() end
 
   -- Targeting a player while the window is open fills the Player field.
   panel:RegisterEvent("PLAYER_TARGET_CHANGED")
@@ -798,7 +862,7 @@ local function buildPanel()
     end
   end)
   panel:SetScript("OnShow", function()
-    ui.lastOfficer = nil -- re-check rank every time the window opens
+    ui.lastOfficer = nil -- re-check rank and modules every time the window opens
     if UnitExists("target") and UnitIsPlayer("target") then
       setPlayer((UnitName("target")))
     elseif ui.playerBox:GetText() == "" then

@@ -105,6 +105,8 @@ Dungeon Challenge (addon v1.7.0, roadmap D1–D10):
 - Permanent achievements (First Blood, No One Dies, Speed Demon, Record Breaker, Guild Squad, Dungeon Master, Season Champion), revoked with the run that earned them if it is invalidated
 - In game: a Dungeons tab (live run, recent runs and their sync state, season top 10 from Discord); `/testraid dungeon` and `/qg sim dungeon` for testing, removed by `/testraid cleanup`
 
+Addon modules (roadmap M1–M3): the addon stays **one** download. Casino, GP bidding, Dungeons, Calendar and the test tools can be switched off per player (`/qg modules off casino`) or for the whole guild by an officer (`/qg modules guild off casino`, shared in game); raids, EPGP, loot, the gear check and standings always run. See `addon/QuebecGold/README.md`. Splitting it into separate CurseForge addons was considered and rejected: every part depends on the same core and talks to the others, so separate downloads would add version mismatches without giving guilds anything the switches don't.
+
 Deliberately not built: message edit/delete logging (needs the privileged Message Content intent) and a starboard (needs message-reaction intents). Reaction roles were implemented as buttons instead, which need no extra intents. `/mod` needs the bot to have Kick Members, Ban Members, and Moderate Members (the current Administrator invite already covers this).
 
 ## Requirements
@@ -286,6 +288,8 @@ internet and does not require port forwarding. Keep the PC awake while the bot
 is needed. The Neon database remains online even when the bot is stopped.
 
 ## Releasing the addon to guild members
+
+(A public CurseForge listing is planned as roadmap item M3: one project, packaged from `addon/QuebecGold/` without `validate-addon.mjs`. Until then, releases go through GitHub as below.)
 
 Guild members install the WoW addon from a zip attached to a
 [GitHub release](https://github.com/kevincaron28/QC-Gold/releases), linked

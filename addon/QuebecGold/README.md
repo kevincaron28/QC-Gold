@@ -16,13 +16,41 @@ World of Warcraft\Interface\AddOns\QuebecGold\
 Enable **Load out of date AddOns** if the client requests it. The addon does not
 require the Quebec Gold Discord bot or any external library.
 
+## Modules: use only what you want
+
+It is one addon (one download, one saved file). The optional parts can be
+switched off:
+
+| Module | What it does |
+| --- | --- |
+| `casino` | Officer-hosted /roll games for gold |
+| `bidding` | In-game GP bidding on loot |
+| `dungeon` | Dungeon run tracking for the Dungeon Challenge |
+| `calendar` | Guild calendar check |
+| `sim` | Test raid / dungeon run for officers |
+
+Raids, attendance, EPGP, loot, the gear check, standings and the version
+check are the core and always run.
+
+- `/qg modules` lists them and whether each is on.
+- `/qg modules off casino` turns one off just for you;
+  `/qg modules on casino` turns it back on.
+- Officers: `/qg modules guild off casino` turns it off for the whole guild.
+  It's shared with everyone online and with members when they next log in;
+  a member can't turn a guild-off module back on.
+- The **Tools** tab of the window has the same switches.
+
+Turning something off works immediately (its tab, buttons, commands and
+chat listening go away). Turning something back on that was off when you
+logged in needs a `/reload`.
+
 ## Minimap button and tools panel
 
 A gold coin button sits on the minimap edge. Left-click opens the tools
 window, right-click checks your gear, drag moves it. Each rank sees only
-what it can use: members get Me, Standings, and Tools; officers also get
-Raid, EPGP, Casino, and the officer tools (rank is re-checked each time the
-window opens). A shared **Player** box sits at the top: targeting a
+what it can use: members get Me, Standings, Dungeons, and Tools; officers
+also get Raid, EPGP, Loot, Casino, and the officer tools (rank is re-checked
+each time the window opens). Tabs for switched-off modules are hidden. A shared **Player** box sits at the top: targeting a
 player fills it in, and **Me** / **Group...** (clickable raid/party list, or
 online guildmates when solo) fill it on demand. Amounts, wagers, and
 attunements have preset buttons; shift-click an item into the EPGP tab's
@@ -128,10 +156,9 @@ Broadcasts use the `GUILD` channel (not `RAID`) so they reach everyone online,
 not just your current raid group. `/qg inspect` run manually broadcasts the
 same way.
 
-Exports are Lua data, not strict JSON. The `source`, `exportedAt`, `roster`,
-`raids`, `attendance`, `bosses`, `epgp`, `readiness`, `attunements`,
-`peerRoster`, `loot`, and `events` fields are intended for careful officer
-review or conversion by a companion tool. The companion API accepts only a
-separate normalized JSON contract with `source`, `exportedAt`, and non-zero
-`transactions`; it does not automatically infer transactions from these
-SavedVariables.
+Exports are the SavedVariables file itself. The companion
+(`companion/lua-export.mjs` in the bot repository) reads it and sends the
+bot a normalized JSON export: EPGP ledger entries (with their permanent ids),
+readiness and peer digests, attunements, finished raids with attendance and
+presence, loot, and dungeon runs. An officer reviews and applies it with
+`/import-apply`; entries already imported are skipped.

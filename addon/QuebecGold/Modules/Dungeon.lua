@@ -564,6 +564,7 @@ for _, event in ipairs({ "PLAYER_LOGIN", "PLAYER_ENTERING_WORLD", "ZONE_CHANGED_
   compat.registerEvent(frame, event)
 end
 frame:SetScript("OnEvent", function(...)
+  if ns.moduleActive and not ns.moduleActive("dungeon") then return end -- /qg modules
   local ok, err = pcall(onEvent, ...)
   if not ok and ns.logDiagnostic then ns.logDiagnostic("LUA_ERROR", "QuebecGold dungeon: " .. tostring(err)) end
 end)
@@ -571,6 +572,7 @@ end)
 -- Presence time and the abandon check, every 30 seconds while a run exists.
 if C_Timer and C_Timer.NewTicker then
   C_Timer.NewTicker(TICK_SECONDS, function()
+    if ns.moduleActive and not ns.moduleActive("dungeon") then return end
     local d = db()
     if d and d.current then pcall(evaluate) end
   end)
