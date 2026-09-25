@@ -317,6 +317,7 @@ A **raid core** is a named roster (e.g. "Tuesday MC core"); a guild can have sev
 | --- | --- |
 | `/core create <name> [description]` | Create a core (Raid Leaders) |
 | `/core add <core> <player> [role]` / `/core remove <core> <player>` | Manage its players (Raid Leaders); role Tank / Healer / DPS |
+| `/core rules <core> [attendance] [late] [boss] [clear] [reset]` | Give the core its own EP values for its raids (Raid Leaders); anything left empty uses the guild default |
 | `/core show <core>` / `/core list` | See a roster / all cores (everyone) |
 | `/core post [core]` | Refresh the roster message(s) in the roster channel |
 | `/core delete <core>` | Delete a core; raids made for it keep their signups |

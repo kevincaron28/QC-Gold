@@ -26,6 +26,13 @@ export const coreCommand = new SlashCommandBuilder()
   .addSubcommand((sub) => sub.setName("remove").setDescription("Remove a player from a core (Raid Leaders).")
     .addStringOption(coreOption)
     .addUserOption((o) => o.setName("player").setDescription("Discord member").setRequired(true)))
+  .addSubcommand((sub) => sub.setName("rules").setDescription("Set this core's own EP rules for its raids (Raid Leaders). Empty options keep the guild default.")
+    .addStringOption(coreOption)
+    .addIntegerOption((o) => o.setName("attendance").setDescription("EP for attending").setMinValue(0))
+    .addIntegerOption((o) => o.setName("late").setDescription("EP for arriving late").setMinValue(0))
+    .addIntegerOption((o) => o.setName("boss").setDescription("EP per boss killed").setMinValue(0))
+    .addIntegerOption((o) => o.setName("clear").setDescription("Bonus EP for a full clear").setMinValue(0))
+    .addBooleanOption((o) => o.setName("reset").setDescription("Go back to the guild defaults for everything")))
   .addSubcommand((sub) => sub.setName("show").setDescription("Show one core's roster.")
     .addStringOption(coreOption))
   .addSubcommand((sub) => sub.setName("list").setDescription("All raid cores and how many players each has."))
@@ -45,7 +52,7 @@ export async function executeCore(interaction: ChatInputCommandInteraction): Pro
   if (!context) return;
   const guildId = context.guildId;
   const subcommand = interaction.options.getSubcommand();
-  if (["create", "add", "remove", "post", "delete"].includes(subcommand)) requireRaidLeader(interaction);
+  if (["create", "add", "remove", "post", "delete", "rules"].includes(subcommand)) requireRaidLeader(interaction);
 
   if (subcommand === "create") {
     const core = await coreService.create(guildId, interaction.options.getString("name", true), interaction.options.getString("description"));
@@ -72,11 +79,32 @@ export async function executeCore(interaction: ChatInputCommandInteraction): Pro
     return;
   }
 
+  if (subcommand === "rules") {
+    const core = await coreService.byIdOrName(guildId, interaction.options.getString("core", true));
+    const reset = interaction.options.getBoolean("reset") ?? false;
+    const pick = (name: string) => interaction.options.getInteger(name);
+    const data = reset
+      ? { attendanceEp: null, lateEp: null, bossEp: null, completionEp: null }
+      : {
+        ...(pick("attendance") !== null ? { attendanceEp: pick("attendance") } : {}),
+        ...(pick("late") !== null ? { lateEp: pick("late") } : {}),
+        ...(pick("boss") !== null ? { bossEp: pick("boss") } : {}),
+        ...(pick("clear") !== null ? { completionEp: pick("clear") } : {})
+      };
+    const updated = Object.keys(data).length ? await prisma.raidCore.update({ where: { id: core.id }, data }) : core;
+    const show = (value: number | null) => (value === null ? "guild default" : `${value} EP`);
+    await interaction.reply({
+      content: `**${core.name}** EP rules: attendance ${show(updated.attendanceEp)}, late ${show(updated.lateEp)}, per boss ${show(updated.bossEp)}, full clear ${show(updated.completionEp)}.`,
+      ephemeral: true
+    });
+    return;
+  }
+
   if (subcommand === "show") {
     const core = await coreService.byIdOrName(guildId, interaction.options.getString("core", true));
     const byRole = (role: RaidRole) => core.members.filter((entry) => entry.role === role).map((entry) => entry.member.displayName).join(", ") || "—";
     await interaction.reply({
-      content: `**${core.name}**${core.description ? ` — ${core.description}` : ""}\n🛡️ Tanks: ${byRole("TANK")}\n💚 Healers: ${byRole("HEALER")}\n⚔️ DPS: ${byRole("DPS")}`,
+      content: `**${core.name}**${core.description ? ` — ${core.description}` : ""}\n🎯 EP rules: attendance ${core.attendanceEp ?? "default"}, late ${core.lateEp ?? "default"}, boss ${core.bossEp ?? "default"}, clear ${core.completionEp ?? "default"}\n🛡️ Tanks: ${byRole("TANK")}\n💚 Healers: ${byRole("HEALER")}\n⚔️ DPS: ${byRole("DPS")}`,
       ephemeral: true
     });
     return;

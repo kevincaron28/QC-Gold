@@ -901,7 +901,7 @@ everything below is an idea to build ourselves, never code to copy.
    other addons can read standings and readiness without touching saved data.
 
 **From GuildOS** (`GO`)
-- **GO1. [ ] M: per-core rules.** Its Core Manager gives each raid core its own
+- **GO1. [~] M: per-core rules** *(EP values per core built 2026-09-27 as `/core rules`; per-core point pools, decay and loot rules still open)*. Its Core Manager gives each raid core its own
   loot rules, attendance penalty weights and point pool. Our cores (#43) only
   give signup priority. Add per-core EPGP pool/decay, attendance rules and
   class-default roles (tank/healer/melee/ranged).

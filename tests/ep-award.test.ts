@@ -66,3 +66,21 @@ describe("attendance rate with bench credit", () => {
     expect(attendanceRate(["PRESENT", "BENCHED", "LATE", "ABSENT"], 4)).toBe(0.625);
   });
 });
+
+describe("per-core EP rules", () => {
+  it("uses the core's own values where set and the guild defaults elsewhere", async () => {
+    const { db } = database();
+    (db.raid.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "r1", title: "Onyxia", bosses: [{ status: "KILLED" }],
+      core: { attendanceEp: 20, lateEp: null, bossEp: 0, completionEp: null },
+      attendance: [
+        { memberId: "m1", status: "PRESENT", member: { displayName: "Kev" } },
+        { memberId: "m2", status: "LATE", member: { displayName: "Bob" } }
+      ]
+    });
+    const proposal = await computeRaidEpProposal(db as never, "g1", "r1");
+    // Present: core 20 + 1 boss x core 0 + full clear (guild default 4) = 24. Late: guild default 5 + 0 + 4 = 9.
+    expect(proposal.rows.map((row) => [row.name, row.ep])).toEqual([["Kev", 24], ["Bob", 9]]);
+    expect(proposal.perBoss).toBe(0);
+  });
+});

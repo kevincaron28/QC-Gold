@@ -857,6 +857,11 @@ model RaidCore {
   name            String
   description     String?
   rosterMessageId String?
+  // Per-core EP rules; empty means the guild's default from /config.
+  attendanceEp    Int?
+  lateEp          Int?
+  bossEp          Int?
+  completionEp    Int?
   createdAt       DateTime         @default(now())
   guild           Guild            @relation(fields: [guildId], references: [id], onDelete: Cascade)
   members         RaidCoreMember[]

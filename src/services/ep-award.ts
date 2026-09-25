@@ -28,16 +28,18 @@ export const raidEpRef = (raidId: string, memberId: string) => `raid-ep:${raidId
 export async function computeRaidEpProposal(database: Db, guildId: string, raidId: string): Promise<EpProposal> {
   const raid = await database.raid.findFirst({
     where: { id: raidId, guildId },
-    include: { bosses: true, attendance: { include: { member: true } } }
+    include: { bosses: true, attendance: { include: { member: true } }, core: true }
   });
   if (!raid) throw new Error("Raid not found in this guild.");
   const settings = await database.guildSettings.findUnique({ where: { guildId } });
-  const presentEp = settings?.attendanceDkp ?? 10;
-  const lateEp = settings?.lateAttendanceDkp ?? 5;
-  const perBoss = settings?.bossKillDkp ?? 5;
+  // A raid made for a core uses that core's EP rules where it has set them.
+  const core = raid.core;
+  const presentEp = core?.attendanceEp ?? settings?.attendanceDkp ?? 10;
+  const lateEp = core?.lateEp ?? settings?.lateAttendanceDkp ?? 5;
+  const perBoss = core?.bossEp ?? settings?.bossKillDkp ?? 5;
   const bossesKilled = raid.bosses.filter((boss) => boss.status === "KILLED").length;
   const fullClear = raid.bosses.length > 0 && bossesKilled === raid.bosses.length;
-  const completionBonus = fullClear ? settings?.epCompletionBonus ?? 0 : 0;
+  const completionBonus = fullClear ? core?.completionEp ?? settings?.epCompletionBonus ?? 0 : 0;
 
   const rows: EpProposalRow[] = raid.attendance
     .filter((row) => row.status === "PRESENT" || row.status === "LATE" || row.status === "BENCHED")
