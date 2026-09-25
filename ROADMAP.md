@@ -836,6 +836,140 @@ auto-invite phrase, ban list, purge tools; Retail/Classic/Forever).
 5. Anything using the combat log (interrupt tracking, soulstones) is blocked
    by the platform since 12.0.0; don't plan around it.
 
+### Code-level review of the addons that have source (2026-09-26)
+
+Read the actual code of GuildOS (`danielcosta42/guildos`, about 60 Lua modules),
+Guild Paragon (`Earthenmist/Guild-Paragon`) and iRC: Guild Connect
+(`Crasling/iRCGuildConnect`). **Not reachable:** the GitHub URLs for Profession
+Master (`Kurki/ProfessionMaster`) and LibGuildRoster (`Pimptasty/GuildRoster`)
+return 404 (private, renamed or removed), and vGambler, iddqd, GuildKit and
+Raidify's addon publish no source; those were judged from their pages only
+(see the earlier review). Licences are "none stated" or all rights reserved, so
+everything below is an idea to build ourselves, never code to copy.
+
+**Facts that matter for us right now**
+- **Forever's names have no realm and carry a hyphen.** Both GuildOS and Guild
+  Paragon special-case it (`IsForeverClient` returns the peer name as is; GuildOS
+  builds Forever keys itself and tags exports `game = FOREVER`). Our addon takes
+  the realm from `GetRealmName()` (new `/qg character`, consumable scan) and from
+  the companion config. **Verify in game tonight** (checklist section 3) and
+  centralise it (item X1).
+- **GuildOS's consumable checker only exists on TBC Anniversary** because it
+  matches buff *spell IDs* (a TBC list) and is switched off elsewhere. Ours
+  matches buff *names*, so it should work on Forever, but it can't tell battle
+  from guardian elixirs or see oils on other players. Keep names, add optional
+  ID tables later.
+- **Their sync is a versioned, compressed, idempotent protocol** (envelope with
+  version, message id, entity revision, source; LibSerialize + LibDeflate +
+  ChatThrottleLib; every point award has an `opId` applied once). Ours is
+  plain pipe strings under 255 bytes with no version field.
+- **Two of them test Lua outside the game** (iRC: standalone scripts with a mocked
+  WoW API; GuildOS: an in-client `/gos selftest`). Our Lua checks lived in a
+  scratch folder and were never committed.
+
+**Recommended next (best value for effort)**
+1. **X1: one place for player identity on Forever** (below) and a `/qg diag`
+   line showing what `GetRealmName`/`UnitName` return. Prevents silent
+   character-matching failures.
+2. **X2: copy-paste export (`QGEXP1:` string)** so a member without the
+   companion can send data: in-game box, then `/import code:`. GuildOS ships
+   exactly this (`GOSCOMP1:` = compressed, print-safe, pasted into its site).
+3. **X3: commit Lua tests** (mocked WoW API, run in CI with a Lua interpreter
+   such as `fengari` from npm) plus an in-game `/qg selftest`.
+4. **X4: versioned addon-message envelope** with a protocol number, so old and
+   new addons can coexist after an update.
+5. **X5: login digest** ("since your last login: new members, loot, raids").
+6. **X6: read-only public API** (`QuebecGoldAPI`, versioned) so WeakAuras or
+   other addons can read standings and readiness without touching saved data.
+
+**From GuildOS** (`GO`)
+- **GO1. [ ] M: per-core rules.** Its Core Manager gives each raid core its own
+  loot rules, attendance penalty weights and point pool. Our cores (#43) only
+  give signup priority. Add per-core EPGP pool/decay, attendance rules and
+  class-default roles (tank/healer/melee/ranged).
+- **GO2. [ ] M: points modes:** DKP, EPGP or **loot council** (points shown but
+  not enforced). We are EPGP-only; council mode is a setting plus hiding the
+  bid buttons.
+- **GO3. [ ] M: readiness aggregator:** one status per member (ready / warn /
+  not ready / no data) from attunement + enchants + item level + consumables,
+  sorted most-actionable first, optionally against a *target raid* ("not attuned
+  for BWL"). We have gear + consumables; add attunements and sorting to
+  `/readiness raid` and the readiness board.
+- **GO4. [ ] S: attendance penalty for missing consumables** (100% base, minus
+  a configurable step per issue), as an opt-in rule tied to GO1.
+- **GO5. [ ] M: enchant summary** (which equipped slots lack an enchant) in the
+  snapshot and board; "four slots unenchanted" is more useful than an item level.
+- **GO6. [ ] S: pug inspector:** on joining a group, classify members against
+  our own data (Discord ban list from `/mod`, guild roster, alt links, notes).
+  Read-only, no new sync.
+- **GO7. [ ] S: polls:** officers create a poll, members vote (in game and in
+  Discord), one result. Simple and popular.
+- **GO8. [ ] M: SoftRes import (softres.it / Gargul export)** into the wishlist and
+  bidding popup. Guilds using soft reserves won't retype them (see also G13 TMB).
+- **GO9. [ ] S: backup/restore string** for the addon's SavedVariables ("copy
+  this before a risky change"), complementing the bot's nightly database backup.
+- **GO10. [ ] S: open crafting-query protocol** (a published addon prefix any
+  addon may answer for "who can craft item X?"). Only worth it if other addons
+  adopt it; low priority next to PM1.
+
+**From Guild Paragon** (`GP`, adds to GP1 to GP7)
+- **GP8. [ ] S: public read-only API with a version number** and an explicit
+  "no write methods" rule, because writes would bypass permission, sync and
+  logging paths (= X6). Their `API.md` is a good template.
+- **GP9. [ ] S: rate-limit full-state requests between peers** (they cap sessions
+  with a request limit, back-off and lease). Matters once #40 sends more data.
+- **GP10. [ ] M: guild health dashboard for officers:** retention cohorts at 30, 60
+  and 90 days, attention signals with severity (critical/warning/info), new-member
+  watch. Fits the bot's `/stats` and weekly report better than the addon.
+- **GP11. [ ] S: attribute guild events using the native guild log** (who invited or
+  kicked whom) so the event log (GP1) names the actor.
+- **GP12. [ ] M: import from Guild Roster Manager (GRM)** as a migration path for
+  guilds switching to us (they import GRM data). Discord side: `/import` of a
+  roster CSV/JSON into characters, alts and notes.
+- **GP13. [ ] S: opt-in local performance recorder** (per-operation timings, bounded
+  history, no gameplay payloads) so "the addon is slow" reports have numbers.
+- **GP14. [ ] S: security policy file** (`SECURITY.md`) and contributor notes before
+  a public release (= G12/#46).
+
+**From iRC: Guild Connect** (`IR`, adds to IR1 to IR4)
+- **IR5. [ ] M: chunked transfer with checksum and "newer wins" tie-break** for
+  bigger data (guild bank snapshot, recipe lists): 170-byte chunks, a chunk cap,
+  a digest to detect a stale copy, tie-break on save time then owner name.
+  Required groundwork for IR1, PM1 and #40.
+- **IR6. [ ] S: diagnostics ring buffer** (500 entries, slow-operation threshold in
+  ms, opt-in event tracing). Our `/qg diag` keeps errors only; add timings.
+- **IR7. [ ] M: identity store per guild:** characters, former members and
+  "missing counts" (how many rosters a name has been absent from) to tell a
+  departure from a temporary absence. Feeds GP1 and GK2.
+- **IR8. [ ] S: standalone Lua tests** (= X3): their tests load the addon file with
+  a mocked `GetBuildInfo`, `UnitName`, `GetRealmName`, frames and `LibStub`, and
+  `assert` the behaviour. The same technique works for Consumables.lua and Core.lua.
+
+**From the ones without source** (recap, ranked)
+- Profession Master: recipe database with a compressed relay (PM1), cooldowns
+  (PM2), `!who` lookup (PM3).
+- LibGuildRoster: roster from chat events plus real officer permissions (LR1, LR2).
+- Raidify: mass invite and bench credit (RF1, RF4). Its desktop companion is
+  open source (MIT); worth reading before we touch our own companion again.
+- iddqd: loot response voting and attendance snapshots (ID1, ID3); it also has a
+  Discord bot and dashboard, so it's the one to compare against feature by feature.
+- GuildKit: auto-invite phrase (GK1), inactivity report (GK2).
+- vGambler: ban list and session stats for the casino (VG1, VG2).
+
+**Cross-cutting items (new)**
+- **X1. [ ] S: player identity on Forever:** a single `ns.compat.playerKey()` /
+  `ns.compat.normalizeName()` that knows Forever (no realm, hyphenated names) and
+  is used by the consumable scan, `/qg character`, roster, the companion and the
+  bot's character matching. `/qg diag` prints the raw values.
+- **X2. [ ] M: `QGEXP1:` paste export + `/import code:`** (compressed, print-safe;
+  needs either bundled LibDeflate or a small pure-Lua compressor, decision
+  needed). Uses the existing import path, so no new trust model.
+- **X3. [ ] M: Lua test suite in the repo + CI.**
+- **X4. [ ] M: versioned message envelope** (`v`, `id`, addon version, payload
+  version) with accept-old/send-new during transition.
+- **X5. [ ] S: login digest.**
+- **X6. [ ] S: `QuebecGoldAPI` read-only v1.**
+
 ---
 
 ## Status snapshot (2026-09-24, historical — see "Where we are" at the top)
