@@ -18,6 +18,7 @@ import { wishlistCommand } from "./wishlist.js";
 import { selfRolesCommand } from "./selfroles.js";
 import { whoCommand } from "./who.js";
 import { wclCommand } from "./wcl.js";
+import { coreCommand } from "./core.js";
 import { statsCommand } from "./stats.js";
 import { bankCommand } from "./bank.js";
 import { testRaidCommand } from "./testraid.js";
@@ -49,6 +50,7 @@ export const commands = [
   , selfRolesCommand
   , whoCommand
   , wclCommand
+  , coreCommand
   , statsCommand
   , bankCommand
   , testRaidCommand

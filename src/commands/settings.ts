@@ -1,3 +1,5 @@
+import { prisma } from "../database.js";
+import { syncAllCoreRosters } from "../services/raid-core.js";
 import { updateDungeonLeaderboard } from "../services/dungeon-leaderboard.js";
 import { ChannelType, SlashCommandBuilder, type ChatInputCommandInteraction } from "discord.js";
 import { permissionRoles, hasPermission } from "../permissions.js";
@@ -84,6 +86,10 @@ export const configCommand = new SlashCommandBuilder()
     .addChannelOption((o) => o.setName("channel").setDescription("Readiness channel (make it visible to officers and raid leaders only)")
       .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
     .addBooleanOption((o) => o.setName("disable").setDescription("Stop posting readiness to a channel")))
+  .addSubcommand((sub) => sub.setName("core-channel").setDescription("Channel that shows each raid core's roster (one live message per core).")
+    .addChannelOption((o) => o.setName("channel").setDescription("Raid roster channel")
+      .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
+    .addBooleanOption((o) => o.setName("disable").setDescription("Stop showing core rosters in a channel")))
   .addSubcommand((sub) => sub.setName("dungeon-leaderboard-channel").setDescription("Channel with the auto-updated dungeon leaderboard.")
     .addChannelOption((o) => o.setName("channel").setDescription("Leaderboard channel")
       .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
@@ -124,6 +130,7 @@ export async function executeConfig(interaction: ChatInputCommandInteraction): P
         `Dungeon posts: ${settings.dungeonChannelId ? `<#${settings.dungeonChannelId}>` : "notify channel"}`,
         `Raid logs: ${settings.raidLogChannelId ? `<#${settings.raidLogChannelId}>` : "notify channel"}`,
         `Loot and EP log: ${settings.lootChannelId ? `<#${settings.lootChannelId}>` : "notify channel"}`,
+        `Raid roster channel: ${settings.coreChannelId ? `<#${settings.coreChannelId}>` : "not set"}`,
         `Readiness channel: ${settings.readinessChannelId ? `<#${settings.readinessChannelId}>` : "not set"}`,
         `Craft board: ${settings.craftChannelId ? `<#${settings.craftChannelId}>` : "officer log"}`,
         `Dungeon leaderboard: ${settings.dungeonLeaderboardChannelId ? `<#${settings.dungeonLeaderboardChannelId}>` : "not set"}`,
@@ -261,7 +268,8 @@ export async function executeConfig(interaction: ChatInputCommandInteraction): P
     return;
   }
 
-  const channelSettings: Record<string, { field: "raidLogChannelId" | "dungeonLeaderboardChannelId" | "dungeonSignupChannelId" | "lootChannelId" | "craftChannelId" | "readinessChannelId"; label: string }> = {
+  const channelSettings: Record<string, { field: "raidLogChannelId" | "dungeonLeaderboardChannelId" | "dungeonSignupChannelId" | "lootChannelId" | "craftChannelId" | "readinessChannelId" | "coreChannelId"; label: string }> = {
+    "core-channel": { field: "coreChannelId", label: "Raid core rosters" },
     "readiness-channel": { field: "readinessChannelId", label: "Raid readiness" },
     "loot-channel": { field: "lootChannelId", label: "Loot and EP/GP changes" },
     "craft-channel": { field: "craftChannelId", label: "Craft requests" },
@@ -286,6 +294,7 @@ export async function executeConfig(interaction: ChatInputCommandInteraction): P
       ...(channelSetting.field === "dungeonLeaderboardChannelId" ? { dungeonLeaderboardMessageId: null } : {})
     });
     if (channelSetting.field === "dungeonLeaderboardChannelId") await updateDungeonLeaderboard(interaction.guild);
+    if (channelSetting.field === "coreChannelId") await syncAllCoreRosters(interaction.guild, prisma, context.guildId);
     await interaction.reply({ content: `${channelSetting.label} will use <#${channel.id}>.`, ephemeral: true });
     return;
   }

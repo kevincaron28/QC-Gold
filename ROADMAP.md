@@ -48,9 +48,9 @@ Each step ends with tsc + eslint + tests green and a commit. Status:
 
 - [x] A. Roadmap entries added.
 - [x] B. Consumable scan (addon `Modules/Consumables.lua`, `ConsumableCheck` model, readiness board section; addon v1.9.0; not yet run in game).
-- [ ] C. Raid cores.
+- [x] C. Raid cores (`/core`, `RaidCore`, `/raid create core:`, signup priority, roster channel; tests/raid-core.test.ts).
 - [ ] D. Dungeon group signup + temporary voice channel.
-- [ ] E. Setup categories and permissions.
+- [x] E. Setup categories and permissions (5 categories, per-channel access, roster/readiness channels, "Tidy my channels" button; setup is still 7 steps, step 3 = raid team, step 4 = dungeon + recruitment).
 
 ## History — where we were on 2026-09-24 (kept for reference)
 
@@ -556,8 +556,8 @@ D10. [x] **S — Test path** *(Done 2026-09-25: /testraid dungeon through the re
     missing what; results export to the bot (`ConsumableCheck`) and show as a
     "Consumables" section on the raid readiness board. Enchants are a
     separate later step.
-43. [ ] **L — Raid cores + roster channel + signup priority** (requested
-    2026-09-26; **building tonight**). A *raid core* is a named roster (e.g.
+43. [x] **L — Raid cores + roster channel + signup priority** *(Built 2026-09-26; checklist section 10. Priority = a core member takes the most recent non-core signup's slot in a full role; the bumped player is DM'd and goes to the front of the waitlist; waitlist promotion favours core members. Slots are not pre-reserved, by design, so a raid never sits half empty.)* (requested
+    2026-09-26). A *raid core* is a named roster (e.g.
     "Tuesday MC core") with roles. **Multiple cores** per guild. A private/
     read-only **roster channel** shows each core's roster as one live message.
     Core members get **priority at signups for that core's raids**: their
@@ -573,8 +573,8 @@ D10. [x] **S — Test path** *(Done 2026-09-25: /testraid dungeon through the re
     deletes the channel when it's empty for a few minutes or the group is
     closed. Judged worthwhile: it's cheap, tidy, and dungeon groups are
     short-lived. Needs Manage Channels and (for moving) Move Members.
-45. [ ] **M — `/setup` organizes the whole server section** (requested
-    2026-09-26; **building tonight**). Every channel is created in a fitting
+45. [x] **M — `/setup` organizes the whole server section** *(Built 2026-09-26; checklist section 0.)* (requested
+    2026-09-26). Every channel is created in a fitting
     category (e.g. ⚜️ INFO, ⚔️ RAIDING, 🏰 DUNGEONS, 🔒 OFFICERS) with the
     right permissions (members read-only in feeds, officers/raid leaders only
     where private), re-runnable and never touching existing channels. Adds a

@@ -2,7 +2,7 @@ import type { AutocompleteInteraction, GuildMember } from "discord.js";
 import { prisma } from "../database.js";
 import { hasPermission } from "../permissions.js";
 import {
-  applicationChoices, auctionChoices, bankChoices, craftChoices, epgpEntryChoices, importChoices,
+  applicationChoices, auctionChoices, bankChoices, coreChoices, craftChoices, epgpEntryChoices, importChoices,
   raidChoices, raidStatusesFor, type Choice
 } from "../services/autocomplete.js";
 import { dungeonChoices } from "../services/dungeon-stats.js";
@@ -26,7 +26,9 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
     const timeZone = settings?.timezone ?? "America/Toronto";
     const language = settings?.language ?? "en";
 
-    if (focused.name === "raid") {
+    if (focused.name === "core") {
+      choices = await coreChoices(prisma, guild.id, query);
+    } else if (focused.name === "raid") {
       choices = await raidChoices(prisma, {
         guildId: guild.id,
         query,

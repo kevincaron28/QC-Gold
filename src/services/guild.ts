@@ -92,6 +92,7 @@ export function createGuildService(database: PrismaClient) {
       lootChannelId?: string | null;
       craftChannelId?: string | null;
       readinessChannelId?: string | null;
+      coreChannelId?: string | null;
       weeklyReportEnabled?: boolean;
       timezone?: string;
       language?: string;

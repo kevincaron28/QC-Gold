@@ -205,7 +205,7 @@ After each import, completed runs and new records are posted once in the dungeon
 
 | Command | What it does |
 | --- | --- |
-| `/raid create <title> <time> [description] [bosses] [tanks] [healers] [dps]` | Create a raid. Time like `friday 8pm`, `tonight 20:00`, `vendredi 20h`, `2026-10-03 20:00` (your server's timezone). Posts the signup message with Tank / Healer / DPS / Maybe / Can't come buttons |
+| `/raid create <title> <time> [description] [bosses] [core] [tanks] [healers] [dps]` | Create a raid. Time like `friday 8pm`, `tonight 20:00`, `vendredi 20h`, `2026-10-03 20:00` (your server's timezone). Posts the signup message with Tank / Healer / DPS / Maybe / Can't come buttons |
 | `/raid edit` / `cancel` / `start` | Manage the raid (raising a cap moves waitlisted players in) |
 | `/raid end <raid>` | End the raid and see the **proposed EP** with Approve / Cancel buttons |
 | `/raid award-ep <raid>` | Show the proposed EP again (e.g. after `/import-apply` added attendance) |
@@ -265,6 +265,7 @@ Approve, and a raid can never be paid twice.
 | `/config log-channel` | Where join/leave/moderation logs go |
 | `/config raid-log-channel` | Where raid summaries (raid reports, Warcraft Logs) go; default: the notify channel |
 | `/config loot-channel` | Where loot awards and EP/GP changes go; default: the notify channel |
+| `/config core-channel` | Channel showing each raid core's roster as one live message |
 | `/config readiness-channel` | Private channel (officers and raid leaders only) where the raid readiness board is posted. `/setup` step 4 can create it with the right permissions |
 | `/config craft-channel` | Where craft requests are posted so crafters see them; default: the officer log |
 | `/config dungeon-leaderboard-channel` | Channel with one auto-updated dungeon leaderboard message (refreshed after every dungeon import) |
@@ -293,3 +294,16 @@ EPGP tab.
 
 Readiness from everyone who was online with the addon rides along in your
 export, so members don't need to export anything themselves.
+
+## Raid cores
+
+A **raid core** is a named roster (e.g. "Tuesday MC core"); a guild can have several. Core members get **priority at signups for raids created for that core**: when a role is full and a core member signs up, they take the slot of the most recent non-core signup in that role, who moves to the front of the waitlist (and gets a DM). Core members are never bumped, and a raid without a core behaves as before. Signup posts mark core members with a star. Each core's roster is one live message in the roster channel (`/config core-channel` or `/setup` step 3).
+
+| Command | What it does |
+| --- | --- |
+| `/core create <name> [description]` | Create a core (Raid Leaders) |
+| `/core add <core> <player> [role]` / `/core remove <core> <player>` | Manage its players (Raid Leaders); role Tank / Healer / DPS |
+| `/core show <core>` / `/core list` | See a roster / all cores (everyone) |
+| `/core post [core]` | Refresh the roster message(s) in the roster channel |
+| `/core delete <core>` | Delete a core; raids made for it keep their signups |
+| `/raid create ... core:<name>` | Create a raid whose signups give that core priority |

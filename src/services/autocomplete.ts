@@ -52,6 +52,11 @@ export async function raidChoices(
     }));
 }
 
+export async function coreChoices(database: Pick<PrismaClient, "raidCore">, guildId: string, query: string): Promise<Choice[]> {
+  const cores = await database.raidCore.findMany({ where: { guildId }, orderBy: { name: "asc" }, take: 50 });
+  return cores.filter((core) => matches(query, core.name)).slice(0, MAX).map((core) => ({ name: clip(core.name), value: core.name }));
+}
+
 export async function auctionChoices(database: Pick<PrismaClient, "auction">, guildId: string, query: string): Promise<Choice[]> {
   const auctions = await database.auction.findMany({ where: { guildId, status: "ACTIVE" }, orderBy: { closesAt: "asc" }, take: 50 });
   return auctions.filter((auction) => matches(query, auction.itemName, auction.id)).slice(0, MAX)

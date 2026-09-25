@@ -30,6 +30,7 @@ import { executeSelfRoles, handleSelfRoleButton, SELF_ROLE_PREFIX } from "./comm
 import { EP_AWARD_PREFIX, handleEpAwardButton } from "./commands/ep-award.js";
 import { executeWho } from "./commands/who.js";
 import { executeWcl } from "./commands/wcl.js";
+import { executeCore } from "./commands/core.js";
 import { executeStats, runWeeklyReports } from "./commands/stats.js";
 import { executeBank } from "./commands/bank.js";
 import { executeTestRaid } from "./commands/testraid.js";
@@ -74,6 +75,7 @@ handlers.set("wishlist", executeWishlist);
 handlers.set("selfroles", executeSelfRoles);
 handlers.set("who", executeWho);
 handlers.set("wcl", executeWcl);
+handlers.set("core", executeCore);
 handlers.set("stats", executeStats);
 handlers.set("bank", executeBank);
 handlers.set("testraid", executeTestRaid);

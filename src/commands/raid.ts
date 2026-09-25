@@ -12,6 +12,7 @@ import { bossProgress } from "../services/progress.js";
 import { parseRaidTime } from "../services/raid-time.js";
 import { asLang, t, type Lang } from "../i18n.js";
 import { createRaidService, type SignupAvailability } from "../services/raid.js";
+import { createRaidCoreService } from "../services/raid-core.js";
 import { hasPermission } from "../permissions.js";
 import { guildService, requireGuildContext } from "./context.js";
 
@@ -27,6 +28,7 @@ export const raidCommand = new SlashCommandBuilder()
     .addStringOption((o) => o.setName("time").setDescription("When, e.g. friday 8pm, tonight 20:00, 2026-10-03 20:00").setRequired(true))
     .addStringOption((o) => o.setName("description").setDescription("Optional description"))
     .addStringOption((o) => o.setName("bosses").setDescription("Comma-separated boss names"))
+    .addStringOption((o) => o.setName("core").setDescription("Raid core: its members get signup priority").setAutocomplete(true))
     .addIntegerOption((o) => o.setName("tanks").setDescription("Tank slot cap").setMinValue(0))
     .addIntegerOption((o) => o.setName("healers").setDescription("Healer slot cap").setMinValue(0))
     .addIntegerOption((o) => o.setName("dps").setDescription("DPS slot cap").setMinValue(0)))
@@ -125,9 +127,11 @@ export async function syncSignupEmbed(discordGuild: DiscordGuild, guildId: strin
     const lang = asLang((await guildService.getSettings(guildId))?.language);
     const roleName = (role: RaidRole) => t(lang, `role.${role}` as const);
     const everyone = await raidService.signups(raidId, guildId);
+    const coreIds = raid.coreId ? await createRaidCoreService(prisma).memberIds(raid.coreId) : new Set<string>();
+    const coreName = raid.coreId ? (await prisma.raidCore.findUnique({ where: { id: raid.coreId }, select: { name: true } }))?.name : undefined;
     const roster = everyone.filter((signup) => signup.status === "SIGNED_UP");
     const listOf = (status: string) => everyone.filter((signup) => signup.status === status)
-      .map((signup) => `${signup.member.displayName} (${roleName(signup.role)})`).join(", ");
+      .map((signup) => `${coreIds.has(signup.memberId) ? "⭐ " : ""}${signup.member.displayName} (${roleName(signup.role)})`).join(", ");
     const maybe = listOf("MAYBE");
     const waitlist = listOf("WAITLISTED");
     const caps: Record<RaidRole, number | null> = { TANK: raid.tankLimit, HEALER: raid.healerLimit, DPS: raid.dpsLimit };
@@ -149,6 +153,7 @@ export async function syncSignupEmbed(discordGuild: DiscordGuild, guildId: strin
     if (maybe) embed.addFields({ name: t(lang, "signup.maybe"), value: maybe.slice(0, 1000), inline: false });
     if (waitlist) embed.addFields({ name: t(lang, "signup.waitlist"), value: waitlist.slice(0, 1000), inline: false });
     if (raid.description) embed.setDescription(raid.description);
+    if (coreName) embed.addFields({ name: "Raid core", value: `**${coreName}** — ⭐ core members get signup priority`, inline: false });
 
     if (raid.signupChannelId && raid.signupMessageId) {
       const channel = await discordGuild.channels.fetch(raid.signupChannelId).catch(() => null);
@@ -194,6 +199,22 @@ async function tellPromoted(
   }
 }
 
+// Tells a player a core member took their slot (they're first on the waitlist).
+async function tellBumped(
+  client: ChatInputCommandInteraction["client"],
+  bumped: { raidId: string; role: RaidRole; member: { discordUserId: string } } | null
+): Promise<void> {
+  if (!bumped) return;
+  const raid = await prisma.raid.findUnique({
+    where: { id: bumped.raidId },
+    select: { title: true, guild: { select: { settings: { select: { language: true } } } } }
+  });
+  const lang = asLang(raid?.guild.settings?.language);
+  await client.users.send(bumped.member.discordUserId, t(lang, "dm.bumped", {
+    role: t(lang, `role.${bumped.role}` as const), raid: raid?.title ?? "raid"
+  })).catch(() => undefined);
+}
+
 export async function executeRaid(interaction: ChatInputCommandInteraction): Promise<void> {
   const context = await requireGuildContext(interaction);
   if (!context) return;
@@ -207,7 +228,10 @@ export async function executeRaid(interaction: ChatInputCommandInteraction): Pro
     const tanks = interaction.options.getInteger("tanks");
     const healers = interaction.options.getInteger("healers");
     const dps = interaction.options.getInteger("dps");
+    const coreName = interaction.options.getString("core");
+    const core = coreName ? await createRaidCoreService(prisma).byIdOrName(context.guildId, coreName) : null;
     const raid = await raidService.create({
+      ...(core ? { coreId: core.id } : {}),
       guildId: context.guildId,
       title: interaction.options.getString("title", true),
       scheduledAt: await readRaidTime(context.guildId, interaction.options.getString("time", true)),
@@ -221,7 +245,7 @@ export async function executeRaid(interaction: ChatInputCommandInteraction): Pro
     if (interaction.guild) await syncSignupEmbed(interaction.guild, context.guildId, raid.id);
     // Discord shows <t:...> in each reader's own timezone, so this doubles as a check.
     const when = Math.floor(raid.scheduledAt.getTime() / 1000);
-    await interaction.reply({ content: `Created raid **${raid.title}** for <t:${when}:F> (<t:${when}:R>). If that time looks wrong, fix it with \`/raid edit\`.`, ephemeral: true });
+    await interaction.reply({ content: `Created raid **${raid.title}** for <t:${when}:F> (<t:${when}:R>)${core ? ` for the **${core.name}** core (its ${core.members.length} members get signup priority)` : ""}. If that time looks wrong, fix it with \`/raid edit\`.`, ephemeral: true });
     return;
   }
 
@@ -246,6 +270,7 @@ export async function executeRaid(interaction: ChatInputCommandInteraction): Pro
     const role = interaction.options.getString("role", true) as RaidRole;
     const availability = (interaction.options.getString("availability") ?? "AVAILABLE") as SignupAvailability;
     const signup = await raidService.signup(raidId, context.guildId, context.memberId, role, availability);
+    await tellBumped(interaction.client, signup.bumped);
     if (interaction.guild) await syncSignupEmbed(interaction.guild, context.guildId, raidId);
     const replies: Record<string, string> = {
       SIGNED_UP: `You are signed up as ${roleLabel[role]}.`,
@@ -387,6 +412,7 @@ export async function handleRaidSignupButton(interaction: ButtonInteraction): Pr
     const existing = await prisma.raidSignup.findUnique({ where: { raidId_memberId: { raidId, memberId: member.id } } });
     const role = (action === "MAYBE" ? existing?.role ?? "DPS" : action) as RaidRole;
     const signup = await raidService.signup(raidId, guild.id, member.id, role, action === "MAYBE" ? "MAYBE" : "AVAILABLE");
+    await tellBumped(interaction.client, signup.bumped);
     const roleText = t(lang, `role.${role}` as const);
     const replies: Record<string, string> = {
       SIGNED_UP: t(lang, "reply.signedUp", { role: roleText }),

@@ -26,6 +26,8 @@ export interface CreateRaidInput {
   tankLimit?: number;
   healerLimit?: number;
   dpsLimit?: number;
+  // Create the raid for a raid core: its members get signup priority.
+  coreId?: string;
 }
 
 export type SignupAvailability = "AVAILABLE" | "MAYBE";
@@ -35,6 +37,11 @@ export function createRaidService(database: PrismaClient) {
     const raid = await database.raid.findFirst({ where: { id: raidId, guildId } });
     if (!raid) throw new Error("Raid not found in this guild.");
     return raid;
+  }
+
+  async function coreMemberIds(coreId: string): Promise<Set<string>> {
+    const rows = await database.raidCoreMember.findMany({ where: { coreId }, select: { memberId: true } });
+    return new Set(rows.map((row) => row.memberId));
   }
 
   // Fills open role slots from the waitlist, earliest signup first. Runs
@@ -51,6 +58,11 @@ export function createRaidService(database: PrismaClient) {
         include: { member: true }
       });
       if (waiting.length === 0) continue;
+      // Core members move up first (then earliest signup) for a core raid.
+      if (raid.coreId) {
+        const coreIds = await coreMemberIds(raid.coreId);
+        waiting.sort((a, b) => Number(coreIds.has(b.memberId)) - Number(coreIds.has(a.memberId)) || a.signedUpAt.getTime() - b.signedUpAt.getTime());
+      }
       const taken = cap === null ? 0 : await database.raidSignup.count({ where: { raidId, role, status: "SIGNED_UP" } });
       const open = cap === null ? waiting.length : Math.max(0, cap - taken);
       for (const signup of waiting.slice(0, open)) {
@@ -71,9 +83,14 @@ export function createRaidService(database: PrismaClient) {
         }
       }
       const bosses = input.bosses?.map((name) => name.trim()).filter(Boolean) ?? [];
+      if (input.coreId) {
+        const core = await database.raidCore.findFirst({ where: { id: input.coreId, guildId: input.guildId }, select: { id: true } });
+        if (!core) throw new Error("That raid core was not found in this guild.");
+      }
       return database.raid.create({
         data: {
           guildId: input.guildId,
+          ...(input.coreId ? { coreId: input.coreId } : {}),
           title: input.title.trim(),
           scheduledAt: input.scheduledAt,
           createdBy: input.createdBy,
@@ -147,17 +164,37 @@ export function createRaidService(database: PrismaClient) {
       if (raid.status !== "PLANNED") throw new Error("Signups are closed for this raid.");
       let status: RaidSignupStatus = availability === "MAYBE" ? "MAYBE" : "SIGNED_UP";
       const cap = raid[roleCapField[role]];
+      let bumped: Prisma.RaidSignupGetPayload<{ include: { member: true } }> | null = null;
       if (status === "SIGNED_UP" && cap !== null) {
         const count = await database.raidSignup.count({
           where: { raidId, role, status: "SIGNED_UP", memberId: { not: memberId } }
         });
-        if (count >= cap) status = "WAITLISTED";
+        if (count >= cap) {
+          status = "WAITLISTED";
+          // Core priority: a core member takes the slot of the most recent
+          // non-core signup in that role, who goes to the front of the waitlist.
+          if (raid.coreId && (await coreMemberIds(raid.coreId)).has(memberId)) {
+            const coreIds = await coreMemberIds(raid.coreId);
+            const candidates = await database.raidSignup.findMany({
+              where: { raidId, role, status: "SIGNED_UP", memberId: { not: memberId } },
+              include: { member: true },
+              orderBy: { signedUpAt: "desc" }
+            });
+            const victim = candidates.find((signup) => !coreIds.has(signup.memberId));
+            if (victim) {
+              await database.raidSignup.update({ where: { id: victim.id }, data: { status: "WAITLISTED" } });
+              bumped = { ...victim, status: "WAITLISTED" };
+              status = "SIGNED_UP";
+            }
+          }
+        }
       }
-      return database.raidSignup.upsert({
+      const saved = await database.raidSignup.upsert({
         where: { raidId_memberId: { raidId, memberId } },
         create: { raidId, memberId, role, status },
         update: { status, role, signedUpAt: new Date(), cancelledAt: null }
       });
+      return Object.assign(saved, { bumped });
     },
 
     // Everyone not cancelled, for the embed: signed up, maybe, waitlist.

@@ -34,6 +34,7 @@ const STRINGS = {
   "reply.waitlisted": { en: "{role} is full, so you're on the **waitlist**. You'll get a DM if a spot opens.", fr: "{role} est complet : vous êtes sur la **liste d'attente**. Vous recevrez un message privé si une place se libère." },
   "reply.notSignedUp": { en: "You weren't signed up, so there's nothing to cancel.", fr: "Vous n'étiez pas inscrit, rien à annuler." },
   "reply.cancelled": { en: "Got it, you're marked as not coming.", fr: "C'est noté, vous ne venez pas." },
+  "dm.bumped": { en: "A core member took your {role} slot in **{raid}**. You're now first on the waitlist and will move up if a slot opens.", fr: "Un membre du noyau a pris votre place de {role} pour **{raid}**. Vous êtes maintenant premier sur la liste d'attente et passerez en tête si une place se libère." },
   "dm.promoted": { en: "A {role} slot opened in **{raid}** ({when}). You're off the waitlist and signed up.", fr: "Une place de {role} s'est libérée pour **{raid}** ({when}). Vous n'êtes plus en attente : vous êtes inscrit." },
 
   // Reminders

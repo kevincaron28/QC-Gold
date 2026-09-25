@@ -161,12 +161,17 @@ Commands are registered against `DISCORD_GUILD_ID` in development. A production 
 Once the bot is online, a server admin runs **`/setup`**. It's a private,
 click-through guide (buttons and menus, no typing) in seven steps: permission
 roles (can create them and give you Guild Master), channels (announcements,
-raid signups, raid logs, and a private officer log), dungeon channels
-(leaderboard, signups, runs), extra channels (loot and EP log, craft board,
-recruitment), an optional welcome message, optional auto-roles, and EPGP
-values / raid reminders / weekly report. "Create the whole WoW section"
-makes every missing channel at once, grouped under one "Quebec Gold"
-category, with feeds that only the bot posts in set read-only for members. It ends with a checklist that says exactly how to fix anything still
+raid signups, raid logs, and a private officer log), raid team channels
+(raid roster, private raid readiness, loot log, craft board), dungeon and
+recruitment channels (leaderboard, signups, runs, recruitment), an optional
+welcome message, optional auto-roles, and EPGP values / raid reminders /
+weekly report. "Create the whole WoW section" makes every missing channel
+at once, sorted into categories (Guild, Raiding, Dungeons, Crafting,
+Officers) with the right permissions: feeds and signup channels are
+read-only for members (signups use buttons), the officer log and readiness
+channels are hidden from everyone but leadership. "Tidy my channels into
+categories" on the last screen moves and re-permissions channels the bot
+made earlier (only ones still using its standard names). It ends with a checklist that says exactly how to fix anything still
 missing, and can post a pinned-ready "getting started" guide for members.
 Re-running it is safe; `/setup status:true` shows only the checklist.
 
