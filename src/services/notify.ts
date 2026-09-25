@@ -17,6 +17,25 @@ async function notifyTarget(discordGuild: DiscordGuild) {
   return { channel, lang: asLang(settings.language) };
 }
 
+// Dungeon challenge posts go to /config dungeon-channel, or the normal
+// announcements channel when none is set.
+export async function notifyDungeon(discordGuild: DiscordGuild | null, embed: Localized<EmbedBuilder>): Promise<boolean> {
+  if (!discordGuild) return false;
+  try {
+    const guild = await guildService.ensureGuild(discordGuild.id, discordGuild.name);
+    const settings = await guildService.getSettings(guild.id);
+    const channelId = settings?.dungeonChannelId ?? settings?.notifyChannelId;
+    if (!channelId) return false;
+    const channel = await discordGuild.channels.fetch(channelId).catch(() => null);
+    if (!channel?.isTextBased()) return false;
+    await channel.send({ embeds: [embed(asLang(settings?.language))], allowedMentions: { parse: [] } });
+    return true;
+  } catch (error) {
+    console.error("Failed to post dungeon announcement", error);
+    return false;
+  }
+}
+
 // Raid/boss/loot/EPGP announcements for the whole guild, posted to the
 // channel set with /config notify-channel. One line per event (batched
 // commands post one line, not one per player). Never pings anyone and never

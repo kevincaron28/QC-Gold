@@ -63,6 +63,10 @@ export const configCommand = new SlashCommandBuilder()
     .addChannelOption((o) => o.setName("channel").setDescription("Announcement channel")
       .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
     .addBooleanOption((o) => o.setName("disable").setDescription("Stop announcements")))
+  .addSubcommand((sub) => sub.setName("dungeon-channel").setDescription("Channel for dungeon runs and records (default: the notify channel).")
+    .addChannelOption((o) => o.setName("channel").setDescription("Dungeon channel")
+      .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
+    .addBooleanOption((o) => o.setName("disable").setDescription("Go back to using the notify channel")))
   .addSubcommand((sub) => sub.setName("merit").setDescription("Rank /epgp leaderboard by PR x 30-day attendance instead of raw PR.")
     .addBooleanOption((o) => o.setName("enabled").setDescription("Use merit ranking").setRequired(true)))
   .addSubcommand((sub) => sub.setName("recruitment").setDescription("Schedule a recurring recruitment post.")
@@ -92,6 +96,7 @@ export async function executeConfig(interaction: ChatInputCommandInteraction): P
         `Full-clear EP bonus: ${settings.epCompletionBonus}`,
         `Raid reminders: ${settings.raidReminderMinutes > 0 ? `${settings.raidReminderMinutes} min before start` : "off"}`,
         `Notifications: ${settings.notifyChannelId ? `<#${settings.notifyChannelId}>` : "disabled"}`,
+        `Dungeon posts: ${settings.dungeonChannelId ? `<#${settings.dungeonChannelId}>` : "notify channel"}`,
         `Welcome messages: ${settings.welcomeChannelId ? `<#${settings.welcomeChannelId}>` : "disabled"}`,
         `Farewell messages: ${settings.farewellChannelId ? `<#${settings.farewellChannelId}>` : "disabled"}`,
         `Applicant role: ${settings.applicantRoleId ? `<@&${settings.applicantRoleId}>` : "not set"}`,
@@ -209,6 +214,19 @@ export async function executeConfig(interaction: ChatInputCommandInteraction): P
     if (!channel) throw new Error("Provide a channel, or use disable:true to turn announcements off.");
     await guildService.updateSettings(context.guildId, { notifyChannelId: channel.id });
     await interaction.reply({ content: `Raid, boss, loot, and EPGP announcements will post in <#${channel.id}>.`, ephemeral: true });
+    return;
+  }
+
+  if (subcommand === "dungeon-channel") {
+    if (interaction.options.getBoolean("disable")) {
+      await guildService.updateSettings(context.guildId, { dungeonChannelId: null });
+      await interaction.reply({ content: "Dungeon runs and records will post in the notify channel.", ephemeral: true });
+      return;
+    }
+    const channel = interaction.options.getChannel("channel");
+    if (!channel) throw new Error("Provide a channel, or use disable:true to go back to the notify channel.");
+    await guildService.updateSettings(context.guildId, { dungeonChannelId: channel.id });
+    await interaction.reply({ content: `Dungeon runs and records will post in <#${channel.id}>.`, ephemeral: true });
     return;
   }
 

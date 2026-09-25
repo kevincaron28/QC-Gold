@@ -1,7 +1,8 @@
 import { SlashCommandBuilder, type ChatInputCommandInteraction } from "discord.js";
 import { createAddonImportService } from "../services/addon-import.js";
 import { createAuditService } from "../services/audit.js";
-import { notifications, notify } from "../services/notify.js";
+import { notifications, notify, notifyDungeon } from "../services/notify.js";
+import { dungeonAnnouncement } from "../services/dungeon-announce.js";
 import type { RaidImportSummary } from "../services/raid-import.js";
 import type { DungeonImportSummary } from "../services/dungeon-import.js";
 import { formatDuration } from "../services/dungeon-rules.js";
@@ -86,4 +87,6 @@ export async function executeImportApply(interaction: ChatInputCommandInteractio
   if (result.epgpTransactions.length > 0 || matchedRaids > 0) {
     await notify(interaction.guild, notifications.importApplied(result.epgpTransactions.length, matchedRaids));
   }
+  const dungeonPost = dungeonAnnouncement(result.dungeons, "en");
+  if (dungeonPost) await notifyDungeon(interaction.guild, (lang) => dungeonAnnouncement(result.dungeons, lang) ?? dungeonPost);
 }

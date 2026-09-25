@@ -188,7 +188,8 @@ export async function renderStep(step: number, guild: DiscordGuild, guildId: str
       "",
       `📢 **Announcements** — raid started, boss kills, loot, EP awards, raid reports: ${channelLabel(settings.notifyChannelId)}`,
       `📅 **Raid signups** — signup posts that update live, and raid reminders: ${channelLabel(settings.raidSignupChannelId)}`,
-      `🔒 **Officer log** — joins/leaves, moderation, bank and craft requests: ${channelLabel(settings.logChannelId)}`
+      `🔒 **Officer log** — joins/leaves, moderation, bank and craft requests: ${channelLabel(settings.logChannelId)}`,
+      `🏰 **Dungeon runs** (optional) — completed dungeons and records: ${settings.dungeonChannelId ? `<#${settings.dungeonChannelId}>` : "same as announcements"}`
     ].join("\n"));
     const select = (id: string, placeholder: string) => new ActionRowBuilder<ChannelSelectMenuBuilder>().addComponents(
       new ChannelSelectMenuBuilder().setCustomId(`setup:${id}`).setPlaceholder(placeholder)
@@ -197,6 +198,7 @@ export async function renderStep(step: number, guild: DiscordGuild, guildId: str
       select("ch-notify", "📢 Pick the announcements channel"),
       select("ch-raid", "📅 Pick the raid signups channel"),
       select("ch-log", "🔒 Pick the officer log channel"),
+      select("ch-dungeon", "🏰 Optional: a channel for dungeon runs"),
       navRow(2, [button("create-channels", "Create them for me", ButtonStyle.Success)])
     );
   }
@@ -417,7 +419,7 @@ export async function executeSetup(interaction: ChatInputCommandInteraction): Pr
         } else if (action === "create-channels") note = await createChannels(guild, guildId);
         else if (i.isChannelSelectMenu()) {
           const channelId = i.values[0];
-          const field = { "ch-notify": "notifyChannelId", "ch-raid": "raidSignupChannelId", "ch-log": "logChannelId", "ch-welcome": "welcomeChannelId" }[action];
+          const field = { "ch-notify": "notifyChannelId", "ch-raid": "raidSignupChannelId", "ch-log": "logChannelId", "ch-welcome": "welcomeChannelId", "ch-dungeon": "dungeonChannelId" }[action];
           if (channelId && field) {
             await guildService.updateSettings(guildId, { [field]: channelId });
             note = `Saved <#${channelId}>.`;

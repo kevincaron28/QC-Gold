@@ -182,6 +182,8 @@ are not counted.
 | `/dungeon history [member]` | Last 10 runs, including ones that did not count and why |
 | `/dungeon season` | Current season and its top 5 |
 
+After each import, completed runs and new records are posted once in the dungeon channel (`/config dungeon-channel`, also in `/setup`), or the notify channel if none is set.
+
 ### Raid Leaders (and Officers)
 
 | Command | What it does |

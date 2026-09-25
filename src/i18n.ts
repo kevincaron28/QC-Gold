@@ -134,7 +134,14 @@ const STRINGS = {
   "dungeon.season.title": { en: "🏆 {season}", fr: "🏆 {season}" },
   "dungeon.season.since": { en: "Started {date}. {runs} completed run(s) so far.", fr: "Commencée le {date}. {runs} donjon(s) terminé(s) jusqu'ici." },
   "dungeon.season.none": { en: "No season has started yet. It starts by itself with the first imported run.", fr: "Aucune saison n'a commencé. Elle démarre toute seule avec le premier donjon importé." },
-  "dungeon.season.top": { en: "Top players", fr: "Meilleurs joueurs" }
+  "dungeon.season.top": { en: "Top players", fr: "Meilleurs joueurs" },
+  "dungeon.post.title": { en: "🏰 Dungeon runs", fr: "🏰 Donjons terminés" },
+  "dungeon.post.flawless": { en: "no deaths", fr: "aucune mort" },
+  "dungeon.post.more": { en: "…and {count} more", fr: "…et {count} de plus" },
+  "dungeon.post.records": { en: "Records", fr: "Records" },
+  "dungeon.post.guildRecord": { en: "🏆 New guild record in **{dungeon}**: {before} → **{now}**", fr: "🏆 Nouveau record de guilde dans **{dungeon}** : {before} → **{now}**" },
+  "dungeon.post.personal": { en: "⭐ Personal best in {dungeon}: {names}", fr: "⭐ Record personnel dans {dungeon} : {names}" },
+  "dungeon.post.footer": { en: "/dungeon leaderboard · /dungeon records", fr: "/dungeon leaderboard · /dungeon records" }
 } satisfies Record<string, Record<Lang, string>>;
 
 export type StringKey = keyof typeof STRINGS;

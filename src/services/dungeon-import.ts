@@ -17,6 +17,7 @@ interface LinkedCharacter { name: string; realm: string; memberId: string }
 export interface DungeonImportResult {
   runRef: string;
   dungeonName: string;
+  difficultyId: number;
   state: string;
   valid: boolean;
   invalidReason?: string;
@@ -26,6 +27,8 @@ export interface DungeonImportResult {
   previousGuildBest: number | null;
   personalRecords: { character: string; previous: number; now: number }[];
   players: string[];
+  // Sum of tracked deaths; null when no player's deaths were tracked.
+  deaths: number | null;
   unlinked: string[];
 }
 
@@ -187,6 +190,7 @@ export async function importDungeonRuns(
     summary.results.push({
       runRef: run.id,
       dungeonName: run.name,
+      difficultyId: run.difficultyId,
       state: run.state,
       valid: check.ok,
       ...(check.ok ? {} : { invalidReason: check.reason ?? "invalid" }),
@@ -196,6 +200,8 @@ export async function importDungeonRuns(
       previousGuildBest,
       personalRecords,
       players: run.players.map((player) => player.character),
+      deaths: run.players.some((player) => typeof player.deaths === "number")
+        ? run.players.reduce((sum, player) => sum + (player.deaths ?? 0), 0) : null,
       unlinked: linked.filter((entry) => !entry.character).map((entry) => entry.player.character)
     });
   }

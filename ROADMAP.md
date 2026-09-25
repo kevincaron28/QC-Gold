@@ -338,7 +338,7 @@ D5. [x] **M — Seasons, records, leaderboards (bot)** *(Done 2026-09-25: /dunge
     dungeon, guild and personal; `/dungeon leaderboard [dungeon]
     [weekly|season|all]`, `/dungeon records`, `/dungeon player`,
     `/dungeon history`, `/dungeon season`.
-D6. [ ] **S — Announcements**: completed runs, new personal and guild
+D6. [x] **S — Announcements** *(Done 2026-09-25: one post per import, dungeon channel or notify fallback, /config dungeon-channel + /setup.)*: completed runs, new personal and guild
     records in a dungeon channel (/setup + `/config`).
 D7. [ ] **M — Admin + audit**: `/dungeon invalidate`, `award`, `remove`,
     `force-complete`, `audit`, `config`, `season start|end`, all logged.
