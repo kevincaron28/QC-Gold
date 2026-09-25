@@ -212,6 +212,7 @@ After each import, completed runs and new records are posted once in the dungeon
 | `/raid boss <raid> <name> <Killed\|Pending>` | Boss status |
 | `/raid attendance <raid> <player> <status> [notes]` | Record attendance |
 | `/raid note <raid> <text> [boss]` | Officer note (general, per boss, what to improve); shown in `/raid status` to raid leaders |
+| `/readiness raid` also shows a **Consumables** section (who has no flask/elixir or food) from the officer's last in-game `/qg consumes` scan, if it is under 3 hours old |
 | `/readiness member <player>` / `/readiness raid` | Check other people's readiness (also Guild Master, Loot Leader, Class Leader). `/readiness raid` posts the whole-guild board in the private **raid-readiness** channel when one is set (otherwise it replies only to you). The board is also refreshed after every `/import-apply` that carries gear checks |
 
 Proposed EP = attendance EP (present or late) + boss kills × boss EP + a

@@ -36,6 +36,7 @@ lines go in `ns.commandHelp` (a string, or `{ officer = true, text = ... }`).
 | Bidding.lua | `bidding` | QuebecGoldBid | In-game GP bidding on loot |
 | Dungeon.lua | `dungeon` | QuebecGoldDgn | Dungeon run tracking for the Dungeon Challenge |
 | Calendar.lua | `calendar` | (none) | `/qg calendar check` |
+| Consumables.lua | `consumables` | (none) | `/qg consumes`: who in the group lacks a flask/elixir or food; your own buffs go into your readiness snapshot |
 | Sim.lua | `sim` | (none) | Test raid / dungeon run for officers |
 | Sync.lua | always on | QuebecGoldSync | Version check, standings, guild module switches |
 | Minimap.lua | always on | (none) | Minimap button and tools window |

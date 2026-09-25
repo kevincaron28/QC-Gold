@@ -27,3 +27,39 @@ describe("readiness board", () => {
     expect(chunks.join("\n").split("\n")).toHaveLength(100);
   });
 });
+
+import { buildConsumableLines } from "../src/services/readiness-board.js";
+import { parseAddonSnapshot } from "../src/integrations/addon.js";
+
+describe("consumable scan", () => {
+  const now = new Date("2026-10-01T20:00:00Z");
+  const scannedAt = new Date("2026-10-01T19:48:00Z");
+
+  it("lists who lacks a flask/elixir or food from the latest scan", async () => {
+    const rows = [
+      { character: "Amy", flask: "Flask of the Titans", elixirs: [], food: null, scannedAt },
+      { character: "Bob", flask: null, elixirs: ["Elixir of the Mongoose"], food: "Well Fed", scannedAt },
+      { character: "Cy", flask: null, elixirs: [], food: "Well Fed", scannedAt }
+    ];
+    const lines = await buildConsumableLines({ consumableCheck: { findMany: async () => rows } } as never, "g1", now);
+    expect(lines[0]).toContain("3 scanned 12 min ago");
+    expect(lines[1]).toContain("No flask/elixir: Cy");
+    expect(lines[2]).toContain("No food: Amy");
+  });
+
+  it("says nobody when everyone is covered, and nothing without a fresh scan", async () => {
+    const covered = [{ character: "Amy", flask: "Flask of Power", elixirs: [], food: "Well Fed", scannedAt }];
+    const lines = await buildConsumableLines({ consumableCheck: { findMany: async () => covered } } as never, "g1", now);
+    expect(lines[1]).toContain("nobody");
+    expect(lines[2]).toContain("nobody");
+    expect(await buildConsumableLines({ consumableCheck: { findMany: async () => [] } } as never, "g1", now)).toEqual([]);
+  });
+
+  it("accepts the export's consumeScan block", () => {
+    const parsed = parseAddonSnapshot({
+      source: "QuebecGold", exportedAt: "2026-10-01T20:00:00Z",
+      consumeScan: { at: "2026-10-01T19:48:00Z", by: "Kev", players: [{ character: "Amy", realm: "R", flask: "Flask of Power", elixirs: [] }] }
+    });
+    expect(parsed.consumeScan?.players).toHaveLength(1);
+  });
+});

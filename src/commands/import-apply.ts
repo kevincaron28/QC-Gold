@@ -76,6 +76,7 @@ export async function executeImportApply(interaction: ChatInputCommandInteractio
   });
   await interaction.reply({
     content: `Applied import \`${importId}\`: ${result.transactions.length} DKP transaction(s), `
+      + (result.consumables ? `${result.consumables} consumable check(s), ` : "")
       + `${result.epgpTransactions.length} EPGP transaction(s), ${result.readinessSnapshots.length} `
       + `readiness snapshot(s), and ${result.attunements.length} attunement update(s) recorded. `
       + `${result.skipped} ledger entr${result.skipped === 1 ? "y was" : "ies were"} already imported and skipped.`
@@ -92,5 +93,5 @@ export async function executeImportApply(interaction: ChatInputCommandInteractio
   const dungeonPost = dungeonAnnouncement(result.dungeons, "en");
   if (dungeonPost) await notifyDungeon(interaction.guild, (lang) => dungeonAnnouncement(result.dungeons, lang) ?? dungeonPost);
   if (dungeonPost) await updateDungeonLeaderboard(interaction.guild);
-  if (result.readinessSnapshots.length > 0) await postReadinessBoard(interaction.guild, context.guildId, "updated after an addon import");
+  if (result.readinessSnapshots.length > 0 || result.consumables > 0) await postReadinessBoard(interaction.guild, context.guildId, "updated after an addon import");
 }

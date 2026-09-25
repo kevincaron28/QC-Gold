@@ -217,6 +217,28 @@ export function createAddonImportService(database: PrismaClient) {
           }));
         }
 
+        // The officer's last /qg consumes scan: newest result per character wins.
+        let consumables = 0;
+        if (snapshot.consumeScan) {
+          const scan = snapshot.consumeScan;
+          for (const player of scan.players) {
+            const existing = await tx.consumableCheck.findUnique({
+              where: { guildId_character_realm: { guildId, character: player.character, realm: player.realm } }
+            });
+            if (existing && existing.scannedAt >= scan.at) continue;
+            const data = {
+              flask: player.flask ?? null, elixirs: player.elixirs, food: player.food ?? null,
+              weapon: player.weapon ?? null, scannedAt: scan.at, scannedBy: scan.by
+            };
+            await tx.consumableCheck.upsert({
+              where: { guildId_character_realm: { guildId, character: player.character, realm: player.realm } },
+              create: { guildId, character: player.character, realm: player.realm, ...data },
+              update: data
+            });
+            consumables++;
+          }
+        }
+
         // In-game raid presence -> Discord raid attendance (best effort, like
         // readiness: an unmatched raid or character doesn't block the import).
         const raids = await applyRaidAttendance(tx, guildId, snapshot.raids, characters, appliedBy);
@@ -229,7 +251,7 @@ export function createAddonImportService(database: PrismaClient) {
           where: { id: imported.id },
           data: { status: "APPLIED" }
         });
-        return { import: imported, transactions, epgpTransactions, readinessSnapshots, attunements, raids, loot, dungeons, skipped };
+        return { import: imported, transactions, epgpTransactions, readinessSnapshots, attunements, consumables, raids, loot, dungeons, skipped };
       });
     }
   };

@@ -233,6 +233,20 @@ export async function readAddonExport(path, realm) {
       ...peerReadiness
     ],
     attunements,
+    ...(database.consumeScan?.players ? {
+      consumeScan: {
+        at: String(database.consumeScan.at ?? exportedAt),
+        by: String(database.consumeScan.by ?? ""),
+        players: Object.values(database.consumeScan.players).map((player) => ({
+          character: String(player.character),
+          realm: String(player.realm || realm),
+          flask: player.flask ? String(player.flask) : undefined,
+          elixirs: Object.values(player.elixirs ?? {}).map(String),
+          food: player.food ? String(player.food) : undefined,
+          weapon: player.weapon ? String(player.weapon) : undefined
+        }))
+      }
+    } : {}),
     raids,
     loot,
     dungeonRuns

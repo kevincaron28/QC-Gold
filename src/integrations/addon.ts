@@ -118,10 +118,25 @@ export const addonCharacterSchema = z.object({
   professions: z.array(z.object({ name: z.string().min(1), skillLevel: z.number().int().nonnegative() })).default([])
 });
 
+// Result of the officer's last /qg consumes group scan.
+export const addonConsumeScanSchema = z.object({
+  at: z.coerce.date(),
+  by: z.string().default(""),
+  players: z.array(z.object({
+    character: z.string().min(1),
+    realm: z.string().min(1),
+    flask: z.string().min(1).optional(),
+    elixirs: z.array(z.string().min(1)).default([]),
+    food: z.string().min(1).optional(),
+    weapon: z.string().min(1).optional()
+  })).max(100).default([])
+});
+
 export const addonSnapshotSchema = z.object({
   source: z.string().min(1),
   exportedAt: z.coerce.date(),
   character: addonCharacterSchema.optional(),
+  consumeScan: addonConsumeScanSchema.optional(),
   transactions: z.array(addonTransactionSchema).default([]),
   epgpTransactions: z.array(addonEpgpTransactionSchema).default([]),
   readiness: z.array(addonReadinessSchema).default([]),

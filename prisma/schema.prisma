@@ -132,6 +132,7 @@ model Guild {
   dungeonPoints       DungeonPointTransaction[]
   dungeonAchievements DungeonAchievement[]
   warcraftLogsReports WarcraftLogsReport[]
+  consumableChecks    ConsumableCheck[]
 }
 
 model Member {
@@ -813,4 +814,22 @@ model WarcraftLogsReport {
   @@unique([guildId, code])
   @@index([guildId, startedAt])
   @@index([raidId])
+}
+
+// The latest consumable scan result per character (from /qg consumes in game).
+model ConsumableCheck {
+  id        String   @id @default(cuid())
+  guildId   String
+  character String
+  realm     String
+  flask     String?
+  elixirs   String[] @default([])
+  food      String?
+  weapon    String?
+  scannedAt DateTime
+  scannedBy String   @default("")
+  guild     Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@unique([guildId, character, realm])
+  @@index([guildId, scannedAt])
 }

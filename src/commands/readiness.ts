@@ -1,7 +1,7 @@
 import { SlashCommandBuilder, type ChatInputCommandInteraction } from "discord.js";
 import { prisma } from "../database.js";
 import { hasPermission } from "../permissions.js";
-import { buildReadinessLines, chunkLines, postReadinessBoard } from "../services/readiness-board.js";
+import { buildConsumableLines, buildReadinessLines, chunkLines, postReadinessBoard } from "../services/readiness-board.js";
 import { requireGuildContext } from "./context.js";
 
 export const readinessCommand = new SlashCommandBuilder()
@@ -58,7 +58,7 @@ export async function executeReadiness(interaction: ChatInputCommandInteraction)
     await interaction.reply({ content: "Posted the raid readiness in the readiness channel.", ephemeral: true });
     return;
   }
-  const chunks = chunkLines(await buildReadinessLines(prisma, context.guildId), 1900);
+  const chunks = chunkLines([...await buildReadinessLines(prisma, context.guildId), ...await buildConsumableLines(prisma, context.guildId)], 1900);
   await interaction.reply({ content: chunks[0] ?? "No guild members found.", ephemeral: true });
   for (const chunk of chunks.slice(1)) await interaction.followUp({ content: chunk, ephemeral: true });
 }

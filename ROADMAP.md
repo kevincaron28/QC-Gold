@@ -47,7 +47,7 @@ Order of work: **A** roadmap entries (#42–#46) → **B** consumable scan (#42)
 Each step ends with tsc + eslint + tests green and a commit. Status:
 
 - [x] A. Roadmap entries added.
-- [ ] B. Consumable scan.
+- [x] B. Consumable scan (addon `Modules/Consumables.lua`, `ConsumableCheck` model, readiness board section; addon v1.9.0; not yet run in game).
 - [ ] C. Raid cores.
 - [ ] D. Dungeon group signup + temporary voice channel.
 - [ ] E. Setup categories and permissions.
@@ -550,7 +550,7 @@ D10. [x] **S — Test path** *(Done 2026-09-25: /testraid dungeon through the re
     posts the guild board there; `/import-apply` refreshes it when gear checks
     arrive. `src/services/readiness-board.ts`. Enchant/flask checks are still
     open (G2, ID2, plus an enchant check in the addon).
-42. [ ] **M — Consumable scan** (requested 2026-09-26; **building tonight**).
+42. [x] **M — Consumable scan** *(Built 2026-09-26, addon v1.9.0; Lua only syntax-checked, needs the in-game test in checklist section 9. Flask/elixir/food are matched by buff name (`Flask of`, `Elixir of`, `Well Fed`...); weapon enchants only for yourself; needs `/qg consumes` from an officer, out of combat and in range. Your own snapshot also records them and adds NO_FLASK / NO_FOOD warnings while you're in a raid group.)*
     Addon: each player's own snapshot records active flask/elixir/food/weapon
     buff; `/qg consumes` (officer) scans the whole group and prints who is
     missing what; results export to the bot (`ConsumableCheck`) and show as a

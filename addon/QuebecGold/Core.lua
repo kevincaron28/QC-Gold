@@ -571,6 +571,22 @@ local function inspectReadiness(silent, target)
       table.insert(snapshot.findings, { code = "MISSING_" .. string.upper(slot[2]), severity = "ERROR", message = "Missing " .. slot[2] .. " equipment." })
     end
   end
+  -- Consumables: always recorded; only a missing flask/food counts against
+  -- readiness while you are in a raid group (idle in town is fine).
+  if ns.consumables and (not ns.moduleActive or ns.moduleActive("consumables")) then
+    local rowsOk, rows, scanned = pcall(ns.consumables.ownRows)
+    if rowsOk and type(rows) == "table" and scanned and scanned.readable then
+      snapshot.consumables = rows
+      if (IsInRaid and IsInRaid()) or (GetNumRaidMembers and GetNumRaidMembers() > 0) then
+        if not ns.consumables.hasElixirOrFlask(scanned) then
+          table.insert(snapshot.findings, { code = "NO_FLASK", severity = "WARNING", message = "No flask or elixir active." })
+        end
+        if not scanned.food then
+          table.insert(snapshot.findings, { code = "NO_FOOD", severity = "WARNING", message = "No food buff active." })
+        end
+      end
+    end
+  end
   if minDurability < 20 then
     table.insert(snapshot.findings, { code = "LOW_DURABILITY", severity = "WARNING", message = "Lowest equipped durability is " .. minDurability .. "%." })
   end
@@ -787,9 +803,10 @@ ns.MODULES = {
   { key = "bidding", name = "GP bidding", desc = "in-game GP bids on loot", commands = { "bid" } },
   { key = "dungeon", name = "Dungeons", desc = "dungeon run tracking and points", commands = { "dungeon" } },
   { key = "calendar", name = "Calendar", desc = "guild calendar check", commands = { "calendar" } },
+  { key = "consumables", name = "Consumable scan", desc = "who is missing a flask or food", commands = { "consumes" } },
   { key = "sim", name = "Test tools", desc = "fake raid and dungeon runs for officers", commands = { "sim" } }
 }
-local MODULE_ALIASES = { bid = "bidding", bids = "bidding", gp = "bidding", dungeons = "dungeon", test = "sim", tests = "sim" }
+local MODULE_ALIASES = { bid = "bidding", bids = "bidding", gp = "bidding", dungeons = "dungeon", test = "sim", tests = "sim", consumable = "consumables", consumes = "consumables", flask = "consumables" }
 local moduleByKey, commandModule, activeAtLogin = {}, {}, {}
 for _, module in ipairs(ns.MODULES) do
   moduleByKey[module.key] = module
