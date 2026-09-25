@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@prisma/client";
+import { findCharacter } from "./character-match.js";
 import { createGuildService } from "./guild.js";
 
 // Turns what the addon captured about a character into a linked Character,
@@ -72,9 +73,13 @@ export async function importCharacter(
   parsed: ParsedCharacter,
   mainChoice?: boolean
 ): Promise<ImportOutcome> {
-  const existing = await database.character.findFirst({
-    where: { realm: { equals: parsed.realm, mode: "insensitive" }, name: { equals: parsed.name, mode: "insensitive" } }
+  const owner = await database.member.findUnique({ where: { id: memberId }, select: { guildId: true } });
+  if (!owner) throw new Error("Your member profile was not found.");
+  // Same name in this guild, tolerating a different realm spelling (Forever has no real realms).
+  const sameName = await database.character.findMany({
+    where: { name: { equals: parsed.name, mode: "insensitive" }, member: { guildId: owner.guildId } }
   });
+  const existing = findCharacter(sameName, parsed.name, parsed.realm);
   if (existing && existing.memberId !== memberId) {
     throw new Error(`${existing.name} (${existing.realm}) is already linked to another member. Ask an officer if that's a mistake.`);
   }

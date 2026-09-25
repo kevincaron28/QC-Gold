@@ -33,3 +33,20 @@ describe("Core.lua (real file, mocked game)", () => {
     expect(s.chat().join("\n")).toContain("QG1|Kev|TestRealm|WARRIOR|NightElf|60|");
   });
 });
+
+describe("player identity (Forever has no real realms)", () => {
+  it("reads name and realm from the client, and /qg diag shows the raw values", () => {
+    const s = loggedIn();
+    expect(s.run(`local id = NS.compat.identity(); return id.name .. "|" .. id.realm .. "|" .. tostring(id.hasRealm)`)).toBe("Kev|TestRealm|true");
+    s.run(`SlashCmdList["QUEBECGOLD"]("diag")`);
+    expect(s.chat().join("\n")).toContain("Identity: name=Kev realm=TestRealm");
+  });
+
+  it("copes with a client that reports no realm at all", () => {
+    const s = loggedIn();
+    s.run(`GetRealmName = function() return "" end; GetNormalizedRealmName = nil`);
+    expect(s.run(`local id = NS.compat.identity(); return tostring(id.hasRealm) .. "|" .. id.realm`)).toBe("false|");
+    s.run(`SlashCmdList["QUEBECGOLD"]("character")`);
+    expect(s.chat().join("\n")).toContain("QG1|Kev||WARRIOR");
+  });
+});

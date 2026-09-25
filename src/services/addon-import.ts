@@ -5,6 +5,7 @@ import { deriveReadinessStatus } from "./readiness.js";
 import { applyAddonLoot, applyRaidAttendance, touchLastSeen } from "./raid-import.js";
 import { importDungeonRuns } from "./dungeon-import.js";
 import { normalizeClassName, normalizeRaceName } from "./character-import.js";
+import { findCharacter } from "./character-match.js";
 
 export function createAddonImportService(database: PrismaClient) {
   return {
@@ -71,10 +72,7 @@ export function createAddonImportService(database: PrismaClient) {
           const sourceRef = ledgerRef(item);
           if (alreadyImported.has(sourceRef)) { skipped++; continue; }
           alreadyImported.add(sourceRef);
-          const character = characters.find((candidate) =>
-            candidate.name.toLowerCase() === item.character.toLowerCase() &&
-            candidate.realm.toLowerCase() === item.realm.toLowerCase()
-          );
+          const character = findCharacter(characters, item.character, item.realm);
           if (!character) throw new Error(`No linked character found for ${item.character} (${item.realm}).`);
           transactions.push(await tx.dkpTransaction.create({
             data: {
@@ -93,10 +91,7 @@ export function createAddonImportService(database: PrismaClient) {
           const sourceRef = ledgerRef(item);
           if (alreadyImported.has(sourceRef)) { skipped++; continue; }
           alreadyImported.add(sourceRef);
-          const character = characters.find((candidate) =>
-            candidate.name.toLowerCase() === item.character.toLowerCase() &&
-            candidate.realm.toLowerCase() === item.realm.toLowerCase()
-          );
+          const character = findCharacter(characters, item.character, item.realm);
           if (!character) throw new Error(`No linked character found for ${item.character} (${item.realm}).`);
           epgpTransactions.push(await tx.epgpTransaction.create({
             data: {
@@ -116,10 +111,7 @@ export function createAddonImportService(database: PrismaClient) {
         // (class, race, level, spec, professions). Never creates a character.
         if (snapshot.character) {
           const own = snapshot.character;
-          const linked = characters.find((candidate) =>
-            candidate.name.toLowerCase() === own.name.toLowerCase() &&
-            candidate.realm.toLowerCase() === own.realm.toLowerCase()
-          );
+          const linked = findCharacter(characters, own.name, own.realm);
           if (linked) {
             await tx.character.update({
               where: { id: linked.id },
@@ -144,10 +136,7 @@ export function createAddonImportService(database: PrismaClient) {
         // DKP/EPGP transactions in the same import from being applied.
         const readinessSnapshots = [];
         for (const entry of snapshot.readiness) {
-          const character = characters.find((candidate) =>
-            candidate.name.toLowerCase() === entry.character.toLowerCase() &&
-            candidate.realm.toLowerCase() === entry.realm.toLowerCase()
-          );
+          const character = findCharacter(characters, entry.character, entry.realm);
           if (!character) continue;
           await touchLastSeen(tx, character.id, entry.inspectedAt ?? new Date(snapshot.exportedAt));
 
@@ -205,10 +194,7 @@ export function createAddonImportService(database: PrismaClient) {
         // best-effort matching as readiness.
         const attunements = [];
         for (const entry of snapshot.attunements) {
-          const character = characters.find((candidate) =>
-            candidate.name.toLowerCase() === entry.character.toLowerCase() &&
-            candidate.realm.toLowerCase() === entry.realm.toLowerCase()
-          );
+          const character = findCharacter(characters, entry.character, entry.realm);
           if (!character) continue;
           attunements.push(await tx.characterAttunement.upsert({
             where: { characterId_name: { characterId: character.id, name: entry.name } },

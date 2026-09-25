@@ -194,6 +194,33 @@ function compat.registerEvent(frame, event)
   return ok
 end
 
+-- Who this character is, tolerant of how the client names things. Other
+-- Forever addons report that Forever has no real realms and that names can
+-- carry a hyphen, so nothing here assumes a realm exists. Returns the raw
+-- values too, so /qg diag can show exactly what this client says.
+function compat.identity()
+  local name = exists(UnitName) and try("identity.name", UnitName, "player") or nil
+  local realmName = exists(GetRealmName) and try("identity.realm", GetRealmName) or nil
+  local normalized = exists(GetNormalizedRealmName) and try("identity.normalized", GetNormalizedRealmName) or nil
+  local unitRealm
+  if exists(UnitName) then
+    local ok, _, r = pcall(UnitName, "player")
+    if ok then unitRealm = r end
+  end
+  local full = exists(GetUnitName) and try("identity.full", GetUnitName, "player", true) or nil
+  local function text(value)
+    if type(value) == "string" and not secret(value) and value ~= "" then return value end
+    return nil
+  end
+  local realm = text(realmName) or text(normalized) or text(unitRealm) or ""
+  return {
+    name = text(name) or "Unknown",
+    realm = realm,
+    hasRealm = realm ~= "",
+    raw = { realmName = text(realmName), normalizedRealm = text(normalized), unitNameRealm = text(unitRealm), fullName = text(full) }
+  }
+end
+
 -- What the dungeon system can and can't do on this client.
 function compat.features()
   return {

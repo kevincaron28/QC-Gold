@@ -473,7 +473,7 @@ local function collectCharacter()
   end
   return {
     name = playerName(),
-    realm = (GetRealmName and GetRealmName()) or "",
+    realm = (ns.compat and ns.compat.identity().realm) or (GetRealmName and GetRealmName()) or "",
     class = classFile or "",
     race = raceFile or "",
     level = UnitLevel("player") or 0,
@@ -711,7 +711,17 @@ local function exportData()
   message("Export marked at " .. key .. ". /reload (or log out) so the game writes SavedVariables, then run the companion.")
 end
 
+local function showIdentity()
+  if not ns.compat or not ns.compat.identity then return end
+  local id = ns.compat.identity()
+  local raw = id.raw
+  message(string.format("Identity: name=%s realm=%s (GetRealmName=%s, normalized=%s, UnitName realm=%s, full=%s)",
+    id.name, id.hasRealm and id.realm or "(none)", tostring(raw.realmName), tostring(raw.normalizedRealm),
+    tostring(raw.unitNameRealm), tostring(raw.fullName)))
+end
+
 local function showDiagnostics()
+  showIdentity()
   local entries = db.diagnostics or {}
   if #entries == 0 then
     message("No diagnostics recorded.")

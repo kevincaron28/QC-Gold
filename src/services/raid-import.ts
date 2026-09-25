@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import type { AddonLoot, AddonRaid } from "../integrations/addon.js";
+import { findCharacter } from "./character-match.js";
 
 // A Discord raid within this long of the in-game /qg start counts as the
 // same raid (people start late, or schedule "8pm" and pull at 8:40).
@@ -75,9 +76,7 @@ export async function applyRaidAttendance(
     const seenMembers = new Set<string>();
 
     for (const player of addonRaid.players) {
-      const character = characters.find((candidate) =>
-        candidate.name.toLowerCase() === player.character.toLowerCase() &&
-        candidate.realm.toLowerCase() === player.realm.toLowerCase());
+      const character = findCharacter(characters, player.character, player.realm);
       const status = player.status ?? (player.seen ? "PRESENT" : undefined);
       if (character && player.seen) await touchLastSeen(tx, character.id, addonRaid.endedAt ?? addonRaid.startedAt);
       if (!character || !status) continue;
@@ -132,9 +131,7 @@ export async function applyAddonLoot(
   const unmatched: string[] = [];
   for (const row of loot) {
     if (existing.has(row.ref)) { skipped++; continue; }
-    const character = characters.find((candidate) =>
-      candidate.name.toLowerCase() === row.character.toLowerCase() &&
-      candidate.realm.toLowerCase() === row.realm.toLowerCase());
+    const character = findCharacter(characters, row.character, row.realm);
     if (!character) { unmatched.push(row.character); continue; }
     await tx.lootAward.create({
       data: {

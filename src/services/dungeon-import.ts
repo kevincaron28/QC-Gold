@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { grantRunAchievements, type AchievementKey } from "./dungeon-achievements.js";
+import { findCharacter } from "./character-match.js";
 import {
   computeRunPoints, dungeonConfig, dungeonRunSchema, validateRun, weekStart,
   type DungeonRunInput, type PlayerContext
@@ -96,8 +97,7 @@ export async function importDungeonRuns(
     const durationSec = run.startedAt && run.endedAt ? run.endedAt - run.startedAt : null;
     const linked = run.players.map((player) => ({
       player,
-      character: characters.find((candidate) =>
-        candidate.name.toLowerCase() === player.character.toLowerCase() && candidate.realm.toLowerCase() === player.realm.toLowerCase())
+      character: findCharacter(characters, player.character, player.realm)
     }));
     const earnsPoints = check.ok && run.state === "COMPLETED" && durationSec !== null;
 
