@@ -1,11 +1,13 @@
 import type { Prisma } from "@prisma/client";
-import type { AddonRaid } from "../integrations/addon.js";
+import type { AddonLoot, AddonRaid } from "../integrations/addon.js";
 
 // A Discord raid within this long of the in-game /qg start counts as the
 // same raid (people start late, or schedule "8pm" and pull at 8:40).
 const MATCH_WINDOW_MS = 4 * 60 * 60 * 1000;
 
 export interface RaidImportSummary {
+  ref: string;
+  matchedRaidId: string | null;
   title: string;
   matchedRaidTitle: string | null;
   recorded: number;
@@ -21,6 +23,7 @@ interface LinkedCharacter {
 }
 
 type Tx = Pick<Prisma.TransactionClient, "raid" | "raidAttendance" | "member" | "character">;
+type LootTx = Pick<Prisma.TransactionClient, "lootAward">;
 
 // Moves a character's "last seen" forward (never backward) when the addon
 // reports them: a gear check, or being in a raid group.
@@ -60,7 +63,10 @@ export async function applyRaidAttendance(
     });
     const raid = candidates.sort((a, b) =>
       Math.abs(a.scheduledAt.getTime() - start) - Math.abs(b.scheduledAt.getTime() - start))[0];
-    const summary: RaidImportSummary = { title: addonRaid.title, matchedRaidTitle: raid?.title ?? null, recorded: 0, noShows: [], walkIns: [] };
+    const summary: RaidImportSummary = {
+      ref: addonRaid.ref, matchedRaidId: raid?.id ?? null, title: addonRaid.title,
+      matchedRaidTitle: raid?.title ?? null, recorded: 0, noShows: [], walkIns: []
+    };
     summaries.push(summary);
     if (!raid) continue;
 
@@ -100,4 +106,51 @@ export async function applyRaidAttendance(
     }
   }
   return summaries;
+}
+
+// Adds items given out in game (/qg loot, GP bidding) to Discord loot
+// history. Each addon loot row has a stable ref, so re-importing never
+// duplicates. The GP was already imported as a ledger entry; this only
+// records the history row. `raidIds` maps addon raid refs to the Discord
+// raids they matched, so loot shows up in that raid's report.
+export async function applyAddonLoot(
+  tx: LootTx,
+  guildId: string,
+  loot: AddonLoot[],
+  characters: LinkedCharacter[],
+  raidIds: Map<string, string>,
+  appliedBy: string
+): Promise<{ recorded: number; skipped: number; unmatched: string[] }> {
+  if (loot.length === 0) return { recorded: 0, skipped: 0, unmatched: [] };
+  const refs = loot.map((row) => row.ref);
+  const existing = new Set((await tx.lootAward.findMany({
+    where: { sourceRef: { in: refs } },
+    select: { sourceRef: true }
+  })).map((row) => row.sourceRef));
+  let recorded = 0;
+  let skipped = 0;
+  const unmatched: string[] = [];
+  for (const row of loot) {
+    if (existing.has(row.ref)) { skipped++; continue; }
+    const character = characters.find((candidate) =>
+      candidate.name.toLowerCase() === row.character.toLowerCase() &&
+      candidate.realm.toLowerCase() === row.realm.toLowerCase());
+    if (!character) { unmatched.push(row.character); continue; }
+    await tx.lootAward.create({
+      data: {
+        guildId,
+        memberId: character.memberId,
+        itemName: row.item.slice(0, 200),
+        amount: row.gp,
+        raidId: row.raidRef ? raidIds.get(row.raidRef) ?? null : null,
+        bossName: row.boss ?? null,
+        awardedBy: appliedBy,
+        sourceRef: row.ref,
+        ...(row.awardedAt ? { awardedAt: row.awardedAt } : {})
+      }
+    });
+    existing.add(row.ref);
+    recorded++;
+  }
+  return { recorded, skipped, unmatched: [...new Set(unmatched)] };
 }

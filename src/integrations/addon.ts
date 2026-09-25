@@ -91,6 +91,21 @@ export const addonRaidSchema = z.object({
 
 export type AddonRaid = z.infer<typeof addonRaidSchema>;
 
+// An item an officer gave out in game (/qg loot, GP bidding Award). The GP
+// itself arrives as a normal EPGP ledger entry; this is the loot history row.
+export const addonLootSchema = z.object({
+  ref: z.string().min(1),
+  character: z.string().min(1),
+  realm: z.string().min(1),
+  item: z.string().min(1),
+  gp: z.number().int().nonnegative().default(0),
+  awardedAt: z.coerce.date().optional(),
+  raidRef: z.string().min(1).optional(),
+  boss: z.string().min(1).optional()
+});
+
+export type AddonLoot = z.infer<typeof addonLootSchema>;
+
 export const addonSnapshotSchema = z.object({
   source: z.string().min(1),
   exportedAt: z.coerce.date(),
@@ -98,7 +113,8 @@ export const addonSnapshotSchema = z.object({
   epgpTransactions: z.array(addonEpgpTransactionSchema).default([]),
   readiness: z.array(addonReadinessSchema).default([]),
   attunements: z.array(addonAttunementSchema).default([]),
-  raids: z.array(addonRaidSchema).default([])
+  raids: z.array(addonRaidSchema).default([]),
+  loot: z.array(addonLootSchema).default([])
 });
 
 export type AddonSnapshot = z.infer<typeof addonSnapshotSchema>;

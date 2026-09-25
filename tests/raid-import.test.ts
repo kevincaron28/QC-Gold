@@ -1,7 +1,7 @@
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { readAddonExport } from "../companion/lua-export.mjs";
 import { parseAddonSnapshot } from "../src/integrations/addon.js";
 import { applyRaidAttendance } from "../src/services/raid-import.js";
@@ -112,5 +112,25 @@ QuebecGoldDB = {
     } finally {
       await rm(dir, { recursive: true, force: true });
     }
+  });
+});
+
+describe("in-game loot import", () => {
+  it("adds loot once, links it to the matched raid, and reports unlinked characters", async () => {
+    const { applyAddonLoot } = await import("../src/services/raid-import.js");
+    const created: Record<string, unknown>[] = [];
+    const tx = {
+      lootAward: {
+        findMany: vi.fn().mockResolvedValue([{ sourceRef: "qg-loot:old" }]),
+        create: vi.fn().mockImplementation(async ({ data }) => { created.push(data); return data; })
+      }
+    };
+    const result = await applyAddonLoot(tx as never, "g1", [
+      { ref: "qg-loot:old", character: "Kev", realm: "Forever", item: "Old Ring", gp: 10 },
+      { ref: "qg-loot:new", character: "bob", realm: "Forever", item: "[Helm]", gp: 30, raidRef: "1-Kev", boss: "Ragnaros" },
+      { ref: "qg-loot:pug", character: "Stranger", realm: "Forever", item: "Cloak", gp: 5 }
+    ], characters, new Map([["1-Kev", "r1"]]), "officer");
+    expect(result).toEqual({ recorded: 1, skipped: 1, unmatched: ["Stranger"] });
+    expect(created[0]).toMatchObject({ memberId: "m-bob", itemName: "[Helm]", amount: 30, raidId: "r1", bossName: "Ragnaros", sourceRef: "qg-loot:new" });
   });
 });

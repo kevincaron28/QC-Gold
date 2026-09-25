@@ -160,6 +160,24 @@ export async function readAddonExport(path, realm) {
     });
   }
 
+  // Items given out in game. Rows from before loot ids existed fall back to
+  // a ref built from who/what/when, which is just as stable.
+  const loot = [];
+  for (const row of Object.values(database.loot ?? {})) {
+    if (!row?.player || !row.item) continue;
+    const item = String(row.item).replace(/\|c[0-9a-fA-F]{8}\|H[^|]*\|h(\[[^\]]*\])\|h\|r/g, "$1");
+    loot.push({
+      ref: row.id ? `qg-loot:${row.id}` : `qg-loot:${row.player}:${row.at ?? "unknown"}:${item}`,
+      character: row.player,
+      realm,
+      item,
+      gp: Math.max(0, Math.trunc(Number(row.cost) || 0)),
+      ...(row.at ? { awardedAt: row.at } : {}),
+      ...(row.raid ? { raidRef: row.raid } : {}),
+      ...(row.boss ? { boss: row.boss } : {})
+    });
+  }
+
   // SavedVariables key order is arbitrary; the ISO timestamps sort correctly.
   const exportKeys = Object.keys(database.exports ?? {}).sort();
   const exportedAt = exportKeys.at(-1) ?? new Date().toISOString();
@@ -173,6 +191,7 @@ export async function readAddonExport(path, realm) {
       ...peerReadiness
     ],
     attunements,
-    raids
+    raids,
+    loot
   };
 }

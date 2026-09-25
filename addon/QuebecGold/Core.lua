@@ -597,8 +597,12 @@ local function recordLoot(args)
   end
   local item = table.concat(args, " ", 3, last)
   if not name or item == "" then message("Usage: /qg loot <player> <item> [cost]"); return end
-  local row = { player = name, item = item, cost = cost,
-    at = now(), by = playerName(), raid = activeRaid and activeRaid.id }
+  -- The id lets the bot import each loot row into Discord loot history
+  -- exactly once; the boss is the last one killed in this raid, if any.
+  local bosses = activeRaid and db.bosses[activeRaid.id]
+  local row = { id = nextLedgerId(), player = name, item = item, cost = cost,
+    at = now(), by = playerName(), raid = activeRaid and activeRaid.id,
+    boss = bosses and bosses[#bosses] and bosses[#bosses].name or nil }
   table.insert(db.loot, row)
   logEvent("LOOT", row)
   send("LOOT|" .. name .. "|" .. item .. "|" .. row.cost)

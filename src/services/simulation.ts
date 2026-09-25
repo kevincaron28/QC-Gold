@@ -137,7 +137,18 @@ export async function finishTestRaid(database: PrismaClient, input: { guildId: s
           seen: true,
           ...(signup === late ? { status: "LATE" } : {})
         }))
-      }]
+      }],
+      // An item given out in game (as GP bidding's Award would), to test the
+      // loot-history import.
+      loot: attending.slice(0, 1).map((signup) => ({
+        ref: `sim-loot-${raid.id}`,
+        character: signup.member.characters[0]?.name ?? signup.member.displayName,
+        realm: input.realm,
+        item: "[Test Cloak of Importing]",
+        gp: 15,
+        raidRef: `sim-${raid.id}`,
+        boss: SIM_BOSSES[2]
+      }))
     };
     const preview = await importService.preview(input.guildId, payload, input.officerId);
     importId = (await importService.record(input.guildId, preview.snapshot, preview.checksum, input.officerId)).id;

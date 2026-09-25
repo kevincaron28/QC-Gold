@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { DkpTransactionType, type EpgpTransactionType, type PrismaClient } from "@prisma/client";
 import { normalizeAddonSnapshot, parseAddonSnapshot, type AddonSnapshot } from "../integrations/addon.js";
 import { deriveReadinessStatus } from "./readiness.js";
-import { applyRaidAttendance, touchLastSeen } from "./raid-import.js";
+import { applyAddonLoot, applyRaidAttendance, touchLastSeen } from "./raid-import.js";
 
 export function createAddonImportService(database: PrismaClient) {
   return {
@@ -189,12 +189,14 @@ export function createAddonImportService(database: PrismaClient) {
         // In-game raid presence -> Discord raid attendance (best effort, like
         // readiness: an unmatched raid or character doesn't block the import).
         const raids = await applyRaidAttendance(tx, guildId, snapshot.raids, characters, appliedBy);
+        const raidIds = new Map(raids.filter((raid) => raid.matchedRaidId).map((raid) => [raid.ref, raid.matchedRaidId as string]));
+        const loot = await applyAddonLoot(tx, guildId, snapshot.loot, characters, raidIds, appliedBy);
 
         await tx.addonImport.update({
           where: { id: imported.id },
           data: { status: "APPLIED" }
         });
-        return { import: imported, transactions, epgpTransactions, readinessSnapshots, attunements, raids, skipped };
+        return { import: imported, transactions, epgpTransactions, readinessSnapshots, attunements, raids, loot, skipped };
       });
     }
   };

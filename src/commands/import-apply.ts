@@ -57,6 +57,8 @@ export async function executeImportApply(interaction: ChatInputCommandInteractio
       + `${result.epgpTransactions.length} EPGP transaction(s), ${result.readinessSnapshots.length} `
       + `readiness snapshot(s), and ${result.attunements.length} attunement update(s) recorded. `
       + `${result.skipped} ledger entr${result.skipped === 1 ? "y was" : "ies were"} already imported and skipped.`
+      + (result.loot.recorded ? ` ${result.loot.recorded} in-game loot award(s) added to /loot history.` : "")
+      + (result.loot.unmatched.length ? ` Loot for unlinked characters skipped: ${result.loot.unmatched.join(", ")}.` : "")
       + raidReport(result.raids),
     ephemeral: true
   });

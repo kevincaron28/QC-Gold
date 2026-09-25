@@ -99,13 +99,13 @@ within priority. Update the checkbox the moment an item lands.
 **P0 — core gaps (bot-side, testable without the game)**
 
 > **Resume here (2026-09-25, committed):** P0 1-11, P1 13-16, #0 test
-> raid environment, #19 crafting requests, and #21 in-game GP bidding are
-> done (98 bot tests, 61 + 28 + 18 addon simulation checks). Addon is
-> v1.5.0 (zip rebuilt locally, not released). Next: live-test /testraid,
-> /craft, and the Loot tab (use /qg sim start + /qg sim bids in a party);
-> then push + GitHub release v1.5.0 + refresh the install page. Blocked:
-> #12 WCL (credentials). Held: #17 dashboard. Open: profession cooldowns,
-> importing addon loot rows into bot loot history.
+> raid environment, #19 crafting requests, #21 in-game GP bidding, and #22
+> in-game loot → Discord loot history are done (99 bot tests, 61 + 28 + 18
+> addon simulation checks). Addon is v1.5.0 (zip rebuilt locally, not
+> released). Live test steps are in `LUNCH_TEST_CHECKLIST.md` (untracked).
+> Next: user live-tests; then push + GitHub release v1.5.0 + refresh the
+> install page. Blocked: #12 WCL (credentials). Held: #17 dashboard. Open:
+> profession cooldown tracking (#19 remainder).
 >
 > **#0 — [x] DONE 2026-09-25.** Bot: `/testraid start|finish|cleanup`
 > (`src/services/simulation.ts`, `src/commands/testraid.ts`; `isTest` on
@@ -280,8 +280,16 @@ within priority. Update the checkbox the moment an item lands.
     highest wins, tie → higher PR → earliest; Award runs `/qg loot` +
     `/qg gp` so the GP has a ledger id and imports into Discord. Popups only
     accept an officer's bidding. `/qg sim bids` for testing. Verified in
-    the Lua simulation (20 bidding checks). Not yet seen live. Open idea:
-    import addon loot rows into the bot's loot history.)*
+    the Lua simulation (20 bidding checks). Not yet seen live.)*
+22. [x] **S/M — In-game loot into Discord loot history.** *(Done
+    2026-09-25: addon loot rows get a permanent id and the last boss
+    killed; the companion exports them; `/import-apply` adds each once to
+    `LootAward` (auction now optional, new unique `sourceRef`), linked to
+    the Discord raid its in-game raid matched, so `/loot history` and raid
+    reports include GP-bidding awards. Migration
+    `20260925110000_addon_loot_history` (applied with `migrate deploy`
+    because `migrate dev` needs an interactive prompt for the new unique
+    column). Verified on live DB via `/testraid finish via_addon`.)*
 
 ---
 

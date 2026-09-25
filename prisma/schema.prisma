@@ -284,7 +284,10 @@ model AuctionBid {
 model LootAward {
   id        String   @id @default(cuid())
   guildId   String
-  auctionId String   @unique
+  // Null for loot given in game (addon import) rather than a Discord auction.
+  auctionId String?  @unique
+  // Addon loot row id, so re-importing never duplicates in-game loot.
+  sourceRef String?  @unique
   memberId  String
   itemName  String
   amount    Int
@@ -295,7 +298,7 @@ model LootAward {
   gpBefore  Int?
   awardedAt DateTime @default(now())
   guild     Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
-  auction   Auction  @relation(fields: [auctionId], references: [id], onDelete: Cascade)
+  auction   Auction? @relation(fields: [auctionId], references: [id], onDelete: Cascade)
   member    Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
 
   @@index([guildId, awardedAt])
