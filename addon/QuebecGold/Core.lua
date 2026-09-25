@@ -912,6 +912,7 @@ ns.MODULES = {
   { key = "bidding", name = "GP bidding", desc = "in-game GP bids on loot", commands = { "bid" } },
   { key = "dungeon", name = "Dungeons", desc = "dungeon run tracking and points", commands = { "dungeon" } },
   { key = "calendar", name = "Calendar", desc = "guild calendar check", commands = { "calendar" } },
+  { key = "autoinvite", name = "Auto-invite", desc = "guild invite when someone whispers a phrase", commands = { "autoinvite" } },
   { key = "backup", name = "Backup and restore", desc = "copy this guild's saved data as one code", commands = { "backup", "restore" } },
   { key = "digest", name = "Login digest", desc = "what changed since your last login", commands = { "digest" } },
   { key = "consumables", name = "Consumable scan", desc = "who is missing a flask or food", commands = { "consumes" } },

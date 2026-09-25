@@ -186,3 +186,8 @@ presence, loot, and dungeon runs. An officer reviews and applies it with
 
 - **One saved-data set per WoW guild.** If a WoW install has characters in two guilds, the addon keeps each guild's ledger, roster, raids and settings apart: the data of the guild you are not playing in is parked and comes back when you play there. The guild is only known a moment after login, so a "Guild changed" line (and a `/reload` suggestion) appears the first time you switch. `/qg diag` shows which guild the data belongs to. The companion skips an upload whose data belongs to another guild if you set `"wowGuild": "Guild Name-Realm"` in `companion.config.json` (the exact text `/qg diag` shows).
 - **`/qg backup` and `/qg restore`.** A backup is one copyable code with this guild's saved data; restoring needs two presses (it shows what the backup holds first) and `/qg restore undo` reverses it. Codes are checked (checksum), read by a plain parser that never runs code, and refused if they come from another guild.
+
+## Version 2.2 additions
+
+- **`/qg autoinvite`** (officers): players whisper a phrase (default `ginv`) and get a guild invite. Off by default, rate limited (one invite per name per hour, 15 per hour), never in combat, skips known guild members.
+- **TBC Anniversary:** the TOC now lists interface `20506` next to Forever's `16001`, so the same download loads on both. Anniversary-specific behaviour is untested.

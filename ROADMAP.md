@@ -72,6 +72,7 @@ each item's notes.
 
 - 2026-09-26 14:40 A1 done: fengari harness; Consumables.lua and Core.lua (`/qg character`) verified against the mocked game.
 - 2026-09-26 16:10 A2-A9 done (addon side complete, 60 Lua tests through the harness). Next: bot items B1-B9, then release.
+- 2026-09-27 06:00 v2.2: auto-invite by whisper (GK1) and Anniversary interface number (G11), addon 2.2.0.
 - 2026-09-27 05:00 v2.1: per-core point rules and pools (GO1), one saved-data set per WoW guild (G10), `/qg backup` and `/qg restore` (GO9), addon 2.1.0, 249 tests. Not built as asked: in-game polls (dropped by you).
 - 2026-09-27 01:30 B1-B9 and R1 done. **v2.0.0 is complete: addon 2.0.0 zip in `dist/`, 232 tests green, migrations applied to the live database through `20260927010000_polls`.** Next: the user runs checklist sections 0-13, then push and release.
 
@@ -673,7 +674,7 @@ none is started.
 - **G10. [x] S — Per-guild SavedVariables isolation** (guild name + realm)
   so one WoW install with alts in two guilds can't mix ledgers. Low risk,
   do it before a public release.
-- **G11. [ ] S — TBC Anniversary support:** GuildOS ships one build for
+- **G11. [x] S — TBC Anniversary support:** GuildOS ships one build for
   Interface 20506 and 16001. Add `20506` to our TOC `## Interface:` and run
   the Compat checks; only worth it if guildmates play Anniversary.
 - **G12. [ ] S — Public presence:** CurseForge and Wago listings (M3), a
@@ -831,7 +832,7 @@ bridge to IRC or Discord despite the name.
 
 **GuildKit** (guild-window toolkit: roster search, analytics, activity feed,
 auto-invite phrase, ban list, purge tools; Retail/Classic/Forever).
-- **GK1. [ ] S — Auto-invite phrase** (`ginv`-style whisper triggers a guild
+- **GK1. [x] S — Auto-invite phrase** (`ginv`-style whisper triggers a guild
   invite) with optional level/class/race gates and an officer on/off switch.
   Pairs with the recruitment work in G8/GP6. Guild invites are protected in
   combat only; fine out of combat.

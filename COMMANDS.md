@@ -32,6 +32,7 @@ typed command. Names are case-insensitive (`bob` = `Bob`).
 | `/qg character` | One line with your character (name, class, race, level, spec, professions) for `/character import` |
 | `/qg enchants [on/off/level <n>]` | Show or change the missing-enchant check (which slots, from what level) |
 | `/qg consumes` / `/qg consumes me` | Officers: who in the group lacks a flask/elixir or food. Anyone: your own active consumables |
+| `/qg autoinvite on [phrase]` / `off` / `status` | Officers: guild-invite anyone who whispers you the phrase (default `ginv`). Off by default; skips people already in the guild, never in combat, max 15 invites an hour |
 | `/qg backup` | A box with one code (`QGBKP1:...`) holding this guild's saved data (raids, EPGP ledger, roster, attendance, loot, settings). Copy it somewhere safe |
 | `/qg restore` / `/qg restore undo` | Paste a backup code and press Restore twice (first shows what it holds, then replaces your data). A backup from another guild is refused; `undo` puts back what was there before |
 | `/qg digest [on/off]` | What changed since your last login (also shown once at login) |
