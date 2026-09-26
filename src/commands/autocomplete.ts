@@ -5,6 +5,10 @@ import {
   applicationChoices, auctionChoices, bankChoices, coreChoices, craftChoices, epgpEntryChoices, importChoices,
   raidChoices, raidStatusesFor, type Choice
 } from "../services/autocomplete.js";
+import {
+  attunementSuggestions, availabilitySuggestions, durationSuggestions, itemSuggestions, ownCharacterChoices, raceSuggestions,
+  raidTitleSuggestions, reasonSuggestions, specSuggestions, tagSuggestions, timeSuggestions
+} from "../services/option-suggestions.js";
 import { dungeonChoices } from "../services/dungeon-stats.js";
 import { runChoices } from "../services/dungeon-admin.js";
 import { guildService } from "./context.js";
@@ -14,6 +18,7 @@ import { guildService } from "./context.js";
 // just returns an empty list rather than failing the interaction.
 export async function handleAutocomplete(interaction: AutocompleteInteraction): Promise<void> {
   let choices: Choice[] = [];
+  let numeric: { name: string; value: number }[] | null = null;
   try {
     if (!interaction.guildId || !interaction.guild) return;
     const guild = await guildService.ensureGuild(interaction.guildId, interaction.guild.name);
@@ -26,7 +31,29 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
     const timeZone = settings?.timezone ?? "America/Toronto";
     const language = settings?.language ?? "en";
 
-    if (focused.name === "core") {
+    if (focused.name === "race") {
+      choices = raceSuggestions(query);
+    } else if (focused.name === "spec") {
+      choices = specSuggestions(interaction.options.getString("class"), query);
+    } else if (focused.name === "availability") {
+      choices = availabilitySuggestions(query);
+    } else if (focused.name === "character" && ["profession", "attunement", "wishlist"].includes(command)) {
+      choices = await ownCharacterChoices(prisma, member.id, query);
+    } else if (command === "attunement" && focused.name === "name") {
+      choices = await attunementSuggestions(prisma, guild.id, query);
+    } else if (command === "wishlist" && focused.name === "item") {
+      choices = await itemSuggestions(prisma, guild.id, query);
+    } else if (command === "tag" && focused.name === "name") {
+      choices = await tagSuggestions(prisma, guild.id, query);
+    } else if (command === "raid" && focused.name === "title") {
+      choices = await raidTitleSuggestions(prisma, guild.id, query);
+    } else if (command === "raid" && focused.name === "time") {
+      choices = timeSuggestions(query, timeZone, language);
+    } else if (command === "epgp" && focused.name === "reason") {
+      choices = reasonSuggestions(subcommand, query);
+    } else if (command === "loot" && focused.name === "duration") {
+      numeric = durationSuggestions(query);
+    } else if (focused.name === "core") {
       // Only cores with their own point pool make sense for /epgp.
       choices = await coreChoices(prisma, guild.id, query, command === "epgp");
     } else if (focused.name === "raid") {
@@ -63,5 +90,5 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
   } catch (error) {
     console.warn(`Autocomplete failed: ${error instanceof Error ? error.message : String(error)}`);
   }
-  await interaction.respond(choices).catch(() => undefined);
+  await interaction.respond(numeric ?? choices).catch(() => undefined);
 }

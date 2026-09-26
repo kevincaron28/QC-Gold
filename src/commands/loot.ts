@@ -14,9 +14,9 @@ export const lootCommand = new SlashCommandBuilder()
   .setName("loot").setDescription("Auction and track raid loot.")
   .addSubcommand((sub) => sub.setName("auction").setDescription("Start a loot auction.")
     .addStringOption((o) => o.setName("item").setDescription("Item name").setRequired(true))
-    .addIntegerOption((o) => o.setName("minimum").setDescription("Minimum bid").setMinValue(1).setRequired(true))
-    .addIntegerOption((o) => o.setName("increment").setDescription("Bid increment").setMinValue(1).setRequired(true))
-    .addIntegerOption((o) => o.setName("duration").setDescription("Duration in seconds").setMinValue(1).setMaxValue(86400).setRequired(true))
+    .addIntegerOption((o) => o.setName("minimum").setDescription("Minimum bid (default: your guild's setting)").setMinValue(1))
+    .addIntegerOption((o) => o.setName("increment").setDescription("Bid increment (default: your guild's setting)").setMinValue(1))
+    .addIntegerOption((o) => o.setName("duration").setDescription("How long, in seconds (pick one, or type)").setMinValue(1).setMaxValue(86400).setAutocomplete(true))
     .addStringOption((o) => o.setName("boss").setDescription("Boss that dropped it (for loot history)"))
     .addStringOption((o) => o.setName("raid").setDescription("Raid for loot history (start typing its name)").setAutocomplete(true)))
   .addSubcommand((sub) => sub.setName("award").setDescription("Give an item straight to a player (loot council or a manual award). Officers.")
@@ -73,9 +73,9 @@ export async function executeLoot(interaction: ChatInputCommandInteraction): Pro
     const auction = await lootService.createAuction({
       guildId: context.guildId,
       itemName: interaction.options.getString("item", true),
-      minimumBid: interaction.options.getInteger("minimum", true),
-      bidIncrement: interaction.options.getInteger("increment", true),
-      durationSeconds: interaction.options.getInteger("duration", true),
+      minimumBid: interaction.options.getInteger("minimum") ?? guildSettings?.minimumBid ?? 10,
+      bidIncrement: interaction.options.getInteger("increment") ?? guildSettings?.bidIncrement ?? 5,
+      durationSeconds: interaction.options.getInteger("duration") ?? guildSettings?.auctionDurationSec ?? 60,
       createdBy: interaction.user.id,
       bossName: interaction.options.getString("boss") ?? undefined,
       raidId: interaction.options.getString("raid") ?? undefined

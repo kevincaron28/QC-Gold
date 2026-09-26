@@ -10,13 +10,13 @@ export const tagCommand = new SlashCommandBuilder()
   .setName("tag")
   .setDescription("Saved text snippets (raid rules, consumable lists, etc.).")
   .addSubcommand((sub) => sub.setName("show").setDescription("Post a saved tag.")
-    .addStringOption((o) => o.setName("name").setDescription("Tag name").setRequired(true)))
+    .addStringOption((o) => o.setName("name").setDescription("Tag (pick from the list)").setAutocomplete(true).setRequired(true)))
   .addSubcommand((sub) => sub.setName("list").setDescription("List all tags."))
   .addSubcommand((sub) => sub.setName("set").setDescription("Create or replace a tag (officers only).")
-    .addStringOption((o) => o.setName("name").setDescription("Tag name").setRequired(true))
+    .addStringOption((o) => o.setName("name").setDescription("Tag (pick from the list)").setAutocomplete(true).setRequired(true))
     .addStringOption((o) => o.setName("content").setDescription("What the tag says").setRequired(true).setMaxLength(1900)))
   .addSubcommand((sub) => sub.setName("delete").setDescription("Delete a tag (officers only).")
-    .addStringOption((o) => o.setName("name").setDescription("Tag name").setRequired(true)));
+    .addStringOption((o) => o.setName("name").setDescription("Tag (pick from the list)").setAutocomplete(true).setRequired(true)));
 
 export async function executeTag(interaction: ChatInputCommandInteraction): Promise<void> {
   const context = await requireGuildContext(interaction);

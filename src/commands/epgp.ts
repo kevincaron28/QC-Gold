@@ -31,18 +31,18 @@ export const epgpCommand = new SlashCommandBuilder()
   .addSubcommand((sub) => sub.setName("award-ep").setDescription("Award EP to a member.")
     .addUserOption((o) => o.setName("player").setDescription("Guild member").setRequired(true))
     .addIntegerOption((o) => o.setName("amount").setDescription("EP amount").setMinValue(1).setRequired(true))
-    .addStringOption((o) => o.setName("reason").setDescription("Reason").setMinLength(3).setRequired(true))
+    .addStringOption((o) => o.setName("reason").setDescription("Reason (pick one, or type your own)").setMinLength(3).setAutocomplete(true).setRequired(true))
     .addStringOption(poolOption))
   .addSubcommand((sub) => sub.setName("award-gp").setDescription("Award GP for an item.")
     .addUserOption((o) => o.setName("player").setDescription("Guild member").setRequired(true))
     .addIntegerOption((o) => o.setName("amount").setDescription("GP amount").setMinValue(1).setRequired(true))
-    .addStringOption((o) => o.setName("reason").setDescription("Reason").setMinLength(3).setRequired(true))
+    .addStringOption((o) => o.setName("reason").setDescription("Reason (pick one, or type your own)").setMinLength(3).setAutocomplete(true).setRequired(true))
     .addStringOption(poolOption))
   .addSubcommand((sub) => sub.setName("decay").setDescription("Apply EPGP decay to all active members (guild pool, or one core's own pool).")
     .addStringOption(poolOption))
   .addSubcommand((sub) => sub.setName("reverse").setDescription("Undo a mistaken EPGP entry (adds an opposite entry; history is kept).")
     .addStringOption((o) => o.setName("entry").setDescription("Entry (start typing a name or reason)").setAutocomplete(true).setRequired(true))
-    .addStringOption((o) => o.setName("reason").setDescription("Why it is being reversed").setMinLength(3).setRequired(true)));
+    .addStringOption((o) => o.setName("reason").setDescription("Why it is being reversed (pick or type)").setMinLength(3).setAutocomplete(true).setRequired(true)));
 
 function officer(interaction: ChatInputCommandInteraction): boolean {
   return !!interaction.member && hasPermission(interaction.member as Parameters<typeof hasPermission>[0], "dkpOfficer");

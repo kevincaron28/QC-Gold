@@ -2,6 +2,7 @@ import { SlashCommandBuilder, type ChatInputCommandInteraction } from "discord.j
 import { prisma } from "../database.js";
 import { findProfessionHolders, professionCoverage } from "../services/profession-search.js";
 import { guildService, requireGuildContext } from "./context.js";
+import { PROFESSIONS } from "../wow-data.js";
 
 export const professionCommand = new SlashCommandBuilder()
   .setName("profession")
@@ -9,8 +10,9 @@ export const professionCommand = new SlashCommandBuilder()
   .addSubcommand((subcommand) => subcommand
     .setName("set")
     .setDescription("Set a profession and skill level.")
-    .addStringOption((option) => option.setName("character").setDescription("Character name").setRequired(true))
-    .addStringOption((option) => option.setName("profession").setDescription("Profession name").setRequired(true))
+    .addStringOption((option) => option.setName("character").setDescription("Your character (pick from the list)").setAutocomplete(true).setRequired(true))
+    .addStringOption((option) => option.setName("profession").setDescription("Profession (pick from the list)").setRequired(true)
+      .addChoices(...PROFESSIONS.map((name) => ({ name, value: name }))))
     .addIntegerOption((option) => option.setName("skill").setDescription("Skill level").setMinValue(1).setMaxValue(300).setRequired(true)))
   .addSubcommand((subcommand) => subcommand
     .setName("list")
@@ -18,7 +20,8 @@ export const professionCommand = new SlashCommandBuilder()
   .addSubcommand((subcommand) => subcommand
     .setName("who")
     .setDescription("Find guild characters with a profession, highest skill first.")
-    .addStringOption((option) => option.setName("profession").setDescription("Profession, e.g. Alchemy (partial names work)").setRequired(true)))
+    .addStringOption((option) => option.setName("profession").setDescription("Profession (pick from the list)").setRequired(true)
+      .addChoices(...PROFESSIONS.map((name) => ({ name, value: name })))))
   .addSubcommand((subcommand) => subcommand
     .setName("coverage")
     .setDescription("How many characters have each profession, and who is highest."));

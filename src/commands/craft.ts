@@ -5,6 +5,7 @@ import { createCraftService } from "../services/craft.js";
 import { postToLogChannel } from "../services/housekeeping.js";
 import { findProfessionHolders } from "../services/profession-search.js";
 import { requireGuildContext } from "./context.js";
+import { PROFESSIONS } from "../wow-data.js";
 
 const craftService = createCraftService(prisma);
 
@@ -16,12 +17,14 @@ export const craftCommand = new SlashCommandBuilder()
   .setDescription("Ask guild crafters to make something, or pick up requests.")
   .addSubcommand((sub) => sub.setName("request").setDescription("Ask a guild crafter to make an item.")
     .addStringOption((o) => o.setName("item").setDescription("Item to craft").setMaxLength(100).setRequired(true))
-    .addStringOption((o) => o.setName("profession").setDescription("Profession, e.g. Alchemy (shows who can make it)").setMaxLength(40))
+    .addStringOption((o) => o.setName("profession").setDescription("Profession (shows who can make it)")
+      .addChoices(...PROFESSIONS.map((name) => ({ name, value: name }))))
     .addIntegerOption((o) => o.setName("quantity").setDescription("How many (default 1)").setMinValue(1).setMaxValue(200))
     .addBooleanOption((o) => o.setName("materials").setDescription("You will provide the materials"))
     .addStringOption((o) => o.setName("note").setDescription("Details, tip, deadline").setMaxLength(300)))
   .addSubcommand((sub) => sub.setName("list").setDescription("Open requests crafters can pick up.")
-    .addStringOption((o) => o.setName("profession").setDescription("Only this profession")))
+    .addStringOption((o) => o.setName("profession").setDescription("Only this profession")
+      .addChoices(...PROFESSIONS.map((name) => ({ name, value: name })))))
   .addSubcommand((sub) => sub.setName("mine").setDescription("Your open requests and the ones you're crafting."))
   .addSubcommand((sub) => sub.setName("claim").setDescription("Take a request (you'll craft it).").addStringOption(idOption("from /craft list")))
   .addSubcommand((sub) => sub.setName("done").setDescription("Mark a request you claimed as crafted.").addStringOption(idOption("from /craft mine")))

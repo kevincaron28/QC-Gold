@@ -5,6 +5,7 @@ import { createApplicationService } from "../services/application.js";
 import { syncApprovedMemberRoles } from "../services/housekeeping.js";
 import { hasPermission } from "../permissions.js";
 import { requireGuildContext } from "./context.js";
+import { CLASSES } from "../wow-data.js";
 
 const applicationService = createApplicationService(prisma);
 
@@ -25,10 +26,11 @@ export const applicationCommand = new SlashCommandBuilder()
 export const applyCommand = new SlashCommandBuilder()
   .setName("apply").setDescription("Submit a recruitment application.")
   .addStringOption((o) => o.setName("character").setDescription("Character name").setRequired(true))
-  .addStringOption((o) => o.setName("class").setDescription("Class").setRequired(true))
-  .addStringOption((o) => o.setName("spec").setDescription("Specialization").setRequired(true))
+  .addStringOption((o) => o.setName("class").setDescription("Class (pick from the list)").setRequired(true)
+    .addChoices(...CLASSES.map((name) => ({ name, value: name }))))
+  .addStringOption((o) => o.setName("spec").setDescription("Specialization (pick or type)").setRequired(true).setAutocomplete(true))
   .addStringOption((o) => o.setName("experience").setDescription("Raid experience").setRequired(true))
-  .addStringOption((o) => o.setName("availability").setDescription("Availability").setRequired(true))
+  .addStringOption((o) => o.setName("availability").setDescription("Availability (pick or type)").setRequired(true).setAutocomplete(true))
   .addStringOption((o) => o.setName("notes").setDescription("Additional notes"));
 
 function isOfficer(interaction: ChatInputCommandInteraction): boolean {

@@ -321,3 +321,7 @@ By default everyone has **one guild pool** of EP/GP, whatever raid core they rai
 5. With `/config auto-import true` steps 1-3 happen right after each upload, with no officer action.
 
 The addon's `/qg character` and `/qg share` codes still work as a fallback. Linking trusts the Discord name or the person's own pick (small, trusted guild); officers can see and fix links with `/character unclaimed` and `/character link`. Discord does not let a bot see a member's Battle.net connection without a separate login page, and Blizzard has no character list for Forever, so "linked WoW account" cannot be used.
+
+## Fewer things to type
+
+Where a value comes from a fixed list you pick it instead of typing: **class** and **profession** are dropdowns (`/character add`, `/apply`, `/profession`, `/craft`). These offer suggestions as you type, and anything else still works: **spec** (for the class you chose), **race**, **your characters** (`/profession set`, `/attunement`, `/wishlist`), **attunement names** already in use, **wishlist items** the guild has seen, **tag names**, **raid titles** you used before, **raid times** ("friday 8pm" shows the exact moment it means), **EP/GP reasons**, **auction length**. `/character add` no longer needs the realm (it uses your guild's). `/loot auction` only needs the item: minimum bid, increment and length come from `/config` unless you fill them in.

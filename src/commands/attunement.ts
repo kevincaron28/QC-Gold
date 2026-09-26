@@ -11,13 +11,13 @@ export const attunementCommand = new SlashCommandBuilder()
   .addSubcommand((subcommand) => subcommand
     .setName("set")
     .setDescription("Record an attunement for one of your characters.")
-    .addStringOption((option) => option.setName("character").setDescription("Character name").setRequired(true))
-    .addStringOption((option) => option.setName("name").setDescription("Attunement name, e.g. Onyxia Key").setRequired(true))
+    .addStringOption((option) => option.setName("character").setDescription("Your character (pick from the list)").setAutocomplete(true).setRequired(true))
+    .addStringOption((option) => option.setName("name").setDescription("Attunement (pick one already used, or type)").setAutocomplete(true).setRequired(true))
     .addBooleanOption((option) => option.setName("completed").setDescription("Completed? Defaults to true")))
   .addSubcommand((subcommand) => subcommand
     .setName("list")
     .setDescription("List attunements for one of your characters.")
-    .addStringOption((option) => option.setName("character").setDescription("Character name").setRequired(true)));
+    .addStringOption((option) => option.setName("character").setDescription("Your character (pick from the list)").setAutocomplete(true).setRequired(true)));
 
 export async function executeAttunement(interaction: ChatInputCommandInteraction): Promise<void> {
   const context = await requireGuildContext(interaction);

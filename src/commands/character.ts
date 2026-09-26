@@ -5,6 +5,7 @@ import { applySelfExport, parseSelfExport } from "../services/self-export.js";
 import { autoLinkUnclaimed, claimCharacter, linkUnclaimed } from "../services/character-autolink.js";
 import { hasPermission } from "../permissions.js";
 import { guildService, requireGuildContext } from "./context.js";
+import { CLASSES } from "../wow-data.js";
 
 export const characterCommand = new SlashCommandBuilder()
   .setName("character")
@@ -13,12 +14,13 @@ export const characterCommand = new SlashCommandBuilder()
     .setName("add")
     .setDescription("Link a character to your profile.")
     .addStringOption((option) => option.setName("name").setDescription("Character name").setRequired(true))
-    .addStringOption((option) => option.setName("realm").setDescription("Realm name").setRequired(true))
-    .addStringOption((option) => option.setName("class").setDescription("Class").setRequired(true))
+    .addStringOption((option) => option.setName("class").setDescription("Class (pick from the list)").setRequired(true)
+      .addChoices(...CLASSES.map((name) => ({ name, value: name }))))
     .addBooleanOption((option) => option.setName("main").setDescription("Set as your main character").setRequired(true))
-    .addStringOption((option) => option.setName("spec").setDescription("Specialization"))
+    .addStringOption((option) => option.setName("realm").setDescription("Realm (default: the one your guild already uses)"))
+    .addStringOption((option) => option.setName("spec").setDescription("Specialization (pick or type)").setAutocomplete(true))
     .addIntegerOption((option) => option.setName("level").setDescription("Character level").setMinValue(1).setMaxValue(100))
-    .addStringOption((option) => option.setName("race").setDescription("Race, e.g. Dwarf")))
+    .addStringOption((option) => option.setName("race").setDescription("Race (pick or type)").setAutocomplete(true)))
   .addSubcommand((subcommand) => subcommand
     .setName("import")
     .setDescription("Link a character from the line the addon gives you (no typing details).")
@@ -47,6 +49,14 @@ export const characterCommand = new SlashCommandBuilder()
   .addSubcommand((subcommand) => subcommand
     .setName("list")
     .setDescription("List your linked characters."));
+
+// The realm most of the guild's characters use, so nobody types it.
+async function defaultRealm(guildId: string): Promise<string> {
+  const rows = await prisma.character.groupBy({ by: ["realm"], where: { member: { guildId } }, _count: { realm: true }, orderBy: { _count: { realm: "desc" } }, take: 1 });
+  const realm = rows[0]?.realm;
+  if (!realm) throw new Error("Nobody has a character linked yet, so I don't know your realm: add the realm option once (or use /character import).");
+  return realm;
+}
 
 export async function executeCharacter(interaction: ChatInputCommandInteraction): Promise<void> {
   const context = await requireGuildContext(interaction);
@@ -128,7 +138,7 @@ export async function executeCharacter(interaction: ChatInputCommandInteraction)
   const characterInput = {
     memberId: context.memberId,
     name: interaction.options.getString("name", true),
-    realm: interaction.options.getString("realm", true),
+    realm: interaction.options.getString("realm") ?? await defaultRealm(context.guildId),
     className: interaction.options.getString("class", true),
     isMain: interaction.options.getBoolean("main", true)
   };

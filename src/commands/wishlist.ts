@@ -9,16 +9,16 @@ export const wishlistCommand = new SlashCommandBuilder()
   .setName("wishlist")
   .setDescription("Track the items your characters are hoping to get.")
   .addSubcommand((sub) => sub.setName("add").setDescription("Add or update an item on a character's wishlist.")
-    .addStringOption((o) => o.setName("character").setDescription("Your character").setRequired(true))
-    .addStringOption((o) => o.setName("item").setDescription("Item name").setRequired(true).setMaxLength(100))
+    .addStringOption((o) => o.setName("character").setDescription("Your character (pick from the list)").setAutocomplete(true).setRequired(true))
+    .addStringOption((o) => o.setName("item").setDescription("Item (pick a known one, or type)").setAutocomplete(true).setRequired(true).setMaxLength(100))
     .addIntegerOption((o) => o.setName("priority").setDescription("1 = high, 2 = medium (default), 3 = low").setMinValue(1).setMaxValue(3)))
   .addSubcommand((sub) => sub.setName("remove").setDescription("Remove an item from a character's wishlist.")
-    .addStringOption((o) => o.setName("character").setDescription("Your character").setRequired(true))
-    .addStringOption((o) => o.setName("item").setDescription("Item name").setRequired(true).setMaxLength(100)))
+    .addStringOption((o) => o.setName("character").setDescription("Your character (pick from the list)").setAutocomplete(true).setRequired(true))
+    .addStringOption((o) => o.setName("item").setDescription("Item (pick a known one, or type)").setAutocomplete(true).setRequired(true).setMaxLength(100)))
   .addSubcommand((sub) => sub.setName("list").setDescription("Show one of your characters' wishlist.")
-    .addStringOption((o) => o.setName("character").setDescription("Your character").setRequired(true)))
+    .addStringOption((o) => o.setName("character").setDescription("Your character (pick from the list)").setAutocomplete(true).setRequired(true)))
   .addSubcommand((sub) => sub.setName("item").setDescription("See who in the guild wants an item.")
-    .addStringOption((o) => o.setName("item").setDescription("Item name").setRequired(true).setMaxLength(100)));
+    .addStringOption((o) => o.setName("item").setDescription("Item (pick a known one, or type)").setAutocomplete(true).setRequired(true).setMaxLength(100)));
 
 export async function executeWishlist(interaction: ChatInputCommandInteraction): Promise<void> {
   const context = await requireGuildContext(interaction);
