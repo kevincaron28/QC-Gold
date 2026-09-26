@@ -300,7 +300,8 @@ A **raid core** is a named roster (e.g. "Tuesday MC core"); a guild can have sev
 
 | Command | What it does |
 | --- | --- |
-| `/core create <name> [description]` | Create a core (Raid Leaders) |
+| `/core setup` | **Start here.** A guided message: name the core in a form, pick its tanks, healers and DPS from member menus, then choose its rules (same as the guild by default; own point pool, loot council or EP values are buttons). Saved as you go (Raid Leaders) |
+| `/core create <name> [description]` | Create a core with a command instead (Raid Leaders) |
 | `/core add <core> <player> [role]` / `/core remove <core> <player>` | Manage its players (Raid Leaders); role Tank / Healer / DPS |
 | `/core rules <core> [attendance] [late] [boss] [clear] [base_gp] [decay] [loot_mode] [pool] [reset]` | The core's point rules. **Every core follows the guild's settings** (`/config`, `/setup`) **unless you change a value here**; with no options it shows the effective rules and which differ. `pool:separate` gives the core its own EP/GP pool (from now on), `loot_mode` can make one core loot council, `reset` goes back to the guild defaults |
 | `/core show <core>` / `/core list` | See a roster / all cores (everyone) |

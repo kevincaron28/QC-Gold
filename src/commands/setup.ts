@@ -345,8 +345,9 @@ export async function renderStep(step: number, guild: DiscordGuild, guildId: str
       "**Next steps**",
       "1. Everyone: `/character add` to link their WoW character.",
       `2. Officers: install the WoW addon — ${RELEASES_URL}`,
-      "3. Try everything safely: `/testraid start` (fake raid, removed with `/testraid cleanup`).",
-      "4. `/help` lists every command by role."
+      "3. Raid leaders: `/core setup` builds a raid core (name, players, rules) with menus; then `/raid create core:<name>`.",
+      "4. Try everything safely: `/testraid start` (fake raid, removed with `/testraid cleanup`).",
+      "5. `/help` lists every command by role."
     ].join("\n").slice(0, 4000));
     components.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
       button("post-guide", "Post a getting-started message for members", ButtonStyle.Success, !settings.notifyChannelId),

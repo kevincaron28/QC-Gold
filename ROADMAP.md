@@ -86,6 +86,7 @@ each item's notes.
 
 ### Progress log (update after every commit)
 
+- 2026-09-28 N5 done: `/core setup` guided wizard (name form, member menus per role, rules buttons, EP form), pointer in `/setup` and `/help`.
 - 2026-09-28 N4 done: dropdowns for class and profession, suggestions for spec, race, own characters, attunements, items, tags, raid titles and times, reasons and auction length; `/loot auction` needs only the item; realm optional on `/character add`; tests/commands-shape.test.ts checks every command against Discord's rules.
 - 2026-09-28 N3 done: casino, house games and debt ledger removed; Modules/Games.lua (high roll, deathroll, duel, no gold); addon 2.4.0 pending release notes.
 - 2026-09-28 N2 done: /qg sync and auto-save at safe moments (Modules/SyncNow.lua).

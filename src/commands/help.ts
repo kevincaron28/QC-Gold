@@ -40,13 +40,13 @@ const LINES: Record<"everyone" | "raidLeader" | "dkpOfficer" | "officer", Record
     en: [
       "`/raid create` (times like `friday 8pm`) · `/raid edit` · `/raid start` · `/raid end` (shows the EP to approve)",
       "`/raid attendance` · `/raid boss` · `/raid note` · `/raid award-ep`",
-      "`/core create` · `/core add` · `/core remove` — raid cores (priority signups); `/raid create core:`",
+      "`/core setup` — guided raid core (name, players, rules) · `/core add` · `/core remove` · `/raid create core:` (priority signups)",
       "`/readiness raid` — who's ready for tonight"
     ],
     fr: [
       "`/raid create` (heures comme `vendredi 20h`) · `/raid edit` · `/raid start` · `/raid end` (propose les EP à approuver)",
       "`/raid attendance` · `/raid boss` · `/raid note` · `/raid award-ep`",
-      "`/core create` · `/core add` · `/core remove` — noyaux de raid (inscription prioritaire); `/raid create core:`",
+      "`/core setup` — noyau de raid guidé (nom, joueurs, règles) · `/core add` · `/core remove` · `/raid create core:` (inscription prioritaire)",
       "`/readiness raid` — qui est prêt pour ce soir"
     ]
   },

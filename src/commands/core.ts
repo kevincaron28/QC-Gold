@@ -2,6 +2,7 @@ import { SlashCommandBuilder, type ChatInputCommandInteraction, type GuildMember
 import type { RaidRole } from "@prisma/client";
 import { prisma } from "../database.js";
 import { hasPermission } from "../permissions.js";
+import { runCoreWizard } from "./core-wizard.js";
 import { describeRules, effectiveRules } from "../services/core-rules.js";
 import { createRaidCoreService, removeCoreRosterMessage, syncCoreRoster } from "../services/raid-core.js";
 import { guildService, requireGuildContext } from "./context.js";
@@ -17,7 +18,8 @@ const roleOption = (o: import("discord.js").SlashCommandStringOption) =>
 export const coreCommand = new SlashCommandBuilder()
   .setName("core")
   .setDescription("Raid cores: named rosters whose members get priority at that core's raid signups.")
-  .addSubcommand((sub) => sub.setName("create").setDescription("Create a raid core (Raid Leaders).")
+  .addSubcommand((sub) => sub.setName("setup").setDescription("Guided: name a raid core, pick its players from menus, choose its rules (Raid Leaders). Start here."))
+  .addSubcommand((sub) => sub.setName("create").setDescription("Create a raid core with a command (Raid Leaders). /core setup is easier.")
     .addStringOption((o) => o.setName("name").setDescription("e.g. Tuesday MC core").setMinLength(2).setMaxLength(50).setRequired(true))
     .addStringOption((o) => o.setName("description").setDescription("Optional: schedule, goals").setMaxLength(300)))
   .addSubcommand((sub) => sub.setName("add").setDescription("Add a player to a core (Raid Leaders).")
@@ -59,7 +61,12 @@ export async function executeCore(interaction: ChatInputCommandInteraction): Pro
   if (!context) return;
   const guildId = context.guildId;
   const subcommand = interaction.options.getSubcommand();
-  if (["create", "add", "remove", "post", "delete", "rules"].includes(subcommand)) requireRaidLeader(interaction);
+  if (["setup", "create", "add", "remove", "post", "delete", "rules"].includes(subcommand)) requireRaidLeader(interaction);
+
+  if (subcommand === "setup") {
+    await runCoreWizard(interaction);
+    return;
+  }
 
   if (subcommand === "create") {
     const core = await coreService.create(guildId, interaction.options.getString("name", true), interaction.options.getString("description"));
