@@ -11,7 +11,13 @@ priority (P0 = do first) · **S/M/L** = rough size
 
 ---
 
-## ⏸ Where we are — resume here (updated 2026-09-26, v2 push)
+## ⏸ Where we are — resume here (updated 2026-09-28)
+
+**Status: N1-N7 and RF1 are built and committed (addon 2.4.0, 293 tests passing).**
+What is left needs you: run LUNCH_TEST_CHECKLIST.md (sections 16-19 are new),
+restart the bot (start-bot.bat) so the migrations apply, then decisions on the
+rebrand (#46), Warcraft Logs credentials, the Oracle deployment and CurseForge.
+How the new window and forum craft board *look* has not been seen by anyone.
 
 **Goal (reached 2026-09-27): v2.0.0 (addon + bot) ready for testing, with everything that
 can be built without live data or a decision from the user built.** Items
