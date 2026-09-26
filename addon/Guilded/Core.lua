@@ -1034,7 +1034,10 @@ local function modulesCommand(args)
       message(name .. " is turned off for the whole guild by an officer, so it stays off.")
     end
   end
-  if action == "on" and ns.moduleEnabled(key) and not activeAtLogin[key] then
+  if action == "on" and scope == "self" and ns.moduleEnabled(key) then
+    if activeAtLogin[key] then message(name .. " is on for you.")
+    else message(name .. " is on. Type /reload to start it.") end
+  elseif action == "on" and scope == "guild" and ns.moduleEnabled(key) and not activeAtLogin[key] then
     message(name .. " is on. Type /reload to start it.")
   end
   if ns.onModulesChange then pcall(ns.onModulesChange) end
