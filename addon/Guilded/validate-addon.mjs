@@ -54,7 +54,7 @@ if (/GuildedCasino|debt|ledger|wager/i.test(games.replace(/no ledger|no wagers|n
   throw new Error("Games.lua must stay free of gold, wagers and ledgers");
 }
 
-const addonFiles = ["Core.lua", "Compat.lua", "Locale.lua", "Standings.lua", "Modules/Games.lua", "Modules/Sync.lua", "Modules/Sim.lua", "Modules/Bidding.lua", "Modules/Council.lua", "Modules/Calendar.lua", "Modules/ConsumableData.lua", "Modules/Consumables.lua", "Modules/Digest.lua", "Modules/API.lua", "Modules/Backup.lua", "Modules/SyncNow.lua", "Modules/AutoInvite.lua", "Modules/Dungeon.lua", "Modules/Attunements.lua", "Modules/Ready.lua", "Modules/Minimap.lua"];
+const addonFiles = ["Core.lua", "Compat.lua", "Locale.lua", "Standings.lua", "Modules/Games.lua", "Modules/Sync.lua", "Modules/Sim.lua", "Modules/Bidding.lua", "Modules/Council.lua", "Modules/Reserve.lua", "Modules/Calendar.lua", "Modules/ConsumableData.lua", "Modules/Consumables.lua", "Modules/Digest.lua", "Modules/API.lua", "Modules/Backup.lua", "Modules/SyncNow.lua", "Modules/AutoInvite.lua", "Modules/Dungeon.lua", "Modules/Attunements.lua", "Modules/Ready.lua", "Modules/Minimap.lua"];
 for (const file of addonFiles) {
   const source = readFileSync(new URL(file, root), "utf8");
   if (/RegisterEvent\(\s*"COMBAT_LOG_EVENT/.test(source)) {

@@ -378,6 +378,51 @@ local function buildLootPage(page)
   forModule("bidding", at(newLabel(page, "Pugs without the addon bid by whispering you a number.", "GameFontDisableSmall"), page, 116, -283))
 end
 
+-- Soft reserves: everyone reserves for the raid; officers open, lock and roll.
+local function buildReservePage(page)
+  at(newLabel(page, "Item (click the box, then shift-click the item)"), page, 0, 0)
+  ui.reserveItemBox = at(newEdit(page, 400), page, 6, -18)
+  local function itemText()
+    local text = ui.reserveItemBox:GetText()
+    if text == "" then ns.message("Put the item in the Item box first (shift-click it).") end
+    return text ~= "" and text or nil
+  end
+  at(newButton(page, "Reserve", 90, function()
+    local text = itemText()
+    if text then run("reserve add " .. text) end
+  end), page, 0, -46)
+  at(newButton(page, "Remove", 90, function()
+    local text = itemText()
+    if text then run("reserve remove " .. text) end
+  end), page, 94, -46)
+  at(newButton(page, "Who reserved it", 120, function()
+    local text = itemText()
+    if text then run("reserve who " .. text) end
+  end), page, 188, -46)
+
+  forModule("reserve", at(newLabel(page, "Per player", "GameFontNormalSmall"), page, 0, -84), true)
+  ui.reserveLimitBox = forModule("reserve", at(newEdit(page, 30, true), page, 66, -80), true)
+  ui.reserveLimitBox:SetText("1")
+  forModule("reserve", at(newButton(page, "Open list", 90, function()
+    run("reserve open " .. (tonumber(ui.reserveLimitBox:GetText()) or 1))
+  end), page, 106, -80), true)
+  forModule("reserve", at(newButton(page, "Lock", 70, function() run("reserve lock") end), page, 202, -80), true)
+  forModule("reserve", at(newButton(page, "Unlock", 70, function() run("reserve unlock") end), page, 278, -80), true)
+  local clear = forModule("reserve", at(newButton(page, "Clear all", 80), page, 354, -80), true)
+  confirmClick(clear, "Clear all", function() run("reserve clear") end)
+  forModule("reserve", at(newButton(page, "Roll between reservers", 170, function()
+    local text = itemText()
+    if text then run("reserve roll " .. text) end
+  end), page, 0, -110), true)
+  forModule("reserve", at(newButton(page, "Award to selected Player", 170, function()
+    local text, name = itemText(), needPlayer()
+    if text and name then run("reserve award " .. name .. " " .. text) ui.reserveItemBox:SetText("") end
+  end), page, 176, -110), true)
+
+  ui.reserveStatus = at(newLabel(page, "", "GameFontHighlightSmall"), page, 0, -146)
+  ui.reserveStatus:SetWidth(PAGE_WIDTH)
+end
+
 -- Loot council: officers open an item, raiders answer BiS / Upgrade / Off-spec / Pass, officers award.
 local function buildCouncilPage(page)
   at(newLabel(page, "Item (click the box, then shift-click the item)"), page, 0, 0)
@@ -808,6 +853,7 @@ local TAB_DEFS = {
   { name = "Me", hint = "your gear check and attunements", group = "Overview", usesPlayer = true, build = buildMePage },
   { name = "Standings", hint = "EP, GP and PR from Discord", group = "Overview", usesPlayer = true, build = buildStandingsPage },
   { name = "Ready", hint = "who is ready for the raid", group = "Raid night", leader = true, build = buildReadyPage },
+  { name = "Reserves", hint = "soft reserves for the raid", group = "Raid night", module = "reserve", usesPlayer = true, build = buildReservePage },
   { name = "Raid", hint = "run a raid: start, bosses, attendance", group = "Raid night", officer = true, usesPlayer = true, build = buildRaidPage },
   { name = "EPGP", hint = "award EP and GP", group = "Raid night", officer = true, usesPlayer = true, build = buildEpgpPage },
   { name = "Loot", hint = "bids and loot", group = "Raid night", officer = true, usesPlayer = true, build = buildLootPage },
@@ -1025,6 +1071,9 @@ refresh = function()
   local me = ns.playerName()
   local name = selectedPlayer()
   refreshHome(db, officer, me)
+  if ui.reserveStatus then
+    ui.reserveStatus:SetText(moduleOn("reserve") and ns.reserve and ns.reserve.statusText and ns.reserve.statusText(14) or "")
+  end
 
   if officer then
     local raid = ns.getActiveRaid and ns.getActiveRaid()
@@ -1215,6 +1264,7 @@ local function buildPanel()
   ns.onGamesChange = function() refresh() end
   ns.onBiddingChange = function() refresh() end
   ns.onCouncilChange = function() refresh() end
+  ns.onReserveChange = function() refresh() end
   ns.onDungeonChange = function() refresh() end
   ns.onModulesChange = function() refresh() end
   ns.onPeerReadiness = function() if readyTabOpen() then refresh() end end

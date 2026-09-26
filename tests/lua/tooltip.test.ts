@@ -54,6 +54,23 @@ describe("Tooltip.lua", () => {
     expect(lines(s, "Lonely Ring")).toEqual(["Usually costs about 40 GP (1 award)"]);
   });
 
+  it("puts soft reserves first, found by the item id in the link", () => {
+    const s = withTooltip();
+    s.run(`
+      NS.reserve = {
+        itemId = function(link) return link and tonumber(string.match(link, "item:(%d+)")) end,
+        tooltipLines = function(id) if id == 1234 then return { "Reserved by Ann, Bob" } end return {} end
+      }
+    `);
+    const both = JSON.parse(s.run(`local out = {}; for i, l in ipairs(NS.tooltip.lines("Lonely Ring", "|Hitem:1234::|h[Lonely Ring]|h")) do out[i] = string.format("%q", l) end; return "[" .. table.concat(out, ",") .. "]"`)) as string[];
+    expect(both.slice(0, 2)).toEqual(["Reserved by Ann, Bob", "Usually costs about 40 GP (1 award)"]);
+    // An item nobody wants still shows who reserved it.
+    const only = JSON.parse(s.run(`local out = {}; for i, l in ipairs(NS.tooltip.lines("Plain Cloak", "|Hitem:1234::|h[Plain Cloak]|h")) do out[i] = string.format("%q", l) end; return "[" .. table.concat(out, ",") .. "]"`)) as string[];
+    expect(only[0]).toBe("Reserved by Ann, Bob");
+    // Without a link there is no item id, so no reserve line.
+    expect(lines(s, "Lonely Ring")[0]).toBe("Usually costs about 40 GP (1 award)");
+  });
+
   it("adds the lines to a tooltip once, and not when the module is off", () => {
     const s = withTooltip();
     s.run(`

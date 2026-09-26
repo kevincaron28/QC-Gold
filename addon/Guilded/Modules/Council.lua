@@ -161,11 +161,14 @@ local function rankedResponses(session)
     if r.tier ~= "pass" then
       table.insert(list, {
         name = name, tier = r.tier, at = r.at, gear = r.gear, pr = prFor(name),
-        wish = wishlisted(name, session.item)
+        wish = wishlisted(name, session.item),
+        reserved = ns.reserve and ns.reserve.isReserved and ns.reserve.isReserved(name, session.item) or false
       })
     end
   end
   table.sort(list, function(a, b)
+    -- Someone who soft-reserved the item comes before everyone else.
+    if a.reserved ~= b.reserved then return a.reserved end
     local ra, rb = TIERS[a.tier].rank, TIERS[b.tier].rank
     if ra ~= rb then return ra < rb end
     if a.pr ~= b.pr then return a.pr > b.pr end
@@ -280,6 +283,7 @@ function council.statusText()
   for i = 1, math.min(10, #ranked) do
     local r = ranked[i]
     local extra = {}
+    if r.reserved then table.insert(extra, "reserved") end
     if r.wish then table.insert(extra, "wishlist") end
     if r.gear then table.insert(extra, "wears " .. r.gear) end
     table.insert(lines, string.format("%d. %s  %s  (PR %.2f)%s", i, r.name, TIERS[r.tier].label, r.pr,

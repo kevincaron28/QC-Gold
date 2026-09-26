@@ -61,9 +61,9 @@ describe("the tools window (sidebar and Home page)", () => {
   });
 
   it("officers see every group in order; members only what they can use", () => {
-    expect(visibleTabs(openWindow(1))).toBe("Home,Me,Standings,Ready,Raid,EPGP,Loot,Council,Dungeons,Games,Tools");
+    expect(visibleTabs(openWindow(1))).toBe("Home,Me,Standings,Ready,Reserves,Raid,EPGP,Loot,Council,Dungeons,Games,Tools");
     session?.close();
-    expect(visibleTabs(openWindow(5))).toBe("Home,Me,Standings,Dungeons,Games,Tools");
+    expect(visibleTabs(openWindow(5))).toBe("Home,Me,Standings,Reserves,Dungeons,Games,Tools");
   });
 
   it("Home says who you are, what is running, and why there is no standing yet", () => {

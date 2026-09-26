@@ -44,6 +44,7 @@ new `KIND`, never a changed one.
 | --- | --- | --- | --- |
 | Games.lua | `games` | (none) | Fun roll games: high roll, deathroll, duel. No gold |
 | Bidding.lua | `bidding` | GuildedBid | In-game GP bidding on loot |
+| Reserve.lua | `reserve` | GuildedRes | Soft reserves: reserve items for a raid, shared list, roll between reservers |
 | Council.lua | `council` | GuildedLC | Loot council: BiS / upgrade / off-spec answers, ranked for the officers |
 | Dungeon.lua | `dungeon` | GuildedDgn | Dungeon run tracking for the Dungeon Challenge |
 | Calendar.lua | `calendar` | (none) | `/guilded calendar check` |
@@ -69,6 +70,16 @@ Officer-run GP bidding: `/guilded bid start <min GP> <item> [seconds]` opens it
 for the raid (addon users get a popup, pugs whisper a number), highest PR
 breaks ties, then the earliest bid. `award` records the loot and GP through
 Core's own commands.
+
+## Reserve.lua
+
+Soft reserves. The officer who runs `/guilded reserve open` is the keeper: members' `ADD|id|name`
+and `DEL|id` go to them by whisper, they check the limit and the lock, then share the list
+to the guild (`STATE|open|limit|title`, `CLR`, `L|name=id,id;...` in chunks under 255
+characters, `DONE` to close). Members accept the list only from an officer. Items are stored by
+id in `db.reserves` (`entries`, `names`, `host`, `open`, `limit`, `title`). `REQ` on login asks
+the keeper to share again. Whispers `res [link]` / `unres [link]` cover players without the addon.
+Tooltip.lua adds "Reserved by ...", Council.lua ranks reservers first.
 
 ## Council.lua
 

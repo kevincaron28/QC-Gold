@@ -80,6 +80,16 @@ describe("Council.lua officer side", () => {
     expect(s.run("return tostring(NS.council.statusText():match('1 passed') ~= nil)")).toBe("true");
   });
 
+  it("puts a player who soft-reserved the item first and says so", () => {
+    const s = withCouncil("RAID");
+    s.run(`NS.reserve = { isReserved = function(name) return name == "Cy" end }`);
+    council(s, "start Sword");
+    s.run(`NS.council.addResponse("Bob", "bis")`);
+    s.run(`NS.council.addResponse("Cy", "os")`);
+    expect(order(s)).toBe("Cy:os,Bob:bis");
+    expect(s.run("return tostring(NS.council.statusText():match('reserved') ~= nil)")).toBe("true");
+  });
+
   it("takes a changed answer instead of a second one", () => {
     const s = withCouncil("RAID");
     council(s, "start Sword");

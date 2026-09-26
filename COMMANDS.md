@@ -89,6 +89,33 @@ one for the winner.
 | `/guilded bid cancel` | Cancel, nothing recorded |
 | `/guilded bid status` | Current bids |
 
+### Soft reserves (Reserves tab)
+
+Reserve items for a raid without a website. An officer opens the list; everyone
+reserves; the list is locked when the raid starts; when an item drops, the
+reservers roll for it. Items are kept by item id, so **shift-click the item**.
+
+1. Officer: `/guilded reserve open 1 Onyxia night` (1 = reserves per player, default 1, up to 5). That officer keeps the list.
+2. Everyone: `/guilded reserve [item link]`, or paste the item into the Reserves tab. With 1 per player a new reserve replaces the old one. Players without the addon whisper the keeper: `res [item link]`.
+3. Officer, when the raid starts: `/guilded reserve lock`.
+4. When an item drops: `/guilded reserve who [link]`, then `/guilded reserve roll [link]` (a high roll between only the reservers), then `/guilded reserve award <player> [link] [GP]` (records the loot and uses up that reserve).
+
+The list is shared with the guild automatically, shows on item tooltips ("Reserved by ...")
+and puts reservers first in the loot council list. It survives `/reload`.
+
+| Command | Who | What it does |
+| --- | --- | --- |
+| `/guilded reserve [item link]` (or `add`) | everyone | Reserve an item |
+| `/guilded reserve remove [item link]` | everyone | Take a reserve back (while the list is open) |
+| `/guilded reserve list` | everyone | The list and your reserves |
+| `/guilded reserve who [item link]` | everyone | Who reserved an item |
+| `/guilded reserve open [per player] [title]` | officers | Start a fresh list (you become the keeper) |
+| `/guilded reserve lock` / `unlock` | officers | Stop or allow changes (keeps the list) |
+| `/guilded reserve add <player> [item link]` / `remove <player> [item link]` | the keeper | Change someone else's reserves, even when locked |
+| `/guilded reserve roll [item link]` | officers | High roll between the players who reserved it |
+| `/guilded reserve award <player> [item link] [GP]` | officers | Record the loot (GP only if given) and use up the reserve |
+| `/guilded reserve clear` | officers | Close and forget the list |
+
 ### Officers: loot council (Council tab)
 
 For loot council guilds: officers open an item, raiders say how much they

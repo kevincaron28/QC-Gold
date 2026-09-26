@@ -42,11 +42,16 @@ local function rankOf(mine)
 end
 
 -- The extra tooltip lines for an item name (an empty list when there is nothing to say).
-function module.lines(itemName)
+function module.lines(itemName, link)
   local key = module.itemKey(itemName)
   local info = key and ns.getItemInsight and ns.getItemInsight(key)
-  if not info then return {} end
   local lines = {}
+  -- Soft reserves (Modules/Reserve.lua) come first; they need the item id from the link.
+  local id = ns.reserve and ns.reserve.itemId and ns.reserve.itemId(link)
+  if id and (not ns.moduleActive or ns.moduleActive("reserve")) then
+    for _, line in ipairs(ns.reserve.tooltipLines(id)) do table.insert(lines, line) end
+  end
+  if not info then return lines end
   local wish = info.wish or {}
   if #wish > 0 then
     local parts = {}
@@ -73,10 +78,11 @@ local function decorate(tooltip)
   if not tooltip or tooltip.guildedDone then return end
   if ns.moduleActive and not ns.moduleActive("tooltip") then return end
   if not tooltip.GetItem then return end
-  local ok, name = pcall(tooltip.GetItem, tooltip)
+  local ok, name, link = pcall(tooltip.GetItem, tooltip)
   if not ok or type(name) ~= "string" then return end
   if ns.isSecret and ns.isSecret(name) then return end
-  local lines = module.lines(name)
+  if type(link) ~= "string" or (ns.isSecret and ns.isSecret(link)) then link = nil end
+  local lines = module.lines(name, link)
   if #lines == 0 then return end
   tooltip.guildedDone = true
   for _, line in ipairs(lines) do
