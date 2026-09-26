@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-// @ts-expect-error a plain .mjs script without type declarations
 import { collectKeys } from "../scripts/i18n-keys.mjs";
 import { FR_TEXT } from "../src/i18n-fr.js";
 import { tx } from "../src/i18n.js";
