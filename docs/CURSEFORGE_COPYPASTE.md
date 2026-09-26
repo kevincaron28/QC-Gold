@@ -1,4 +1,4 @@
-# CurseForge copy-paste sheet: Guilded 3.2.0
+# CurseForge copy-paste sheet: Guilded 3.3.0
 
 Each block below is one field. Copy the block, paste it in.
 
@@ -21,7 +21,7 @@ Raid & Instance (secondary: Guild, Miscellaneous)
 `docs/branding/guilded-logo-400.png` (400x400). Full size: `docs/branding/guilded-logo.png`.
 
 ## File to upload
-`dist/Guilded-v3.2.0.zip` (top folder inside is `Guilded`). Release type: **Beta** for the first day, then **Release**.
+`dist/Guilded-v3.3.0.zip` (top folder inside is `Guilded`). Release type: **Beta** for the first day, then **Release**.
 Game versions: the WoW Forever / Classic entries closest to interface 16001 and 20506.
 
 ## License
@@ -44,6 +44,7 @@ free Discord bot when you want signups and reports outside the game too.
 - **Raid tools:** start and end a raid, attendance with bench credit, boss kills, notes.
 - **EPGP and loot:** award EP and GP, live GP bidding with a popup for raiders (whisper
   bids work for people without the addon), standings with priority (PR).
+- **Ready page:** see at a glance who in your raid is ready and who is not, and why (flask, food, enchants, gear, durability), with a one-click ready check.
 - **Gear check before the raid:** empty slots, missing enchants, flasks, food and
   attunements, with a one-line readiness status for every raider.
 - **Roll games:** high roll, deathroll, 1v1 duels. No gold, no wagers, no debts.
@@ -73,6 +74,12 @@ PolyForm Noncommercial license. Not affiliated with or endorsed by Blizzard Ente
 
 ## Changelog (paste for the file upload)
 ```markdown
+## 3.3.0
+
+**In game**
+- **Ready page** in the Guilded window (and `/guilded ready`): everyone in your raid or party, worst first, coloured Ready / Issues / Not ready / No data, with the reason (no flask, no food, missing enchants, empty gear slots, low durability, old data, offline, no addon). It combines what each player's addon shared with a live look at their buffs, and updates by itself while the page is open. Everyone can see it.
+- **Ready check:** "Ask everyone to check" (`/guilded ready ask`) makes every addon in the group look at itself again and answer within seconds; officers can "Post to group chat" to tell the group who needs attention. Requests are answered only from raid or party chat, never in combat, at most every 20 seconds.
+
 ## 3.2.0
 
 **In game**

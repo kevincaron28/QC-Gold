@@ -1,4 +1,4 @@
-# Release checklist: Guilded 3.2.0
+# Release checklist: Guilded 3.3.0
 
 `[x]` done, `[ ]` left. Anything that fails: send a screenshot or the `/guilded diag` output.
 
@@ -9,14 +9,14 @@
 - [x] Addon in game: login, window and Home page, officer pages, sim raid and solo bidding, backup and restore, sync and diagnostics, modules on/off.
 - [x] Discord: `/setup`, `/core setup` and `/core edit`, test raid, weekly raid, craft board, signup post (names, FULL, core and bench).
 - [x] Companion tray app connects and uploads; characters link automatically.
-- [x] Tests (314), addon validator and type check pass; `dist/Guilded-v3.2.0.zip` and the companion installer built.
+- [x] Tests (314), addon validator and type check pass; `dist/Guilded-v3.3.0.zip` and the companion installer built.
 
 ## To publish (about 30 minutes)
 
 - [ ] **3 to 5 screenshots** in game: Home page, Raid or Loot page, Me page (and a Discord signup post with the core roster).
 - [ ] **Logo:** `docs/branding/guilded-logo-400.png` still reads "GILDED"; regenerate it with the u, then upload it to CurseForge.
 - [ ] **Discord developer portal:** set the bot's name to Guilded and its avatar to the logo.
-- [ ] **CurseForge:** upload `dist/Guilded-v3.2.0.zip` as **Beta**, paste the changelog from `docs/CURSEFORGE_COPYPASTE.md`. If 3.0.1 was never uploaded, mention the rename.
+- [ ] **CurseForge:** upload `dist/Guilded-v3.3.0.zip` as **Beta**, paste the changelog from `docs/CURSEFORGE_COPYPASTE.md`. If 3.0.1 was never uploaded, mention the rename.
 - [ ] **GitHub** stays private (no source URL on the listing). Optional: rename the repository from `QC-Gold` to `Guilded` in its settings.
 - [ ] **Companion installer** (optional, for guilds that do not want the batch file): `cd companion-app`, `npm install`, `npm run dist`; the installer lands in `dist\companion\`.
 - [ ] After a day with no bug reports: switch the file from Beta to **Release**.
@@ -33,6 +33,7 @@ Say "untested" on the listing until these pass.
 
 ## Optional
 
+- [ ] **Ready page with other people:** in a party or raid open the window, Ready tab (or `/guilded ready`). Each player appears with a colour and a reason. Press Ask everyone to check: guildmates with the addon update within seconds. Someone with no addon shows their flask and food from buffs and "no addon data" otherwise. Officers try Post to group chat.
 - [ ] **Chat tab in the real game:** `/guilded chat tab` should open a tab called Guilded and show a first line there; then `/guilded sim start` prints its lines in that tab; `/guilded chat off` sends them back to the main chat.
 - [ ] **Item tooltips in the real game:** in Discord `/wishlist add` an item for a linked character, wait for the companion (or `/reload`), then hover that item in your bags or the loot window: three gold "Guilded:" lines. If nothing shows, `/guilded diag` and tell me. Also try `/guilded modules off tooltip`.
 - [ ] **Warcraft Logs automation:** `/config wcl-guild guild:<your guild's page link on warcraftlogs.com>`, run a raid through the bot (or use the sim raid) and upload a log; within 10 minutes of it ending the report card appears in the raid logs channel and the officer check in the officer log. Try `/wcl check raid:<id>` by hand first.

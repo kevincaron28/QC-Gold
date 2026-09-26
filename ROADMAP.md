@@ -4,7 +4,7 @@ Where Guilded stands and what could come next. The full idea backlog, the code a
 other addons are kept in [docs/archive/ROADMAP-history.md](docs/archive/ROADMAP-history.md).
 What is left before publishing is in [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
 
-## Status (2026-09-26): version 3.2.0, ready to publish as a Beta
+## Status (2026-09-26): version 3.3.0, ready to publish as a Beta
 
 Built and tested (314 automated tests, the addon validator passes):
 
@@ -39,6 +39,7 @@ versus member views. They are listed in the release checklist.
 
 ## Also done
 
+- **Ready page** (3.3.0): who in the raid is ready, in the window and as `/guilded ready`, with a ready check. Needs a look in a real raid group (party and raid units are the untested part).
 - **French option** (setup language choice, French server and posts). Left for a later pass: officers' own screens and replies, and Discord's slash-command description translations.
 
 ## Decided against

@@ -506,6 +506,77 @@ local function buildDungeonPage(page)
   ui.dgnBoard:SetWidth(PAGE_WIDTH)
 end
 
+-- The Ready page: everyone in your raid or party, worst first, with why.
+local READY_ROWS = 15
+local READY_COLORS = { READY = "|cff55dd55", PARTIAL = "|cffffcc33", NOT_READY = "|cffff5555", NODATA = "|cff999999" }
+
+local function buildReadyPage(page)
+  ui.readySummary = at(newLabel(page, "", "GameFontNormal"), page, 0, 0)
+  ui.readySummary:SetWidth(PAGE_WIDTH)
+  ui.readyPage = 1
+  at(newButton(page, L("Refresh"), 90, function() if ns.ready then refresh() end end), page, 0, -24)
+  at(newButton(page, L("Ask everyone to check"), 170, function() if ns.ready then ns.ready.ask() end end), page, 94, -24)
+  officerOnly(at(newButton(page, L("Post to group chat"), 150, function() if ns.ready then ns.ready.post() end end), page, 268, -24))
+  ui.readyPrev = at(newButton(page, "<", 32, function() ui.readyPage = math.max(1, (ui.readyPage or 1) - 1); refresh() end), page, PAGE_WIDTH - 170, -24)
+  ui.readyPageLabel = at(newLabel(page, "", "GameFontHighlightSmall"), page, PAGE_WIDTH - 134, -30)
+  ui.readyPageLabel:SetWidth(70)
+  ui.readyNext = at(newButton(page, ">", 32, function() ui.readyPage = (ui.readyPage or 1) + 1; refresh() end), page, PAGE_WIDTH - 60, -24)
+  at(newLabel(page, L("Player"), "GameFontDisableSmall"), page, 0, -58)
+  at(newLabel(page, L("Status"), "GameFontDisableSmall"), page, 132, -58)
+  at(newLabel(page, L("Why"), "GameFontDisableSmall"), page, 226, -58)
+  ui.readyRows = {}
+  for i = 1, READY_ROWS do
+    local y = -74 - (i - 1) * 19
+    local row = {
+      name = at(newLabel(page, "", "GameFontHighlight"), page, 0, y),
+      status = at(newLabel(page, "", "GameFontHighlight"), page, 132, y),
+      why = at(newLabel(page, "", "GameFontHighlightSmall"), page, 226, y)
+    }
+    row.name:SetWidth(128)
+    row.status:SetWidth(90)
+    row.why:SetWidth(PAGE_WIDTH - 226)
+    ui.readyRows[i] = row
+  end
+  ui.readyHint = at(newLabel(page, "", "GameFontDisableSmall"), page, 0, -74 - READY_ROWS * 19 - 6)
+  ui.readyHint:SetWidth(PAGE_WIDTH)
+end
+
+local function readyTabOpen()
+  local tab = ui.tabs[ui.currentTab or 0]
+  return tab and tab.name == "Ready" and panel and panel:IsShown()
+end
+
+local function refreshReady()
+  if not ui.readySummary or not ns.ready then return end
+  local result = ns.ready.collect()
+  local pages = math.max(1, math.ceil(#result.rows / READY_ROWS))
+  ui.readyPage = math.min(math.max(1, ui.readyPage or 1), pages)
+  ui.readySummary:SetText((result.inGroup and "" or (L("Not in a group: showing only you.") .. "  ")) .. ns.ready.summary(result))
+  ui.readyPageLabel:SetText(string.format("%d / %d", ui.readyPage, pages))
+  local first = (ui.readyPage - 1) * READY_ROWS
+  for i = 1, READY_ROWS do
+    local row = ui.readyRows[i]
+    local entry = result.rows[first + i]
+    if entry then
+      local color = READY_COLORS[entry.status] or ""
+      row.name:SetText(color .. entry.name .. "|r")
+      row.status:SetText(color .. L(ns.ready.LABEL[entry.status]) .. "|r")
+      row.why:SetText(table.concat(entry.reasons, ", "))
+    else
+      row.name:SetText("")
+      row.status:SetText("")
+      row.why:SetText("")
+    end
+  end
+  ui.readyHint:SetText(result.inRaid and L("Flask and food are read from each player's buffs. Ask everyone to check refreshes gear and enchants too.")
+    or L("Flask and food are only required in a raid group."))
+  -- Keep it current while the page is open (people buff up, addons answer).
+  if readyTabOpen() and not ui.readyTickPending and C_Timer then
+    ui.readyTickPending = true
+    C_Timer.After(3, function() ui.readyTickPending = false; if readyTabOpen() then refresh() end end)
+  end
+end
+
 -- The Home page: what is going on right now, your standing and gear, whether
 -- your data has reached Discord, and the few things worth pressing first.
 local STATUS_WORD = { READY = "Ready", PARTIAL = "Partly ready", NOT_READY = "Not ready" }
@@ -551,6 +622,7 @@ local TAB_DEFS = {
   { name = "Home", hint = "what is going on, and your data", group = "Overview", build = buildHomePage },
   { name = "Me", hint = "your gear check and attunements", group = "Overview", usesPlayer = true, build = buildMePage },
   { name = "Standings", hint = "EP, GP and PR from Discord", group = "Overview", usesPlayer = true, build = buildStandingsPage },
+  { name = "Ready", hint = "who is ready for the raid", group = "Raid night", build = buildReadyPage },
   { name = "Raid", hint = "run a raid: start, bosses, attendance", group = "Raid night", officer = true, usesPlayer = true, build = buildRaidPage },
   { name = "EPGP", hint = "award EP and GP", group = "Raid night", officer = true, usesPlayer = true, build = buildEpgpPage },
   { name = "Loot", hint = "bids and loot", group = "Raid night", officer = true, usesPlayer = true, build = buildLootPage },
@@ -811,6 +883,7 @@ refresh = function()
     (officer and L("\n(Officers: Mark done applies to the selected player.)") or ""))
 
   refreshDungeons(db)
+  refreshReady()
 
   local updatedAt = ns.getStandingsUpdatedAt and ns.getStandingsUpdatedAt()
   if not updatedAt then
@@ -938,6 +1011,7 @@ local function buildPanel()
   ns.onBiddingChange = function() refresh() end
   ns.onDungeonChange = function() refresh() end
   ns.onModulesChange = function() refresh() end
+  ns.onPeerReadiness = function() if readyTabOpen() then refresh() end end
 
   -- Targeting a player while the window is open fills the Player field.
   panel:RegisterEvent("PLAYER_TARGET_CHANGED")

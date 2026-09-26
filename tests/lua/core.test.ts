@@ -257,3 +257,25 @@ describe("slow handler timings", () => {
     expect(session.chat().slice(before).join("\n")).not.toContain("[Diagnostic]");
   });
 });
+
+describe("ready check requests", () => {
+  const readinessSent = (s: LuaSession) => s.run(`local n = 0; for _, m in ipairs(SENT or {}) do if string.find(m.text, "^READINESS|") and m.target == "RAID" then n = n + 1 end end; return n`);
+
+  it("answers a request that came through the raid channel with a readiness digest, at most every 20 seconds", () => {
+    const s = loggedIn();
+    s.run(`GetInventoryItemLink = function() return nil end; SENT = {}; GetServerTime = function() return 1000 end; fire_event("CHAT_MSG_ADDON", "Guilded", "READYREQ|1", "RAID", "Amy-Realm")`);
+    expect(readinessSent(s)).toBe("1");
+    s.run(`fire_event("CHAT_MSG_ADDON", "Guilded", "READYREQ|2", "RAID", "Amy-Realm")`);
+    expect(readinessSent(s)).toBe("1");
+    s.run(`GetServerTime = function() return 1030 end; fire_event("CHAT_MSG_ADDON", "Guilded", "READYREQ|3", "RAID", "Amy-Realm")`);
+    expect(readinessSent(s)).toBe("2");
+  });
+
+  it("ignores a request from a whisper or the guild channel, and in combat", () => {
+    const s = loggedIn();
+    s.run(`GetInventoryItemLink = function() return nil end; SENT = {}; GetServerTime = function() return 5000 end; fire_event("CHAT_MSG_ADDON", "Guilded", "READYREQ|1", "WHISPER", "Amy-Realm"); fire_event("CHAT_MSG_ADDON", "Guilded", "READYREQ|1", "GUILD", "Amy-Realm")`);
+    expect(readinessSent(s)).toBe("0");
+    s.run(`InCombatLockdown = function() return true end; GetServerTime = function() return 9000 end; fire_event("CHAT_MSG_ADDON", "Guilded", "READYREQ|1", "RAID", "Amy-Realm")`);
+    expect(readinessSent(s)).toBe("0");
+  });
+});

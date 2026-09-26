@@ -44,7 +44,7 @@ function openWindow(rank: number): LuaSession {
     MOCK_UNITS = { player = { name = "Kev", buffs = {} } }
     function GetGuildInfo() return "Alpha", "Rank", ${rank} end
   `);
-  for (const file of ["Core.lua", "Compat.lua", "Modules/Sync.lua", "Modules/SyncNow.lua", "Modules/Games.lua", "Modules/Minimap.lua"]) session.load(file);
+  for (const file of ["Core.lua", "Compat.lua", "Modules/Sync.lua", "Modules/SyncNow.lua", "Modules/Games.lua", "Modules/Consumables.lua", "Modules/Ready.lua", "Modules/Minimap.lua"]) session.load(file);
   session.run(`fire_event("PLAYER_LOGIN"); fire_event("PLAYER_ENTERING_WORLD"); NS.commandHandlers["menu"]()`);
   return session;
 }
@@ -60,9 +60,9 @@ describe("the tools window (sidebar and Home page)", () => {
   });
 
   it("officers see every group in order; members only what they can use", () => {
-    expect(visibleTabs(openWindow(1))).toBe("Home,Me,Standings,Raid,EPGP,Loot,Dungeons,Games,Tools");
+    expect(visibleTabs(openWindow(1))).toBe("Home,Me,Standings,Ready,Raid,EPGP,Loot,Dungeons,Games,Tools");
     session?.close();
-    expect(visibleTabs(openWindow(5))).toBe("Home,Me,Standings,Dungeons,Games,Tools");
+    expect(visibleTabs(openWindow(5))).toBe("Home,Me,Standings,Ready,Dungeons,Games,Tools");
   });
 
   it("Home says who you are, what is running, and why there is no standing yet", () => {
@@ -102,5 +102,26 @@ describe("the tools window (sidebar and Home page)", () => {
     expect(s.run(`return NS.windowState().pageTitle.text`)).toContain("Home");
     s.run(`NS.windowState().selectTabByName("EPGP")`);
     expect(s.run(`return NS.windowState().pageTitle.text`)).toContain("award EP and GP");
+  });
+});
+
+describe("the Ready page", () => {
+  const readyText = (s: LuaSession) => s.run(`local w = NS.windowState(); local out = { w.readySummary.text }; for i, r in ipairs(w.readyRows) do if r.name.text ~= "" then out[#out + 1] = r.name.text .. "|" .. r.status.text .. "|" .. r.why.text end end; return table.concat(out, string.char(10))`);
+
+  it("shows just you when solo, and updates when opened", () => {
+    const s = openWindow(1);
+    s.run(`NS.windowState().selectTabByName("Ready")`);
+    const text = readyText(s);
+    expect(text).toContain("Not in a group: showing only you.");
+    expect(text).toContain("Kev");
+  });
+
+  it("everyone gets the page; only officers get the post button", () => {
+    for (const rank of [1, 5]) {
+      const s = openWindow(rank);
+      expect(visibleTabs(s)).toContain("Ready");
+      s.run(`NS.windowState().selectTabByName("Ready")`);
+      expect(s.chat().join("\n")).not.toContain("failed");
+    }
   });
 });

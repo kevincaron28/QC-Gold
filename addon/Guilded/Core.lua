@@ -1190,8 +1190,24 @@ local function handlePeerReadiness(text, sender)
     flags = flags,
     identity = identity,
     updatedAt = now(),
+    -- When it arrived (seconds), so the Ready page can say how old it is.
+    seenAt = (GetServerTime and GetServerTime()) or time(),
     reportedBy = name
   }
+  if ns.onPeerReadiness then pcall(ns.onPeerReadiness, name) end
+end
+
+-- A "ready check" from someone in your raid or party: look at yourself again and answer on
+-- the group channel. At most once per 20 seconds, never in combat, and only when it
+-- came through the raid or party channel (not from a stranger's whisper).
+local lastReadyAnswerAt = 0
+local function handleReadyRequest(channel)
+  if channel ~= "RAID" and channel ~= "PARTY" then return end
+  if (InCombatLockdown and InCombatLockdown()) then return end
+  local nowSeconds = (GetServerTime and GetServerTime()) or time()
+  if nowSeconds - lastReadyAnswerAt < 20 then return end
+  lastReadyAnswerAt = nowSeconds
+  if ns.inspectReadiness then pcall(ns.inspectReadiness, true, channel) end
 end
 
 -- ---------------------------------------------------------------------
@@ -1302,6 +1318,8 @@ local function onEvent(_, event, ...)
     if string.sub(text, 1, 10) == "READINESS|" then
       -- Every online guildmate sends these; keep them out of the journal.
       handlePeerReadiness(text, sender)
+    elseif string.sub(text, 1, 9) == "READYREQ|" then
+      handleReadyRequest(channel)
     else
       logEvent("ADDON_MESSAGE", { text = text, channel = channel, sender = normalizeName(sender) })
     end
@@ -1368,6 +1386,7 @@ ns.isSecret = isSecret
 ns.now = now
 ns.message = message
 ns.send = send
+ns.inspectReadiness = inspectReadiness
 ns.isOfficer = isOfficer
 ns.isOfficerName = isOfficerName
 ns.runCommand = command
