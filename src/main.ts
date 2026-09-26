@@ -29,6 +29,7 @@ import { executeHelp } from "./commands/help.js";
 import { handleAutocomplete } from "./commands/autocomplete.js";
 import { prisma } from "./database.js";
 import { runRaidReminders } from "./services/reminders.js";
+import { runCooldownPings } from "./services/recipes.js";
 import { runBackup } from "./services/backup.js";
 import { runWclDiscovery } from "./services/wcl-check.js";
 import { config } from "./config.js";
@@ -74,6 +75,10 @@ client.once(Events.ClientReady, (readyClient) => {
       console.warn(`Raid reminder check skipped, will retry in 5 minutes: ${text}`);
     });
   }, 5 * 60 * 1000);
+  // Profession cooldowns: a DM to members who asked for it, when one of theirs is ready.
+  setInterval(() => {
+    runCooldownPings(readyClient, prisma).catch((error: unknown) => console.warn("Cooldown pings skipped:", error instanceof Error ? error.message : error));
+  }, 10 * 60 * 1000);
   // Warcraft Logs: new reports of the guild set with /setup config wcl-guild, every 10 minutes.
   setInterval(() => {
     runWclDiscovery(readyClient, prisma).catch((error: unknown) => console.warn("Warcraft Logs check skipped:", error instanceof Error ? error.message : error));

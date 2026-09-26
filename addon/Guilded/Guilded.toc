@@ -19,6 +19,7 @@ Modules\Sim.lua
 Modules\Bidding.lua
 Modules\Council.lua
 Modules\Reserve.lua
+Modules\Recipes.lua
 Modules\Calendar.lua
 Modules\ConsumableData.lua
 Modules\Consumables.lua

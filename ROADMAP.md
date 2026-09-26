@@ -32,7 +32,7 @@ versus member views. They are listed in the release checklist.
 5. ~~Loot response voting~~ **built** (in the addon, `/guilded council`); needs a try with a second player (popup, whisper answers).
 6. **Soft reserves in the addon** **built** (`/guilded reserve`, synced to Discord with `/loot reserves`); needs a try with a second player. **Imports:** That's My BiS and Guild Roster Manager still need sample files from a real export.
 7. **Guild calendar sync:** in-game events to Discord and back. Half built (the check command exists).
-8. **Recipes and cooldowns:** who can craft what, transmute cooldowns, shopping list.
+8. ~~Recipes and cooldowns~~ **built** (`/guilded recipes`, `/guilded cooldowns`, `/craft who`); the profession window reading is the untested part (Forever's trade skill API), needs a look in the real game.
 9. **Web dashboard** for standings, loot and raid history.
 10. **Hosting:** the free Oracle Cloud setup is written ([docs/DEPLOY_ORACLE.md](docs/DEPLOY_ORACLE.md)); a hosted
    multi-guild bot is a bigger step and only worth it if other guilds ask.

@@ -945,6 +945,7 @@ ns.MODULES = {
   { key = "bidding", name = "GP bidding", desc = "in-game GP bids on loot", commands = { "bid" } },
   { key = "council", name = "Loot council", desc = "BiS / upgrade / off-spec answers for loot council guilds", commands = { "council", "lc" } },
   { key = "reserve", name = "Soft reserves", desc = "reserve items for a raid, see who reserved what", commands = { "reserve", "res" } },
+  { key = "recipes", name = "Recipes and cooldowns", desc = "who can craft what, profession cooldowns", commands = { "recipes", "cooldowns" } },
   { key = "dungeon", name = "Dungeons", desc = "dungeon run tracking and points", commands = { "dungeon" } },
   { key = "calendar", name = "Calendar", desc = "guild calendar check", commands = { "calendar" } },
   { key = "syncnow", name = "Send to Discord", desc = "save now / auto-save so the companion uploads sooner", commands = { "sync" } },
@@ -956,7 +957,7 @@ ns.MODULES = {
   { key = "consumables", name = "Consumable scan", desc = "who is missing a flask or food", commands = { "consumes" } },
   { key = "sim", name = "Test tools", desc = "fake raid and dungeon runs for officers", commands = { "sim" } }
 }
-local MODULE_ALIASES = { casino = "games", game = "games", bid = "bidding", bids = "bidding", gp = "bidding", lc = "council", reserves = "reserve", softres = "reserve", sr = "reserve", lootcouncil = "council", dungeons = "dungeon", test = "sim", tests = "sim", consumable = "consumables", consumes = "consumables", flask = "consumables" }
+local MODULE_ALIASES = { casino = "games", game = "games", bid = "bidding", bids = "bidding", gp = "bidding", lc = "council", reserves = "reserve", recipe = "recipes", cooldown = "recipes", crafting = "recipes", softres = "reserve", sr = "reserve", lootcouncil = "council", dungeons = "dungeon", test = "sim", tests = "sim", consumable = "consumables", consumes = "consumables", flask = "consumables" }
 local moduleByKey, commandModule, activeAtLogin = {}, {}, {}
 for _, module in ipairs(ns.MODULES) do
   moduleByKey[module.key] = module

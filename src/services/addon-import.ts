@@ -7,6 +7,7 @@ import { importDungeonRuns } from "./dungeon-import.js";
 import { applyDiscoveredCharacters } from "./roster-discovery.js";
 import { findCharacter } from "./character-match.js";
 import { applyReserves } from "./reserves.js";
+import { applyRecipeData } from "./recipes.js";
 
 export function createAddonImportService(database: PrismaClient) {
   return {
@@ -210,6 +211,9 @@ export function createAddonImportService(database: PrismaClient) {
         // The soft-reserve list from the addon replaces the bot's copy when it is newer.
         const reserves = await applyReserves(tx, guildId, snapshot.reserves);
 
+        // Who can craft what, and profession cooldowns.
+        const crafting = await applyRecipeData(tx, guildId, { recipes: snapshot.recipes, recipeNames: snapshot.recipeNames, cooldowns: snapshot.cooldowns });
+
         // In-game raid presence -> Discord raid attendance (best effort, like
         // readiness: an unmatched raid or character doesn't block the import).
         const raids = await applyRaidAttendance(tx, guildId, snapshot.raids, characters, appliedBy);
@@ -222,7 +226,7 @@ export function createAddonImportService(database: PrismaClient) {
           where: { id: imported.id },
           data: { status: "APPLIED" }
         });
-        return { import: imported, transactions, epgpTransactions, readinessSnapshots, attunements, consumables, reserves, discovery, raids, loot, dungeons, skipped };
+        return { import: imported, transactions, epgpTransactions, readinessSnapshots, attunements, consumables, reserves, crafting, discovery, raids, loot, dungeons, skipped };
       });
     }
   };

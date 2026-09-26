@@ -4,6 +4,7 @@ import { hasPermission } from "../permissions.js";
 import { createCraftService } from "../services/craft.js";
 import { postToLogChannel } from "../services/housekeeping.js";
 import { findProfessionHolders } from "../services/profession-search.js";
+import { describeCrafters, findCrafters } from "../services/recipes.js";
 import { requireGuildContext } from "./context.js";
 import { PROFESSIONS } from "../wow-data.js";
 import { postCraftRequest, syncCraftPost } from "./craft-board.js";
@@ -27,6 +28,8 @@ export const craftCommand = new SlashCommandBuilder()
   .addSubcommand((sub) => sub.setName("list").setDescription("Open requests crafters can pick up.")
     .addStringOption((o) => o.setName("profession").setDescription("Only this profession")
       .addChoices(...PROFESSIONS.map((name) => ({ name, value: name })))))
+  .addSubcommand((sub) => sub.setName("who").setDescription("Who in the guild can craft an item (from the addon's profession scan).")
+    .addStringOption((o) => o.setName("item").setDescription("Item or enchant (pick from the list, or type part of the name)").setAutocomplete(true).setMaxLength(100).setRequired(true)))
   .addSubcommand((sub) => sub.setName("mine").setDescription("Your open requests and the ones you're crafting."))
   .addSubcommand((sub) => sub.setName("claim").setDescription("Take a request (you'll craft it).").addStringOption(idOption("from /craft list")))
   .addSubcommand((sub) => sub.setName("done").setDescription("Mark a request you claimed as crafted.").addStringOption(idOption("from /craft mine")))
@@ -45,6 +48,12 @@ export async function executeCraft(interaction: ChatInputCommandInteraction): Pr
   const subcommand = interaction.options.getSubcommand();
   const isOfficer = !!interaction.member && hasPermission(interaction.member as GuildMember, "officer");
   const dm = (userId: string, text: string) => interaction.client.users.send(userId, text).catch(() => undefined);
+
+  if (subcommand === "who") {
+    const query = interaction.options.getString("item", true);
+    await interaction.reply({ content: describeCrafters(query, await findCrafters(prisma, context.guildId, query)), ephemeral: true });
+    return;
+  }
 
   if (subcommand === "permissions") {
     if (!isOfficer) throw new Error("Only Officers or Guild Masters can change the craft board's permissions.");

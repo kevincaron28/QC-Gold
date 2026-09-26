@@ -235,6 +235,9 @@ export async function readAddonExport(path, realm) {
   // Soft reserves (addon Modules/Reserve.lua): the whole list, replaced in Discord when newer.
   const reserves = buildReserves(database.reserves, realm);
 
+  // Who can craft what, and profession cooldowns (addon Modules/Recipes.lua).
+  const recipeData = buildRecipes(database.recipeBook, realm);
+
   // SavedVariables key order is arbitrary; the ISO timestamps sort correctly.
   const exportKeys = Object.keys(database.exports ?? {}).sort();
   const exportedAt = exportKeys.at(-1) ?? new Date().toISOString();
@@ -277,6 +280,8 @@ export async function readAddonExport(path, realm) {
       }
     } : {}),
     ...(reserves ? { reserves: { ...reserves, at: reserves.at ?? exportedAt } } : {}),
+    ...(recipeData.recipes.length ? { recipes: recipeData.recipes, recipeNames: recipeData.recipeNames } : {}),
+    ...(recipeData.cooldowns.length ? { cooldowns: recipeData.cooldowns } : {}),
     raids,
     loot,
     dungeonRuns
@@ -308,4 +313,38 @@ function buildReserves(saved, realm) {
     active,
     entries: entries.slice(0, 2000)
   };
+}
+
+// The addon keeps people[player][profession] = { v = epoch, keys = { id, ... } }, names[id] = "Name"
+// and cooldowns[player] = { { prof, name, readyAt = epoch }, ... }. Recipe ids are item ids, or
+// minus a spell id for enchants. Only cooldowns from the last week are sent.
+function buildRecipes(saved, realm) {
+  const out = { recipes: [], recipeNames: {}, cooldowns: [] };
+  if (!saved || typeof saved !== "object") return out;
+  const iso = (epoch) => new Date(Number(epoch) * 1000).toISOString();
+  const used = new Set();
+  for (const [player, professions] of Object.entries(saved.people ?? {})) {
+    for (const [profession, entry] of Object.entries(professions ?? {})) {
+      const keys = Object.values(entry?.keys ?? {}).map(Number).filter((key) => Number.isInteger(key) && key !== 0).slice(0, 800);
+      if (!entry?.v || keys.length === 0) continue;
+      out.recipes.push({ character: String(player), realm, profession: String(profession).slice(0, 40), at: iso(entry.v), keys });
+      for (const key of keys) used.add(key);
+    }
+  }
+  out.recipes = out.recipes.slice(0, 400);
+  for (const key of used) {
+    const name = saved.names?.[key] ?? saved.names?.[String(key)];
+    if (typeof name === "string" && name) out.recipeNames[String(key)] = name.slice(0, 100);
+  }
+  const weekAgo = Date.now() / 1000 - 7 * 24 * 3600;
+  for (const [player, list] of Object.entries(saved.cooldowns ?? {})) {
+    const entries = Object.values(list ?? {})
+      .filter((cooldown) => cooldown && Number(cooldown.readyAt) > weekAgo)
+      .slice(0, 20)
+      .map((cooldown) => ({ profession: String(cooldown.prof).slice(0, 40), name: String(cooldown.name).slice(0, 60), readyAt: iso(cooldown.readyAt) }));
+    if (entries.length === 0) continue;
+    out.cooldowns.push({ character: String(player), realm, at: iso(saved.cooldownAt?.[player] ?? Date.now() / 1000), entries });
+  }
+  out.cooldowns = out.cooldowns.slice(0, 300);
+  return out;
 }

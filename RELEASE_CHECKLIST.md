@@ -26,6 +26,7 @@
 Say "untested" on the listing until these pass.
 
 - [ ] Bid popup on a second character, then a bid by whisper (`/w Officer 30`); the officer sees both in the list and awards one.
+- [ ] Recipes and cooldowns: open each profession window (Alchemy, Enchanting, a gathering skill); the chat line says how many recipes were read and `/guilded recipes mine` lists them. Check that collapsed groups were read and are collapsed again, and that filters ("have materials") did not hide recipes. On a second character, `/guilded recipes who <item link>` finds the first one's recipe; `/guilded cooldowns` shows a transmute as one line.
 - [ ] Soft reserves with a second character: officer `/guilded reserve open`, the other reserves an item (link and Reserves tab), the list appears on both; a whisper `res [link]` from a third; lock; `/guilded reserve roll` between two reservers; award. Check the tooltip line.
 - [ ] Loot council on a second character: open an item in the Council tab, answer from the popup, then a whisper answer (`bis`); the officer sees both ranked and awards one.
 - [ ] `/guilded games duel <player>` with a friend (and `/guilded casino` only says it was removed).

@@ -51,6 +51,11 @@ function module.lines(itemName, link)
   if id and (not ns.moduleActive or ns.moduleActive("reserve")) then
     for _, line in ipairs(ns.reserve.tooltipLines(id)) do table.insert(lines, line) end
   end
+  -- Who in the guild can craft it (Modules/Recipes.lua).
+  local craftId = ns.recipes and ns.recipes.keyFromLink and ns.recipes.keyFromLink(link)
+  if craftId and craftId > 0 and (not ns.moduleActive or ns.moduleActive("recipes")) then
+    for _, line in ipairs(ns.recipes.tooltipLines(craftId)) do table.insert(lines, line) end
+  end
   if not info then return lines end
   local wish = info.wish or {}
   if #wish > 0 then

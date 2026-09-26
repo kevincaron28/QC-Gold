@@ -137,6 +137,8 @@ model Guild {
   warcraftLogsReports WarcraftLogsReport[]
   consumableChecks    ConsumableCheck[]
   reserveList         ReserveList?
+  recipesKnown        RecipeKnown[]
+  professionCooldowns ProfessionCooldown[]
   itemReserves        ItemReserve[]
   raidCores           RaidCore[]
   dungeonGroups       DungeonGroup[]
@@ -173,6 +175,8 @@ model Member {
   dungeonPoints       DungeonPointTransaction[]
   dungeonAchievements DungeonAchievement[]
   bankRequests        BankRequest[]
+  // DM me when a profession cooldown of one of my characters is ready.
+  cooldownPings       Boolean                      @default(false)
 
   @@unique([guildId, discordUserId])
   @@index([guildId, status])
@@ -886,6 +890,40 @@ model ItemReserve {
 
   @@unique([guildId, character, realm, itemId])
   @@index([guildId, itemId])
+}
+
+// One recipe a character knows, from the addon's profession scan (/guilded recipes).
+// itemKey is an item id, or minus a spell id for enchants.
+model RecipeKnown {
+  id         String   @id @default(cuid())
+  guildId    String
+  character  String
+  realm      String
+  profession String
+  itemKey    Int
+  itemName   String
+  scannedAt  DateTime
+  guild      Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@unique([guildId, character, realm, itemKey])
+  @@index([guildId, itemKey])
+  @@index([guildId, character, realm, profession])
+}
+
+model ProfessionCooldown {
+  id         String    @id @default(cuid())
+  guildId    String
+  character  String
+  realm      String
+  profession String
+  name       String
+  readyAt    DateTime
+  scannedAt  DateTime
+  notifiedAt DateTime?
+  guild      Guild     @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@unique([guildId, character, realm, profession, name])
+  @@index([guildId, readyAt])
 }
 
 // A named raid roster. Members get priority at signups for raids made for it.

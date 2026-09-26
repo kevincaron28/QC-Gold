@@ -1,6 +1,7 @@
 import { SlashCommandBuilder, type ChatInputCommandInteraction } from "discord.js";
 import { prisma } from "../database.js";
 import { findProfessionHolders, professionCoverage } from "../services/profession-search.js";
+import { describeCooldowns } from "../services/recipes.js";
 import { guildService, requireGuildContext } from "./context.js";
 import { PROFESSIONS } from "../wow-data.js";
 
@@ -22,6 +23,11 @@ export const professionCommand = new SlashCommandBuilder()
     .setDescription("Find guild characters with a profession, highest skill first.")
     .addStringOption((option) => option.setName("profession").setDescription("Profession (pick from the list)").setRequired(true)
       .addChoices(...PROFESSIONS.map((name) => ({ name, value: name })))))
+  .addSubcommand((subcommand) => subcommand
+    .setName("cooldowns")
+    .setDescription("Profession cooldowns (transmutes and so on) read by the addon, and a ready-DM option.")
+    .addBooleanOption((option) => option.setName("mine").setDescription("Only my characters"))
+    .addBooleanOption((option) => option.setName("notify").setDescription("DM me when a cooldown of mine is ready (true or false)")))
   .addSubcommand((subcommand) => subcommand
     .setName("coverage")
     .setDescription("How many characters have each profession, and who is highest."));
@@ -60,6 +66,16 @@ export async function executeProfession(interaction: ChatInputCommandInteraction
       content: coverage.length ? fit(lines, "Guild profession coverage:") : "No professions recorded yet.",
       ephemeral: true
     });
+    return;
+  }
+
+  if (subcommand === "cooldowns") {
+    const notify = interaction.options.getBoolean("notify");
+    if (notify !== null) await prisma.member.update({ where: { id: context.memberId }, data: { cooldownPings: notify } });
+    const own = await guildService.listCharacters(context.memberId);
+    const mine = interaction.options.getBoolean("mine") ?? false;
+    const list = await describeCooldowns(prisma, context.guildId, mine ? { characters: own.map((character) => character.name) } : {});
+    await interaction.reply({ content: `${notify === null ? "" : `${notify ? "I will DM you when a cooldown of yours is ready." : "No more cooldown DMs."}\n\n`}${list}`.slice(0, 1990), ephemeral: true });
     return;
   }
 

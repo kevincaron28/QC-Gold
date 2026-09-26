@@ -89,6 +89,26 @@ one for the winner.
 | `/guilded bid cancel` | Cancel, nothing recorded |
 | `/guilded bid status` | Current bids |
 
+### Recipes and cooldowns
+
+Open each of your professions once and Guilded reads every recipe you know (and what it
+needs, and any cooldown), then tells the guild in a few short messages. After that anyone
+with the addon can ask who can craft something, and the list reaches Discord with the
+companion's export. Only players with the addon who have opened their profession window
+show up. Item names of other players' recipes fill in as the game learns them.
+
+| Command | What it does |
+| --- | --- |
+| `/guilded recipes who <item link or name>` | Who in the guild can craft it |
+| `/guilded recipes mine` | What your professions hold, and how many guildmates' lists you have |
+| `/guilded recipes mats <item link> [count]` | Shopping list for a recipe you know, with how many you already carry |
+| `/guilded recipes share` | Send your recipes to the guild again (it also does this by itself once in a while) |
+| `/guilded cooldowns [mine]` | Profession cooldowns (transmutes and so on), soonest first. Recipes that share a cooldown show as one line |
+| `/craft who <item>` (Discord) | Who can craft it, with their profession and Discord name. Pick from the list or type part of the name |
+| `/character profession cooldowns [mine] [notify]` (Discord) | The guild's cooldowns. `notify: true` DMs you once when a cooldown of yours is ready |
+
+Item tooltips also say "Crafted by ...".
+
 ### Soft reserves (Reserves tab)
 
 Reserve items for a raid without a website. An officer opens the list; everyone

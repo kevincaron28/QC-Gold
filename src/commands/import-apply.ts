@@ -75,6 +75,7 @@ export async function executeImportApply(interaction: ChatInputCommandInteractio
   await interaction.reply({
     content: `Applied import \`${importId}\`: ${result.transactions.length} DKP transaction(s), `
       + (result.consumables ? `${result.consumables} consumable check(s), ` : "")
+      + (result.crafting.recipeSets || result.crafting.cooldownSets ? `${result.crafting.recipes} recipe(s) from ${result.crafting.recipeSets} profession list(s) and ${result.crafting.cooldownSets} cooldown list(s), ` : "")
       + (result.reserves.applied ? `soft-reserve list updated (${result.reserves.entries} reserve(s)), ` : "")
       + (result.discovery.discovered ? `${result.discovery.discovered} new character(s) discovered${autoLinked.length ? ` (linked automatically: ${autoLinked.map((row) => `${row.character} to ${row.member}`).join(", ")})` : ""}${result.discovery.discovered > autoLinked.length ? `, ${result.discovery.discovered - autoLinked.length} waiting for /character claim` : ""}, ` : "")
       + `${result.epgpTransactions.length} EPGP transaction(s), ${result.readinessSnapshots.length} `

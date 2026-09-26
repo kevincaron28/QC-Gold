@@ -44,6 +44,7 @@ new `KIND`, never a changed one.
 | --- | --- | --- | --- |
 | Games.lua | `games` | (none) | Fun roll games: high roll, deathroll, duel. No gold |
 | Bidding.lua | `bidding` | GuildedBid | In-game GP bidding on loot |
+| Recipes.lua | `recipes` | GuildedRcp | Recipes and profession cooldowns: who can craft what, shared with the guild |
 | Reserve.lua | `reserve` | GuildedRes | Soft reserves: reserve items for a raid, shared list, roll between reservers |
 | Council.lua | `council` | GuildedLC | Loot council: BiS / upgrade / off-spec answers, ranked for the officers |
 | Dungeon.lua | `dungeon` | GuildedDgn | Dungeon run tracking for the Dungeon Challenge |
@@ -70,6 +71,18 @@ Officer-run GP bidding: `/guilded bid start <min GP> <item> [seconds]` opens it
 for the raid (addon users get a popup, pugs whisper a number), highest PR
 breaks ties, then the earliest bid. `award` records the loot and GP through
 Core's own commands.
+
+## Recipes.lua
+
+Reads a profession window (`TRADE_SKILL_*` for most, `CRAFT_*` for enchanting), opening collapsed
+groups and closing them again, and keeps recipe ids per player in `db.recipeBook`
+(`people[player][profession] = { v, keys }`, `names`, `mats` for your own recipes,
+`cooldowns[player]`, `cooldownAt`). Ids are item ids, or minus a spell id for enchants. Your own
+lists go to the guild in chunks under 255 characters, one message every 1.2 s:
+`R|profession|version|n|N|id,id,...`, `CDC|profession` then `CD|profession|readyAt|name`. Only
+the `GUILD` channel is read, and only a player's own data is stored under their name. Shared
+cooldowns (all transmutes) are merged into one line. The companion exports it as `recipes`,
+`recipeNames` and `cooldowns`.
 
 ## Reserve.lua
 

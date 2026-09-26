@@ -151,6 +151,30 @@ export const addonReservesSchema = z.object({
 
 export type AddonReserves = z.infer<typeof addonReservesSchema>;
 
+// Who can craft what, from the addon's recipe scan (/guilded recipes). One entry per
+// character and profession; keys are item ids, or minus a spell id for enchants.
+export const addonRecipeSetSchema = z.object({
+  character: z.string().min(1),
+  realm: z.string().min(1),
+  profession: z.string().min(1).max(40),
+  at: z.coerce.date(),
+  keys: z.array(z.number().int()).max(800)
+});
+
+export const addonCooldownSetSchema = z.object({
+  character: z.string().min(1),
+  realm: z.string().min(1),
+  at: z.coerce.date(),
+  entries: z.array(z.object({
+    profession: z.string().min(1).max(40),
+    name: z.string().min(1).max(60),
+    readyAt: z.coerce.date()
+  })).max(20)
+});
+
+export type AddonRecipeSet = z.infer<typeof addonRecipeSetSchema>;
+export type AddonCooldownSet = z.infer<typeof addonCooldownSetSchema>;
+
 export type AddonCharacter = z.infer<typeof addonCharacterSchema>;
 
 export const addonSnapshotSchema = z.object({
@@ -162,6 +186,9 @@ export const addonSnapshotSchema = z.object({
   characters: z.array(addonCharacterSchema).max(500).default([]),
   consumeScan: addonConsumeScanSchema.optional(),
   reserves: addonReservesSchema.optional(),
+  recipes: z.array(addonRecipeSetSchema).max(400).default([]),
+  recipeNames: z.record(z.string(), z.string().max(100)).default({}),
+  cooldowns: z.array(addonCooldownSetSchema).max(300).default([]),
   transactions: z.array(addonTransactionSchema).default([]),
   epgpTransactions: z.array(addonEpgpTransactionSchema).default([]),
   readiness: z.array(addonReadinessSchema).default([]),
