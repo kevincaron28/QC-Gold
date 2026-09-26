@@ -1,4 +1,4 @@
-# Today: ship v3.0.0 to CurseForge
+# Today: ship v3.0.1 to CurseForge
 
 Everything that could be built and tested without you is done (306 automated
 tests, addon validator clean, zip built). What is left needs your hands, your
@@ -28,10 +28,10 @@ screenshot or `/guilded diag` output. Tick as you go.
 
 ## C. Before release: test the addon in game (45 min)
 
-Install: copy `addon\Guilded\` (or unzip `dist\Guilded-v3.0.0.zip` after
+Install: copy `addon\Guilded\` (or unzip `dist\Guilded-v3.0.1.zip` after
 `npm run addon:zip`) into `Interface\AddOns\`, restart the game.
 
-- [x] (login OK 2026-09-26: Identity Ray / Classic Beta PvP matches the companion realm, no diagnostics, first /reload uploads reached the bot) Login: no error popup, no "blocked action". `/guilded version` says 3.0.0.
+- [x] (login OK 2026-09-26: Identity Ray / Classic Beta PvP matches the companion realm, no diagnostics, first /reload uploads reached the bot) Login: no error popup, no "blocked action". `/guilded version` says 3.0.1.
       `/guilded diag` first line `Identity: ...` (send it to me once, for the realm check).
 - [ ] **Click the gold coin.** The window has a sidebar (Home, Me, Standings...).
       Nothing overlaps or runs off the window. **Tell me what looks cramped.**
@@ -67,8 +67,8 @@ Install: copy `addon\Guilded\` (or unzip `dist\Guilded-v3.0.0.zip` after
 - [ ] `node addon/Guilded/validate-addon.mjs`, then `npm run addon:zip`.
 - [ ] 3 to 5 screenshots from game, a 400x400 logo.
 - [ ] Create the CurseForge project, paste the description from
-      docs/RELEASE_CURSEFORGE.md, upload `dist/Guilded-v3.0.0.zip` as **Beta**,
-      paste the 3.0.0 changelog.
+      docs/RELEASE_CURSEFORGE.md, upload `dist/Guilded-v3.0.1.zip` as **Beta**,
+      paste the 3.0.1 changelog.
 - [ ] Publish the GitHub repo (or keep it private and skip the source URL) and, if you
       want a downloadable companion installer, `cd companion-app`, `npm install`,
       `npm run dist` (installer in `dist\companion\`).

@@ -1,4 +1,4 @@
-# CurseForge copy-paste sheet: Guilded 3.0.0
+# CurseForge copy-paste sheet: Guilded 3.0.1
 
 Each block below is one field. Copy the block, paste it in.
 
@@ -21,7 +21,7 @@ Raid & Instance (secondary: Guild, Miscellaneous)
 `docs/branding/guilded-logo-400.png` (400x400). Full size: `docs/branding/guilded-logo.png`.
 
 ## File to upload
-`dist/Guilded-v3.0.0.zip` (top folder inside is `Guilded`). Release type: **Beta** for the first day, then **Release**.
+`dist/Guilded-v3.0.1.zip` (top folder inside is `Guilded`). Release type: **Beta** for the first day, then **Release**.
 Game versions: the WoW Forever / Classic entries closest to interface 16001 and 20506.
 
 ## License

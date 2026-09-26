@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.0.1
+
+Renamed to **Guilded** (`/guilded`, short `/gd`; the old `/qg` is gone, saved data from the old name is adopted once).
+
+- Me page: the Attunements block no longer overlaps a long gear result; readiness shows as Ready / Partly ready / Not ready.
+- Bidding: officers can try it alone inside a test raid (`/guilded sim start`, then `/guilded sim bids`); nothing is sent to chat.
+- Bot: no crash when Discord drops a slow command, database keepalive, clearer message when a character is already linked.
+
 ## 3.0.0
 
 A big release: everything below since 1.x, polished for the public.
