@@ -6,7 +6,7 @@ import { guildService, requireGuildContext } from "./context.js";
 
 export const statsCommand = new SlashCommandBuilder()
   .setName("stats")
-  .setDescription("Guild activity: raids, boss kills, loot, EP, recruitment, top attendance.")
+  .setDescription("Guild activity: raids, boss kills, loot, EP, top attendance.")
   .addIntegerOption((o) => o.setName("days").setDescription("How far back (default 7)").setMinValue(1).setMaxValue(365));
 
 export function statsEmbed(stats: GuildStats, title: string, lang: Lang = "en"): EmbedBuilder {

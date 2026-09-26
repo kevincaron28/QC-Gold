@@ -56,7 +56,7 @@ const RECOMMENDED_EPGP = {
 
 const STEP_TITLES = [
   "Welcome", "Step 1 of 7 — Permission roles", "Step 2 of 7 — Channels", "Step 3 of 7 — Raid team channels",
-  "Step 4 of 7 — Dungeon & recruitment channels", "Step 5 of 7 — Welcome message", "Step 6 of 7 — New member roles",
+  "Step 4 of 7 — Dungeon channels", "Step 5 of 7 — Welcome message", "Step 6 of 7 — New member roles",
   "Step 7 of 7 — EPGP, time & language", "All done"
 ];
 const LAST_STEP = 7;
@@ -154,7 +154,7 @@ export async function renderStep(step: number, guild: DiscordGuild, guildId: str
       "**1. Roles** — who counts as Guild Master, Officer, Raid Leader, DKP Officer.",
       "**2. Channels** — where announcements, raid signups, raid logs, and officer logs go.",
       "**3. Raid team channels** — raid roster (cores), raid readiness (private), loot log, craft board (optional).",
-      "**4. Dungeon & recruitment channels** — dungeon leaderboard, signups and runs, and recruitment (optional).",
+      "**4. Dungeon channels** — dungeon leaderboard, signups and runs (optional).",
       "**5. Welcome** — optional welcome message (in a channel or by DM) with buttons to pick game roles.",
       "**6. New member roles** — optional automatic Applicant / Member roles.",
       "**7. EPGP, time & language** — point values, reminders, your timezone, English or French.",
@@ -238,18 +238,16 @@ export async function renderStep(step: number, guild: DiscordGuild, guildId: str
 
   if (step === 4) {
     embed.setDescription([
-      "**Optional.** Skip with **Next** if you don't run the dungeon challenge or recruitment posts.",
+      "**Optional.** Skip with **Next** if you don't run the dungeon challenge.",
       "",
       `🏆 **Dungeon leaderboard** — one message I keep updated after every imported dungeon run: ${channelLabel(settings.dungeonLeaderboardChannelId)}`,
       `📝 **Dungeon signups** — where dungeon groups sign up (each group gets a temporary voice channel): ${channelLabel(settings.dungeonSignupChannelId)}`,
-      `🏰 **Dungeon runs** — each completed dungeon and new records: ${settings.dungeonChannelId ? `<#${settings.dungeonChannelId}>` : "same as announcements"}`,
-      `📣 **Recruitment** — where the recurring recruitment post goes (text and timing: \`/config recruitment\`): ${channelLabel(settings.recruitmentChannelId)}`
+      `🏰 **Dungeon runs** — each completed dungeon and new records: ${settings.dungeonChannelId ? `<#${settings.dungeonChannelId}>` : "same as announcements"}`
     ].join("\n"));
     components.push(
       channelSelect("ch-dungeon-lb", "🏆 Pick the dungeon leaderboard channel"),
       channelSelect("ch-dungeon-signup", "📝 Pick the dungeon signups channel"),
       channelSelect("ch-dungeon", "🏰 Pick the dungeon runs channel"),
-      channelSelect("ch-recruit", "📣 Pick the recruitment channel"),
       navRow(4, [button("create-dungeon-channels", "Create them for me", ButtonStyle.Success)])
     );
   }
@@ -378,7 +376,7 @@ async function createMissingRoles(guild: DiscordGuild): Promise<string> {
 
 type ChannelField = "notifyChannelId" | "raidSignupChannelId" | "raidLogChannelId" | "logChannelId"
   | "dungeonLeaderboardChannelId" | "dungeonSignupChannelId" | "dungeonChannelId"
-  | "lootChannelId" | "craftChannelId" | "recruitmentChannelId" | "readinessChannelId" | "coreChannelId";
+  | "lootChannelId" | "craftChannelId" | "readinessChannelId" | "coreChannelId";
 
 // Access: "open" everyone talks; "readonly" everyone reads, only the bot and
 // leadership post (signup channels are read-only too: people use the buttons);
@@ -393,7 +391,6 @@ const CATEGORY_NAMES: Record<CategoryKey, string> = {
 
 const CHANNEL_SPECS: Record<ChannelField, { name: string; topic: string; access: Access; category: CategoryKey }> = {
   notifyChannelId: { name: `${BRAND.channelPrefix}-announcements`, topic: `Raid, boss and guild announcements from ${BRAND.name}`, access: "readonly", category: "guild" },
-  recruitmentChannelId: { name: "recruitment", topic: "Recruitment posts", access: "readonly", category: "guild" },
   raidSignupChannelId: { name: "raid-signups", topic: "Raid signups: use the buttons under each raid post", access: "readonly", category: "raid" },
   coreChannelId: { name: "raid-roster", topic: "Raid core rosters: core members get signup priority", access: "readonly", category: "raid" },
   raidLogChannelId: { name: "raid-logs", topic: "Raid summaries and Warcraft Logs, posted after each raid", access: "readonly", category: "raid" },
@@ -408,7 +405,7 @@ const CHANNEL_SPECS: Record<ChannelField, { name: string; topic: string; access:
 
 const CORE_CHANNELS: ChannelField[] = ["notifyChannelId", "raidSignupChannelId", "raidLogChannelId", "logChannelId"];
 const RAIDTEAM_CHANNELS: ChannelField[] = ["coreChannelId", "readinessChannelId", "lootChannelId", "craftChannelId"];
-const DUNGEON_CHANNELS: ChannelField[] = ["dungeonLeaderboardChannelId", "dungeonSignupChannelId", "dungeonChannelId", "recruitmentChannelId"];
+const DUNGEON_CHANNELS: ChannelField[] = ["dungeonLeaderboardChannelId", "dungeonSignupChannelId", "dungeonChannelId"];
 const ALL_CHANNELS: ChannelField[] = [...CORE_CHANNELS, ...RAIDTEAM_CHANNELS, ...DUNGEON_CHANNELS];
 
 // The category for a group of channels; created once and reused (by name).
@@ -566,7 +563,7 @@ export async function executeSetup(interaction: ChatInputCommandInteraction): Pr
         else if (action === "organize") note = await organizeChannels(guild, guildId);
         else if (i.isChannelSelectMenu()) {
           const channelId = i.values[0];
-          const field = { "ch-notify": "notifyChannelId", "ch-raid": "raidSignupChannelId", "ch-raidlog": "raidLogChannelId", "ch-log": "logChannelId", "ch-welcome": "welcomeChannelId", "ch-dungeon": "dungeonChannelId", "ch-dungeon-lb": "dungeonLeaderboardChannelId", "ch-dungeon-signup": "dungeonSignupChannelId", "ch-core": "coreChannelId", "ch-readiness": "readinessChannelId", "ch-loot": "lootChannelId", "ch-craft": "craftChannelId", "ch-recruit": "recruitmentChannelId" }[action];
+          const field = { "ch-notify": "notifyChannelId", "ch-raid": "raidSignupChannelId", "ch-raidlog": "raidLogChannelId", "ch-log": "logChannelId", "ch-welcome": "welcomeChannelId", "ch-dungeon": "dungeonChannelId", "ch-dungeon-lb": "dungeonLeaderboardChannelId", "ch-dungeon-signup": "dungeonSignupChannelId", "ch-core": "coreChannelId", "ch-readiness": "readinessChannelId", "ch-loot": "lootChannelId", "ch-craft": "craftChannelId" }[action];
           if (channelId && field) {
             await guildService.updateSettings(guildId, { [field]: channelId });
             note = `Saved <#${channelId}>.`;

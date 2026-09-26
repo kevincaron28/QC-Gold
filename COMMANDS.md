@@ -288,7 +288,6 @@ Approve, and a raid can never be paid twice.
 | `/config dungeon-leaderboard-channel` | Channel with one auto-updated dungeon leaderboard message (refreshed after every dungeon import) |
 | `/config dungeon-signup-channel` | Channel for dungeon signups (channel only; no dungeon signup flow yet) |
 | `/config merit <true\|false>` | Rank the leaderboard by PR x attendance |
-| `/config recruitment` | Recurring recruitment post |
 
 **Base GP:** PR = EP / (GP + base GP). With base GP 100, someone with 50 EP
 and 0 GP has PR 0.5 instead of an undefined or huge number. The addon uses

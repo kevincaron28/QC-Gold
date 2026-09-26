@@ -46,7 +46,6 @@ import { executeDungeon } from "./commands/dungeon.js";
 import { executeDungeonAdmin } from "./commands/dungeon-admin.js";
 import { handleAutocomplete } from "./commands/autocomplete.js";
 import { prisma } from "./database.js";
-import { runRecruitmentPosts } from "./services/recruitment.js";
 import { runRaidReminders } from "./services/reminders.js";
 import { runBackup } from "./services/backup.js";
 import { config } from "./config.js";
@@ -105,15 +104,6 @@ client.once(Events.ClientReady, (readyClient) => {
     .catch((error: unknown) => console.warn(`Backup skipped, will retry in an hour: ${error instanceof Error ? error.message : String(error)}`));
   void backup();
   setInterval(() => void backup(), 60 * 60 * 1000);
-  // Scheduled recruitment posts: checked every 10 minutes while the bot is running.
-  setInterval(() => {
-    // Background job: a failed check just waits for the next one, so log a
-    // single line instead of a full stack trace.
-    runRecruitmentPosts(readyClient, prisma).catch((error: unknown) => {
-      const text = error instanceof Error ? error.message.split("\n").filter(Boolean).at(-1) : String(error);
-      console.warn(`Recruitment check skipped, will retry in 10 minutes: ${text}`);
-    });
-  }, 10 * 60 * 1000);
   // Raid reminders: checked every 5 minutes so a "60 minutes before" ping
   // lands within a few minutes of that mark.
   setInterval(() => {

@@ -396,10 +396,6 @@ model GuildSettings {
   raidSignupChannelId      String?
   logChannelId             String?
   meritEnabled             Boolean   @default(false)
-  recruitmentChannelId     String?
-  recruitmentMessage       String?
-  recruitmentIntervalHours Int?
-  recruitmentLastPostedAt  DateTime?
   // EPGP: PR = EP / (GP + baseGp), so a new player with almost no GP does not top the list.
   baseGp                   Int       @default(0)
   // Channel for raid/boss/loot/EPGP announcements.

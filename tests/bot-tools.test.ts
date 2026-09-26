@@ -4,7 +4,6 @@ import { hierarchyError, MAX_TIMEOUT_MS, parseDuration, requireReason } from "..
 import { createTagService, normalizeTagName } from "../src/services/tags.js";
 import { createWishlistService, itemKey } from "../src/services/wishlist.js";
 import { attendanceRate, createMeritService, meritScore } from "../src/services/merit.js";
-import { isRecruitmentDue } from "../src/services/recruitment.js";
 import { selfRoleProblem } from "../src/services/selfrole.js";
 
 describe("moderation helpers", () => {
@@ -133,21 +132,6 @@ describe("merit", () => {
     const raid = { findMany: vi.fn().mockResolvedValue([]) };
     const service = createMeritService({ raid, raidAttendance: { findMany: vi.fn() } } as never);
     expect((await service.getAttendanceRates("guild1")).size).toBe(0);
-  });
-});
-
-describe("recruitment schedule", () => {
-  const now = new Date("2026-10-01T12:00:00Z");
-
-  it("is due when never posted, once the interval has elapsed, and not before", () => {
-    expect(isRecruitmentDue({ now, lastPostedAt: null, intervalHours: 24 })).toBe(true);
-    expect(isRecruitmentDue({ now, lastPostedAt: new Date("2026-09-30T11:00:00Z"), intervalHours: 24 })).toBe(true);
-    expect(isRecruitmentDue({ now, lastPostedAt: new Date("2026-10-01T00:00:00Z"), intervalHours: 24 })).toBe(false);
-  });
-
-  it("is never due without a valid interval", () => {
-    expect(isRecruitmentDue({ now, lastPostedAt: null, intervalHours: null })).toBe(false);
-    expect(isRecruitmentDue({ now, lastPostedAt: null, intervalHours: 0 })).toBe(false);
   });
 });
 

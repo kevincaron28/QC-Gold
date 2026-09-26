@@ -95,7 +95,6 @@ Phase 11 adds (bot-side only, no addon changes):
 - `/tag show|list|set|delete`: saved text snippets (raid rules, consumable lists); tag text never pings anyone
 - `/wishlist add|remove|list|item`: per-character item wishlists with priority; `/wishlist item` shows who wants something, and `/loot auction` notes how many raiders wishlisted the item
 - `/epgp leaderboard` now shows 30-day attendance (Present = 1, Late = 0.5); `/config merit enabled:true` orders it by PR x attendance instead of raw PR (display only, the ledger is never touched)
-- `/config recruitment`: a recurring recruitment post on an interval. It only fires while the bot process is running (checked every 10 minutes), so a missed window posts on the next check
 
 Dungeon Challenge (addon v1.7.0+, roadmap D1–D10):
 
@@ -171,7 +170,7 @@ click-through guide (buttons and menus, no typing) in seven steps: permission
 roles (can create them and give you Guild Master), channels (announcements,
 raid signups, raid logs, and a private officer log), raid team channels
 (raid roster, private raid readiness, loot log, craft board), dungeon and
-recruitment channels (leaderboard, signups, runs, recruitment), an optional
+dungeon channels (leaderboard, signups, runs), an optional
 welcome message, optional auto-roles, and EPGP values / raid reminders /
 weekly report. "Create the whole WoW section" makes every missing channel
 at once, sorted into categories (Guild, Raiding, Dungeons, Crafting,
@@ -226,7 +225,6 @@ note in the system channel asking an admin to run `/setup`.
 /config roles applicant:@Applicant member:@Member
 /config log-channel channel:#mod-log
 /config merit enabled:true
-/config recruitment channel:#recruitment message:"Quebec Gold is recruiting! Apply with /apply" interval_hours:72
 /mod timeout player:@Someone duration:30m reason:"Spamming"
 /mod history player:@Someone
 /selfroles title:"Pick your roles" role1:@Tank role2:@Healer role3:@DPS
