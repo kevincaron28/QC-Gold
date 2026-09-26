@@ -259,10 +259,12 @@ describe("slow handler timings", () => {
 });
 
 describe("ready check requests", () => {
+  // Requests count only from an officer, the group leader or an assistant (Modules/Ready.lua decides).
+  const withReady = (s: LuaSession) => { s.load("Modules/Ready.lua"); s.run(`function UnitIsGroupLeader(unit) return unit == "Amy" end`); return s; };
   const readinessSent = (s: LuaSession) => s.run(`local n = 0; for _, m in ipairs(SENT or {}) do if string.find(m.text, "^READINESS|") and m.target == "RAID" then n = n + 1 end end; return n`);
 
   it("answers a request that came through the raid channel with a readiness digest, at most every 20 seconds", () => {
-    const s = loggedIn();
+    const s = withReady(loggedIn());
     s.run(`GetInventoryItemLink = function() return nil end; SENT = {}; GetServerTime = function() return 1000 end; fire_event("CHAT_MSG_ADDON", "Guilded", "READYREQ|1", "RAID", "Amy-Realm")`);
     expect(readinessSent(s)).toBe("1");
     s.run(`fire_event("CHAT_MSG_ADDON", "Guilded", "READYREQ|2", "RAID", "Amy-Realm")`);
@@ -271,9 +273,11 @@ describe("ready check requests", () => {
     expect(readinessSent(s)).toBe("2");
   });
 
-  it("ignores a request from a whisper or the guild channel, and in combat", () => {
-    const s = loggedIn();
+  it("ignores a request from a whisper or the guild channel, from a plain raider, and in combat", () => {
+    const s = withReady(loggedIn());
     s.run(`GetInventoryItemLink = function() return nil end; SENT = {}; GetServerTime = function() return 5000 end; fire_event("CHAT_MSG_ADDON", "Guilded", "READYREQ|1", "WHISPER", "Amy-Realm"); fire_event("CHAT_MSG_ADDON", "Guilded", "READYREQ|1", "GUILD", "Amy-Realm")`);
+    expect(readinessSent(s)).toBe("0");
+    s.run(`GetServerTime = function() return 7000 end; fire_event("CHAT_MSG_ADDON", "Guilded", "READYREQ|1", "RAID", "Bob-Realm")`);
     expect(readinessSent(s)).toBe("0");
     s.run(`InCombatLockdown = function() return true end; GetServerTime = function() return 9000 end; fire_event("CHAT_MSG_ADDON", "Guilded", "READYREQ|1", "RAID", "Amy-Realm")`);
     expect(readinessSent(s)).toBe("0");

@@ -1201,8 +1201,10 @@ end
 -- the group channel. At most once per 20 seconds, never in combat, and only when it
 -- came through the raid or party channel (not from a stranger's whisper).
 local lastReadyAnswerAt = 0
-local function handleReadyRequest(channel)
+local function handleReadyRequest(channel, sender)
   if channel ~= "RAID" and channel ~= "PARTY" then return end
+  -- Only an officer, the group leader or an assistant can ask (not any random raider).
+  if not (ns.ready and ns.ready.isRequester and ns.ready.isRequester(sender)) then return end
   if (InCombatLockdown and InCombatLockdown()) then return end
   local nowSeconds = (GetServerTime and GetServerTime()) or time()
   if nowSeconds - lastReadyAnswerAt < 20 then return end
@@ -1319,7 +1321,7 @@ local function onEvent(_, event, ...)
       -- Every online guildmate sends these; keep them out of the journal.
       handlePeerReadiness(text, sender)
     elseif string.sub(text, 1, 9) == "READYREQ|" then
-      handleReadyRequest(channel)
+      handleReadyRequest(channel, sender)
     else
       logEvent("ADDON_MESSAGE", { text = text, channel = channel, sender = normalizeName(sender) })
     end

@@ -3,8 +3,8 @@
 ## 3.3.0
 
 **In game**
-- **Ready page** in the Guilded window (and `/guilded ready`): everyone in your raid or party, worst first, coloured Ready / Issues / Not ready / No data, with the reason (no flask, no food, missing enchants, empty gear slots, low durability, old data, offline, no addon). It combines what each player's addon shared with a live look at their buffs, and updates by itself while the page is open. Everyone can see it.
-- **Ready check:** "Ask everyone to check" (`/guilded ready ask`) makes every addon in the group look at itself again and answer within seconds; officers can "Post to group chat" to tell the group who needs attention. Requests are answered only from raid or party chat, never in combat, at most every 20 seconds.
+- **Ready page** in the Guilded window (and `/guilded ready`): everyone in your raid or party, worst first, coloured Ready / Issues / Not ready / No data, with the reason (no flask, no food, missing enchants, empty gear slots, low durability, old data, offline, no addon). It combines what each player's addon shared with a live look at their buffs, and updates by itself while the page is open. It is **for officers and group leaders only** (guild officers, and the leader or an assistant of the current raid or party); other members do not see the page and `/guilded ready` tells them so.
+- **Ready check:** "Ask everyone to check" (`/guilded ready ask`) makes every addon in the group look at itself again and answer within seconds; "Post to group chat" tells the group who needs attention. Addons answer a request only when it comes from an officer, the group leader or an assistant, through raid or party chat, never in combat, and at most every 20 seconds.
 
 ## 3.2.0
 

@@ -36,13 +36,14 @@ const RICH_FRAMES = String.raw`
   function UnitIsPlayer() return true end
 `;
 
-function openWindow(rank: number): LuaSession {
+function openWindow(rank: number, extraLua = ""): LuaSession {
   session = newLuaSession();
   session.run(RICH_FRAMES);
   session.run(String.raw`
     GuildedDB = nil; NS = {}
     MOCK_UNITS = { player = { name = "Kev", buffs = {} } }
     function GetGuildInfo() return "Alpha", "Rank", ${rank} end
+    ${extraLua}
   `);
   for (const file of ["Core.lua", "Compat.lua", "Modules/Sync.lua", "Modules/SyncNow.lua", "Modules/Games.lua", "Modules/Consumables.lua", "Modules/Ready.lua", "Modules/Minimap.lua"]) session.load(file);
   session.run(`fire_event("PLAYER_LOGIN"); fire_event("PLAYER_ENTERING_WORLD"); NS.commandHandlers["menu"]()`);
@@ -62,7 +63,7 @@ describe("the tools window (sidebar and Home page)", () => {
   it("officers see every group in order; members only what they can use", () => {
     expect(visibleTabs(openWindow(1))).toBe("Home,Me,Standings,Ready,Raid,EPGP,Loot,Dungeons,Games,Tools");
     session?.close();
-    expect(visibleTabs(openWindow(5))).toBe("Home,Me,Standings,Ready,Dungeons,Games,Tools");
+    expect(visibleTabs(openWindow(5))).toBe("Home,Me,Standings,Dungeons,Games,Tools");
   });
 
   it("Home says who you are, what is running, and why there is no standing yet", () => {
@@ -116,12 +117,14 @@ describe("the Ready page", () => {
     expect(text).toContain("Kev");
   });
 
-  it("everyone gets the page; only officers get the post button", () => {
-    for (const rank of [1, 5]) {
-      const s = openWindow(rank);
-      expect(visibleTabs(s)).toContain("Ready");
-      s.run(`NS.windowState().selectTabByName("Ready")`);
-      expect(s.chat().join("\n")).not.toContain("failed");
-    }
+  it("officers and group leaders see the page; other members do not", () => {
+    expect(visibleTabs(openWindow(1))).toContain("Ready");
+    expect(visibleTabs(openWindow(5))).not.toContain("Ready");
+    const leader = openWindow(5, `function UnitIsGroupLeader() return true end`);
+    expect(visibleTabs(leader)).toContain("Ready");
+    leader.run(`NS.windowState().selectTabByName("Ready")`);
+    expect(leader.chat().join(" ")).not.toContain("failed");
+    const assistant = openWindow(5, `function UnitIsGroupAssistant() return true end`);
+    expect(visibleTabs(assistant)).toContain("Ready");
   });
 });

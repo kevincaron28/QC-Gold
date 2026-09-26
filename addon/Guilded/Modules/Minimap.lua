@@ -516,7 +516,7 @@ local function buildReadyPage(page)
   ui.readyPage = 1
   at(newButton(page, L("Refresh"), 90, function() if ns.ready then refresh() end end), page, 0, -24)
   at(newButton(page, L("Ask everyone to check"), 170, function() if ns.ready then ns.ready.ask() end end), page, 94, -24)
-  officerOnly(at(newButton(page, L("Post to group chat"), 150, function() if ns.ready then ns.ready.post() end end), page, 268, -24))
+  at(newButton(page, L("Post to group chat"), 150, function() if ns.ready then ns.ready.post() end end), page, 268, -24)
   ui.readyPrev = at(newButton(page, "<", 32, function() ui.readyPage = math.max(1, (ui.readyPage or 1) - 1); refresh() end), page, PAGE_WIDTH - 170, -24)
   ui.readyPageLabel = at(newLabel(page, "", "GameFontHighlightSmall"), page, PAGE_WIDTH - 134, -30)
   ui.readyPageLabel:SetWidth(70)
@@ -622,7 +622,7 @@ local TAB_DEFS = {
   { name = "Home", hint = "what is going on, and your data", group = "Overview", build = buildHomePage },
   { name = "Me", hint = "your gear check and attunements", group = "Overview", usesPlayer = true, build = buildMePage },
   { name = "Standings", hint = "EP, GP and PR from Discord", group = "Overview", usesPlayer = true, build = buildStandingsPage },
-  { name = "Ready", hint = "who is ready for the raid", group = "Raid night", build = buildReadyPage },
+  { name = "Ready", hint = "who is ready for the raid", group = "Raid night", leader = true, build = buildReadyPage },
   { name = "Raid", hint = "run a raid: start, bosses, attendance", group = "Raid night", officer = true, usesPlayer = true, build = buildRaidPage },
   { name = "EPGP", hint = "award EP and GP", group = "Raid night", officer = true, usesPlayer = true, build = buildEpgpPage },
   { name = "Loot", hint = "bids and loot", group = "Raid night", officer = true, usesPlayer = true, build = buildLootPage },
@@ -703,6 +703,13 @@ local function refreshDungeons(db)
   end
 end
 
+-- Officer tabs are for officers; leader tabs also for the leader or an assistant of the group.
+local function tabAllowed(tab, officer)
+  if officer then return true end
+  if tab.leader then return ns.ready ~= nil and ns.ready.canView() end
+  return not tab.officer
+end
+
 local function layoutTabs(officer)
   local y = -62
   local firstVisible
@@ -711,7 +718,7 @@ local function layoutTabs(officer)
   for _, group in ipairs(GROUPS) do
     local any = false
     for _, tab in ipairs(ui.tabs) do
-      if tab.group == group and (officer or not tab.officer) and (not tab.module or moduleOn(tab.module)) then any = true end
+      if tab.group == group and tabAllowed(tab, officer) and (not tab.module or moduleOn(tab.module)) then any = true end
     end
     if any then
       local label = ui.groupLabels[group]
@@ -725,7 +732,7 @@ local function layoutTabs(officer)
       y = y - 16
       for i, tab in ipairs(ui.tabs) do
         if tab.group == group then
-          local visible = (officer or not tab.officer) and (not tab.module or moduleOn(tab.module))
+          local visible = tabAllowed(tab, officer) and (not tab.module or moduleOn(tab.module))
           tab.visible = visible
           if visible then
             at(tab.button, panel, 20, y)
@@ -812,8 +819,10 @@ refresh = function()
   if not db then return end
   local officer = ns.isOfficer()
   local modules = moduleSignature()
-  if ui.lastOfficer ~= officer or ui.lastModules ~= modules then
+  local leader = ns.ready ~= nil and ns.ready.canView() or false
+  if ui.lastOfficer ~= officer or ui.lastLeader ~= leader or ui.lastModules ~= modules then
     ui.lastOfficer = officer
+    ui.lastLeader = leader
     ui.lastModules = modules
     for _, widget in ipairs(ui.officerOnly) do
       if officer then widget:Show() else widget:Hide() end
@@ -988,7 +997,7 @@ local function buildPanel()
     def.build(page)
     page:Hide()
     local tabButton = newButton(panel, L(def.name), 132, function() selectTab(i) end, 24)
-    ui.tabs[i] = { name = def.name, hint = def.hint, group = def.group, officer = def.officer, module = def.module, usesPlayer = def.usesPlayer, page = page, button = tabButton }
+    ui.tabs[i] = { name = def.name, hint = def.hint, group = def.group, officer = def.officer, leader = def.leader, module = def.module, usesPlayer = def.usesPlayer, page = page, button = tabButton }
     tabButton:SetScript("OnEnter", function(self)
       if not GameTooltip then return end
       GameTooltip:SetOwner(self, "ANCHOR_RIGHT")

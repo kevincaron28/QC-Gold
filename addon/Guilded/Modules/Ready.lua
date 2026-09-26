@@ -4,8 +4,9 @@
 --   * the readiness that each player's addon shared (gear, enchants, durability, flask, food),
 --   * a live look at their buffs (flask or elixir, and food), which is fresher, and
 --   * "no data" for players with no addon and hidden buffs.
--- The window's Ready page shows it; /guilded ready prints it. Officers can ask every
--- addon in the group to check itself again (a ready check) and post the result to raid chat.
+-- The window's Ready page shows it; /guilded ready prints it. Only officers and group leaders
+-- (raid leader or assistant) see it: they can ask every addon in the group to check itself
+-- again (a ready check) and post the result to the group.
 --
 -- Flask and food only count while you are in a raid group, like the gear check itself.
 local addonName, ns = ...
@@ -52,6 +53,30 @@ local function nowEpoch()
     if ok and type(value) == "number" then return value end
   end
   return time and time() or 0
+end
+
+-- ---------------------------------------------------------------------
+-- Who may see this: officers, and the leader or an assistant of the current group.
+-- ---------------------------------------------------------------------
+
+local function unitFlag(fn, unit)
+  if not fn then return false end
+  local ok, value = pcall(fn, unit)
+  return ok and value == true
+end
+
+function module.canView()
+  if ns.isOfficer and ns.isOfficer() then return true end
+  return unitFlag(UnitIsGroupLeader, "player") or unitFlag(UnitIsGroupAssistant, "player")
+end
+
+-- Whether another player (by name) is someone whose ready check we answer.
+function module.isRequester(name)
+  if ns.isOfficerName and ns.isOfficerName(name) then return true end
+  -- The name may come with a realm ("Amy-Realm"); try it as given and without.
+  local plain = ns.normalizeName and ns.normalizeName(name) or name
+  return unitFlag(UnitIsGroupLeader, name) or unitFlag(UnitIsGroupAssistant, name)
+    or unitFlag(UnitIsGroupLeader, plain) or unitFlag(UnitIsGroupAssistant, plain)
 end
 
 -- ---------------------------------------------------------------------
@@ -216,6 +241,10 @@ function module.groupChannel()
 end
 
 function module.ask()
+  if not module.canView() then
+    ns.message(L("Only officers and group leaders use the ready check."))
+    return false
+  end
   local channel = module.groupChannel()
   if not channel then
     ns.message(L("Join a raid or party first."))
@@ -253,8 +282,8 @@ function module.postLines(result)
 end
 
 function module.post()
-  if ns.isOfficer and not ns.isOfficer() then
-    ns.message(L("Only officers post the ready check to the group."))
+  if not module.canView() then
+    ns.message(L("Only officers and group leaders use the ready check."))
     return
   end
   local channel = module.groupChannel()
@@ -273,6 +302,10 @@ end
 
 ns.commandHandlers = ns.commandHandlers or {}
 ns.commandHandlers["ready"] = function(args)
+  if not module.canView() then
+    ns.message(L("Only officers and group leaders use the ready check."))
+    return
+  end
   local action = string.lower(args[1] or "")
   if action == "ask" or action == "check" then module.ask() return end
   if action == "post" then module.post() return end
@@ -287,4 +320,4 @@ ns.commandHandlers["ready"] = function(args)
   end
 end
 ns.commandHelp = ns.commandHelp or {}
-table.insert(ns.commandHelp, "/guilded ready [ask|post] - who in your group is ready (ask = ask every addon to re-check, post = officers: tell the group)")
+table.insert(ns.commandHelp, { officer = true, text = "/guilded ready [ask|post] - who in your group is ready (officers and group leaders; ask = every addon re-checks, post = tell the group)" })

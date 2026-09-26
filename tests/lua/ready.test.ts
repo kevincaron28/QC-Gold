@@ -122,7 +122,20 @@ describe("Ready.lua", () => {
     expect(s.run(`return #SENT`)).toBe("2");
   });
 
-  it("posts a summary and the problems to the raid, only for officers", () => {
+  it("only officers, the group leader and assistants can use it", () => {
+    const s = withRaid();
+    expect(s.run(`return tostring(NS.ready.canView())`)).toBe("true");
+    s.run(`NS.isOfficer = function() return false end`);
+    expect(s.run(`return tostring(NS.ready.canView())`)).toBe("false");
+    s.run(`NS.commandHandlers["ready"]({})`);
+    expect(s.chat().join(" ")).toContain("Only officers and group leaders");
+    s.run(`function UnitIsGroupAssistant(unit) return unit == "player" end`);
+    expect(s.run(`return tostring(NS.ready.canView())`)).toBe("true");
+    s.run(`function UnitIsGroupAssistant() return false end; function UnitIsGroupLeader(unit) return unit == "Amy" end`);
+    expect(s.run(`return tostring(NS.ready.isRequester("Amy")) .. tostring(NS.ready.isRequester("Bob"))`)).toBe("truefalse");
+  });
+
+  it("posts a summary and the problems to the raid, only for those who may", () => {
     const s = withRaid();
     s.run(`NS.ready.post()`);
     expect(s.run(`return CHAT[1]`)).toBe("RAID:[Guilded] 2 ready, 1 with issues, 0 not ready, 2 no data");
