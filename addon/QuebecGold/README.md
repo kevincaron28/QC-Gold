@@ -52,7 +52,7 @@ what it can use: members get Me, Standings, Dungeons, and Tools; officers
 also get Raid, EPGP, Loot, and the officer tools (rank is re-checked
 each time the window opens). Tabs for switched-off modules are hidden. A shared **Player** box sits at the top: targeting a
 player fills it in, and **Me** / **Group...** (clickable raid/party list, or
-online guildmates when solo) fill it on demand. Amounts, wagers, and
+online guildmates when solo) fill it on demand. Amounts and
 attunements have preset buttons; shift-click an item into the EPGP tab's
 Item box to award loot. Whole-group actions and ending a raid need a second
 click to confirm. Every button runs the same `/qg` command you could type,

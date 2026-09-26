@@ -26,10 +26,11 @@ const zipPath = join(distDir, zipName);
 if (existsSync(zipPath)) rmSync(zipPath);
 
 console.log(`Building ${zipPath} from addon version ${version}...`);
-const result = spawnSync("powershell", [
-  "-NoProfile", "-Command",
-  `Compress-Archive -Path '${stagingAddon}' -DestinationPath '${zipPath}'`
-], { stdio: "inherit" });
+// Windows PowerShell 5.1's Compress-Archive writes backslash paths, which
+// CurseForge and non-Windows unzip tools mishandle. Windows' own bsdtar writes
+// a normal zip with forward slashes.
+const tar = join(process.env.SystemRoot ?? "C:/Windows", "System32", "tar.exe");
+const result = spawnSync(existsSync(tar) ? tar : "tar", ["-a", "-c", "-f", zipPath, "-C", staging, "QuebecGold"], { stdio: "inherit" });
 
 rmSync(staging, { recursive: true, force: true });
 

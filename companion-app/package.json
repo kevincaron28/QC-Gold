@@ -1,7 +1,7 @@
 {
   "name": "quebec-gold-companion",
   "productName": "Quebec Gold Companion",
-  "version": "1.0.0",
+  "version": "3.0.0",
   "description": "Sends your Quebec Gold addon data to the Discord bot and keeps in-game standings fresh.",
   "main": "main.cjs",
   "private": true,

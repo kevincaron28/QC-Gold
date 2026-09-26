@@ -11,13 +11,15 @@ priority (P0 = do first) · **S/M/L** = rough size
 
 ---
 
-## ⏸ Where we are — resume here (updated 2026-09-28)
+## ⏸ Where we are — resume here (updated 2026-09-26, v3 release day)
 
-**Status: N1-N7 and RF1 are built and committed (addon 2.4.0, 293 tests passing).**
-What is left needs you: run LUNCH_TEST_CHECKLIST.md (sections 16-19 are new),
-restart the bot (start-bot.bat) so the migrations apply, then decisions on the
-rebrand (#46), Warcraft Logs credentials, the Oracle deployment and CurseForge.
-How the new window and forum craft board *look* has not been seen by anyone.
+**Status: v3.0.0 is built and tested (306 tests, addon validator clean).** Version 3.0.0
+of the addon and bot, the companion desktop app, CHANGELOG, LICENSE (MIT), SECURITY.md
+and the CurseForge kit (docs/RELEASE_CURSEFORGE.md) are done. What is left is in
+**TODAY_TODO.md** (replaces the old launch checklist): free disk space, restart the bot,
+choose the public name (`scripts/rebrand.mjs`), test in game, take screenshots, upload.
+Not seen by anyone yet: how the new window, the forum craft board and the companion tray
+look on a real screen, and the Windows installer build (`npm run dist`).
 
 **Goal (reached 2026-09-27): v2.0.0 (addon + bot) ready for testing, with everything that
 can be built without live data or a decision from the user built.** Items
@@ -92,6 +94,7 @@ each item's notes.
 
 ### Progress log (update after every commit)
 
+- 2026-09-26 v3.0.0 release prep: versions bumped (addon 3.0.0, package, API), LICENSE, SECURITY.md (GP14), CHANGELOG.md, docs/RELEASE_CURSEFORGE.md, `scripts/rebrand.mjs` (display-name rebrand in one command), TODAY_TODO.md replaces LUNCH_TEST_CHECKLIST.md, stale casino text removed from READMEs. #46 partly done: the name, logo and screenshots are the user's.
 - 2026-09-26 Companion desktop app: `companion-app/` (Electron: window with Status/Settings/Activity, tray icon with status colours and menu, start with Windows, auto-detect the WoW file, connection test). Shared `companion/engine.mjs`; the command-line watcher now uses it. Screenshots of the window checked; the tray and installer build (`npm run dist`) not verified because the disk was full.
 - 2026-09-28 Small items done: weekly raids (`/raid create weekly:true`; ending one creates the next, migration raid_repeat_weekly), module-request rate limit (GP9), slow-handler timings in `/qg diag` (IR6). 298 tests.
 - 2026-09-28 RF1 done: `/qg invite raid|missing` mass-invites the next raid's Discord signups (bot API -> companion -> Standings.lua -> addon). #40 (automatic character linking) is done in effect: see "Automatic character sync".
@@ -983,7 +986,7 @@ everything below is an idea to build ourselves, never code to copy.
   roster CSV/JSON into characters, alts and notes.
 - **GP13. [ ] S: opt-in local performance recorder** (per-operation timings, bounded
   history, no gameplay payloads) so "the addon is slow" reports have numbers.
-- **GP14. [ ] S: security policy file** (`SECURITY.md`) and contributor notes before
+- **GP14. [x] S: security policy file** (`SECURITY.md`) and contributor notes before
   a public release (= G12/#46).
 
 **From iRC: Guild Connect** (`IR`, adds to IR1 to IR4)

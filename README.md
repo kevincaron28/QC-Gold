@@ -85,7 +85,7 @@ Phase 10 adds:
 - The addon now auto-broadcasts a compact readiness/profession digest to the whole online guild (login, gear changes, every 10 min while raiding), which every other online client accumulates into its own `peerRoster` table — one officer's `/qg export` can carry a readiness picture for the whole online guild, not just themselves. See `addon/QuebecGold/README.md` for details.
 - Fixed a critical bug in `companion/lua-export.mjs`'s Lua decoder that would have broken every real addon import: it read WoW's actual array serialization (`{ [1] = a, [2] = b }`) as an object instead of an array, and empty tables as `{}` instead of `[]`
 
-Not part of the roadmap, but added the same day: the WoW addon was restructured from a single `QuebecGold.lua` file into `Core.lua` + `Modules/`, and a `Modules/Casino.lua` module was added with six `/roll`-driven gambling minigames and their own gold ledger (`/qg casino ...`) — entirely separate from the EPGP/DKP system by design. See `addon/QuebecGold/Modules/README.md`.
+Not part of the roadmap, but added the same day: the WoW addon was restructured from a single `QuebecGold.lua` file into `Core.lua` + `Modules/`, and a games module was added. (The gambling minigames and their gold ledger that first lived there were removed in 2.4; `Modules/Games.lua` keeps only 1v1 and chat roll games.) See `addon/QuebecGold/Modules/README.md`.
 
 Phase 11 adds (bot-side only, no addon changes):
 
@@ -104,6 +104,8 @@ Dungeon Challenge (addon v1.7.0+, roadmap D1–D10):
 - Permanent achievements (First Blood, No One Dies, Speed Demon, Record Breaker, Guild Squad, Dungeon Master, Season Champion), revoked with the run that earned them if it is invalidated
 - In game: a Dungeons tab (live run, recent runs and their sync state, season top 10 from Discord); `/testraid dungeon` and `/qg sim dungeon` for testing, removed by `/testraid cleanup`
 
+Version 3.0.0 (public release): see CHANGELOG.md. To publish the addon on CurseForge see docs/RELEASE_CURSEFORGE.md; the day-of checklist is TODAY_TODO.md. The companion has a desktop app (`companion-app/`).
+
 Version 2.1 (addon and bot): per-core point rules (guild defaults, per-core overrides, optional separate point pools, per-core loot mode), one saved-data set per WoW guild in the addon, and `/qg backup` / `/qg restore`.
 
 Version 2.0.0 (addon and bot):
@@ -118,7 +120,7 @@ Character import and Warcraft Logs (addon v1.8.0):
 - `/dungeon group <title>`: a 5-player signup post with Tank/Healer/DPS buttons; when full or started, the bot makes a private temporary voice channel for the group and deletes it when empty. `/core ...`: named raid rosters (several allowed) whose members get priority at signups for raids created with `core:`, shown live in a raid-roster channel. `/qg consumes` (addon v1.9.0) and the readiness board's Consumables section show who lacks a flask or food
 - New channel settings (`/setup` or `/config`): `readiness-channel` (private to Guild Master, Officer, Raid Leader, Loot Leader, Class Leader: the raid readiness board, updated after each addon import and on `/readiness raid`), `raid-log-channel`, `loot-channel`, `craft-channel`, `dungeon-leaderboard-channel` (one message the bot edits after every dungeon import), `dungeon-signup-channel`
 
-Addon modules (roadmap M1–M3): the addon stays **one** download. Roll games, GP bidding, Dungeons, Calendar and the test tools can be switched off per player (`/qg modules off casino`) or for the whole guild by an officer (`/qg modules guild off casino`, shared in game); raids, EPGP, loot, the gear check and standings always run. See `addon/QuebecGold/README.md`. Splitting it into separate CurseForge addons was considered and rejected: every part depends on the same core and talks to the others, so separate downloads would add version mismatches without giving guilds anything the switches don't.
+Addon modules (roadmap M1–M3): the addon stays **one** download. Roll games, GP bidding, Dungeons, Calendar and the test tools can be switched off per player (`/qg modules off games`) or for the whole guild by an officer (`/qg modules guild off games`, shared in game); raids, EPGP, loot, the gear check and standings always run. See `addon/QuebecGold/README.md`. Splitting it into separate CurseForge addons was considered and rejected: every part depends on the same core and talks to the others, so separate downloads would add version mismatches without giving guilds anything the switches don't.
 
 Deliberately not built: message edit/delete logging (needs the privileged Message Content intent) and a starboard (needs message-reaction intents). Reaction roles were implemented as buttons instead, which need no extra intents. `/mod` needs the bot to have Kick Members, Ban Members, and Moderate Members (the current Administrator invite already covers this).
 
