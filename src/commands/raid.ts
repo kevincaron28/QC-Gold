@@ -30,6 +30,7 @@ export const raidCommand = new SlashCommandBuilder()
     .addStringOption((o) => o.setName("description").setDescription("Optional description"))
     .addStringOption((o) => o.setName("bosses").setDescription("Comma-separated boss names"))
     .addStringOption((o) => o.setName("core").setDescription("Raid core: its members get signup priority").setAutocomplete(true))
+    .addBooleanOption((o) => o.setName("weekly").setDescription("Repeat every week: ending this raid creates the next one"))
     .addIntegerOption((o) => o.setName("tanks").setDescription("Tank slot cap").setMinValue(0))
     .addIntegerOption((o) => o.setName("healers").setDescription("Healer slot cap").setMinValue(0))
     .addIntegerOption((o) => o.setName("dps").setDescription("DPS slot cap").setMinValue(0)))
@@ -238,6 +239,7 @@ export async function executeRaid(interaction: ChatInputCommandInteraction): Pro
       title: interaction.options.getString("title", true),
       scheduledAt: await readRaidTime(context.guildId, interaction.options.getString("time", true)),
       createdBy: interaction.user.id,
+      ...(interaction.options.getBoolean("weekly") ? { repeatWeekly: true } : {}),
       ...(description === null ? {} : { description }),
       ...(bosses === null ? {} : { bosses: bosses.split(",") }),
       ...(tanks === null ? {} : { tankLimit: tanks }),
@@ -363,6 +365,13 @@ export async function executeRaid(interaction: ChatInputCommandInteraction): Pro
       await interaction.reply({ content: `Started raid **${raid.title}**.`, ephemeral: true });
     }
     await notify(interaction.guild, subcommand === "start" ? notifications.raidStarted(raid.title) : notifications.raidEnded(raid.title));
+    if (subcommand === "end") {
+      const next = await raidService.createNextRepeat(raidId, context.guildId);
+      if (next) {
+        if (interaction.guild) await syncSignupEmbed(interaction.guild, context.guildId, next.id);
+        await interaction.followUp({ content: `Weekly raid: the next **${next.title}** is set for <t:${Math.floor(next.scheduledAt.getTime() / 1000)}:F>. Cancel it with /raid cancel if you skip a week.`, ephemeral: true }).catch(() => undefined);
+      }
+    }
     return;
   }
   if (subcommand === "boss") {

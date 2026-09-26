@@ -261,6 +261,9 @@ local function guildModules()
   return settings and settings.guildModules
 end
 
+local MODS_REPLY_COOLDOWN_SECONDS = 300
+local modsAnsweredAt = {}
+
 local function shareModules(channel, target)
   local g = guildModules()
   if not g or not g.updatedAt then return end
@@ -344,6 +347,11 @@ local function onEvent(_, event, ...)
     elseif kind == "MODSREQ" then
       local theirs = tonumber(string.match(text, "^MODSREQ|(%d+)$")) or 0
       local g = guildModules()
+      -- One answer per requester every few minutes, so a login storm or a
+      -- misbehaving peer cannot make an officer spam whispers.
+      local nowTime = time()
+      if modsAnsweredAt[sender] and nowTime - modsAnsweredAt[sender] < MODS_REPLY_COOLDOWN_SECONDS then return end
+      if ns.isOfficer() and g and (g.updatedAt or 0) > theirs then modsAnsweredAt[sender] = nowTime end
       if ns.isOfficer() and g and (g.updatedAt or 0) > theirs then shareModules("WHISPER", sender) end
     elseif kind == "MODS" then
       receiveModules(text, sender)

@@ -1,0 +1,1 @@
+ALTER TABLE "Raid" ADD COLUMN "repeatWeekly" BOOLEAN NOT NULL DEFAULT false;

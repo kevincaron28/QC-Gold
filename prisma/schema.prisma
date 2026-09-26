@@ -540,6 +540,8 @@ model Raid {
   attendance      RaidAttendance[]
   notes           RaidNote[]
   reminderSentAt  DateTime?
+  // Weekly raids: ending one creates the next, seven days on.
+  repeatWeekly    Boolean          @default(false)
   bosses          RaidBoss[]
 
   @@index([guildId, scheduledAt])

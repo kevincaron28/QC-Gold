@@ -223,3 +223,24 @@ describe("the guild digest tells everyone who you are", () => {
     expect(s.run(`local p = QuebecGoldDB.peerRoster["Bob"]; return p.professions .. "|" .. p.identity.class .. "|" .. p.identity.level`)).toBe("|ROGUE|30");
   });
 });
+
+describe("slow handler timings", () => {
+  it("records a slow event quietly, without printing", () => {
+    session = newLuaSession();
+    session.run(`
+      QuebecGoldDB = nil; NS = {}
+      local ticks = { 0, 120 }
+      debugprofilestop = function() return table.remove(ticks, 1) or 120 end
+    `);
+    session.load("Core.lua");
+    session.run(`fire_event("PLAYER_LOGIN")`);
+    const before = session.chat().length;
+    session.run(`
+      local ticks = { 0, 120 }
+      debugprofilestop = function() return table.remove(ticks, 1) or 120 end
+      fire_event("GROUP_ROSTER_UPDATE")
+    `);
+    expect(session.run(`local last = QuebecGoldDB.diagnostics[#QuebecGoldDB.diagnostics]; return last.kind .. ":" .. last.detail`)).toContain("SLOW:");
+    expect(session.chat().slice(before).join("\n")).not.toContain("[Diagnostic]");
+  });
+});

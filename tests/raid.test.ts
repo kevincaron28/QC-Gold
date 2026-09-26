@@ -81,3 +81,33 @@ describe("raid service", () => {
     expect(raidSignup.count).not.toHaveBeenCalled();
   });
 });
+
+describe("weekly raids", () => {
+  const base = { id: "r1", guildId: "guild", title: "Karazhan", scheduledAt: new Date("2026-10-02T00:00:00Z"), createdBy: "u", description: null, tankLimit: 2, healerLimit: 4, dpsLimit: null, coreId: "c1", repeatWeekly: true, isTest: false, bosses: [{ name: "Attumen", sortOrder: 0 }] };
+
+  it("creates the next raid one week later with the same setup", async () => {
+    const create = vi.fn().mockResolvedValue({ id: "r2" });
+    const database = { raid: { findFirst: vi.fn().mockResolvedValueOnce(base).mockResolvedValueOnce(null), create } } as never;
+    await createRaidService(database).createNextRepeat("r1", "guild", new Date("2026-10-02T03:00:00Z"));
+    const data = create.mock.calls[0]![0].data;
+    expect(data.scheduledAt).toEqual(new Date("2026-10-09T00:00:00Z"));
+    expect(data).toMatchObject({ title: "Karazhan", repeatWeekly: true, coreId: "c1", tankLimit: 2 });
+    expect(data.bosses.create).toEqual([{ name: "Attumen", sortOrder: 0 }]);
+  });
+
+  it("skips ahead when the raid ended weeks late, and ignores non-weekly raids", async () => {
+    const create = vi.fn().mockResolvedValue({ id: "r2" });
+    const late = { raid: { findFirst: vi.fn().mockResolvedValueOnce(base).mockResolvedValueOnce(null), create } } as never;
+    await createRaidService(late).createNextRepeat("r1", "guild", new Date("2026-10-20T00:00:00Z"));
+    expect(create.mock.calls[0]![0].data.scheduledAt).toEqual(new Date("2026-10-23T00:00:00Z"));
+    const once = { raid: { findFirst: vi.fn().mockResolvedValue({ ...base, repeatWeekly: false }), create: vi.fn() } } as never;
+    expect(await createRaidService(once).createNextRepeat("r1", "guild")).toBeNull();
+  });
+
+  it("does not duplicate a follow-up that already exists", async () => {
+    const create = vi.fn();
+    const database = { raid: { findFirst: vi.fn().mockResolvedValueOnce(base).mockResolvedValueOnce({ id: "r2" }), create } } as never;
+    expect(await createRaidService(database).createNextRepeat("r1", "guild", new Date("2026-10-02T03:00:00Z"))).toBeNull();
+    expect(create).not.toHaveBeenCalled();
+  });
+});

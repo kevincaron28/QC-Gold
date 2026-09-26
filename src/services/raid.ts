@@ -28,6 +28,7 @@ export interface CreateRaidInput {
   dpsLimit?: number;
   // Create the raid for a raid core: its members get signup priority.
   coreId?: string;
+  repeatWeekly?: boolean;
 }
 
 export type SignupAvailability = "AVAILABLE" | "MAYBE";
@@ -95,6 +96,7 @@ export function createRaidService(database: PrismaClient) {
           scheduledAt: input.scheduledAt,
           createdBy: input.createdBy,
           description: input.description?.trim() || null,
+          repeatWeekly: input.repeatWeekly ?? false,
           tankLimit: input.tankLimit ?? null,
           healerLimit: input.healerLimit ?? null,
           dpsLimit: input.dpsLimit ?? null,
@@ -103,6 +105,27 @@ export function createRaidService(database: PrismaClient) {
           } : {})
         },
         include: { bosses: true }
+      });
+    },
+
+    // For a weekly raid that just ended: creates the next one, seven days on
+    // (or the first such date still in the future). Null if it is not weekly.
+    async createNextRepeat(raidId: string, guildId: string, now = new Date()) {
+      const raid = await database.raid.findFirst({ where: { id: raidId, guildId }, include: { bosses: { orderBy: { sortOrder: "asc" } } } });
+      if (!raid || !raid.repeatWeekly || raid.isTest) return null;
+      const week = 7 * 24 * 3_600_000;
+      let next = raid.scheduledAt.getTime() + week;
+      while (next <= now.getTime()) next += week;
+      // A cancelled or already-created follow-up must not be duplicated.
+      const existing = await database.raid.findFirst({ where: { guildId, title: raid.title, scheduledAt: new Date(next), status: { not: "CANCELLED" } }, select: { id: true } });
+      if (existing) return null;
+      return database.raid.create({
+        data: {
+          guildId, title: raid.title, scheduledAt: new Date(next), createdBy: raid.createdBy, description: raid.description,
+          tankLimit: raid.tankLimit, healerLimit: raid.healerLimit, dpsLimit: raid.dpsLimit, repeatWeekly: true,
+          ...(raid.coreId ? { coreId: raid.coreId } : {}),
+          ...(raid.bosses.length > 0 ? { bosses: { create: raid.bosses.map((boss, sortOrder) => ({ name: boss.name, sortOrder })) } } : {})
+        }
       });
     },
 

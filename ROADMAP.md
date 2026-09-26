@@ -92,6 +92,7 @@ each item's notes.
 
 ### Progress log (update after every commit)
 
+- 2026-09-28 Small items done: weekly raids (`/raid create weekly:true`; ending one creates the next, migration raid_repeat_weekly), module-request rate limit (GP9), slow-handler timings in `/qg diag` (IR6). 298 tests.
 - 2026-09-28 RF1 done: `/qg invite raid|missing` mass-invites the next raid's Discord signups (bot API -> companion -> Standings.lua -> addon). #40 (automatic character linking) is done in effect: see "Automatic character sync".
 - 2026-09-28 N6 done: tools window rebuilt with a grouped sidebar, Home page, page titles and tooltips, Player field only where used, permanent Send to Discord button; the real window code is built and exercised in the Lua tests (tests/lua/window.test.ts), but how it LOOKS has not been seen. Addon 2.4.0.
 - 2026-09-28 N7 done: craft board is a forum (post per request, status and profession tags, buttons, "Request a craft" form, DMs, auto-close); old text channel still works.
@@ -969,7 +970,7 @@ everything below is an idea to build ourselves, never code to copy.
 - **GP8. [x] S: public read-only API with a version number** and an explicit
   "no write methods" rule, because writes would bypass permission, sync and
   logging paths (= X6). Their `API.md` is a good template.
-- **GP9. [ ] S: rate-limit full-state requests between peers** (they cap sessions
+- **GP9. [x] S: rate-limit full-state requests between peers** (they cap sessions
   with a request limit, back-off and lease). Matters once #40 sends more data.
 - **GP10. [x] M: guild health dashboard for officers:** retention cohorts at 30, 60
   and 90 days, attention signals with severity (critical/warning/info), new-member
@@ -989,7 +990,7 @@ everything below is an idea to build ourselves, never code to copy.
   bigger data (guild bank snapshot, recipe lists): 170-byte chunks, a chunk cap,
   a digest to detect a stale copy, tie-break on save time then owner name.
   Required groundwork for IR1, PM1 and #40.
-- **IR6. [ ] S: diagnostics ring buffer** (500 entries, slow-operation threshold in
+- **IR6. [x] S (timings only: `/qg diag` now lists handlers slower than 50 ms as SLOW): diagnostics ring buffer** (500 entries, slow-operation threshold in
   ms, opt-in event tracing). Our `/qg diag` keeps errors only; add timings.
 - **IR7. [ ] M: identity store per guild:** characters, former members and
   "missing counts" (how many rosters a name has been absent from) to tell a

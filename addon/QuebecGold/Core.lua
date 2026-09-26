@@ -170,7 +170,8 @@ local function logDiagnostic(kind, detail, foreign)
     end
     table.remove(list, removeIndex)
   end
-  if not foreign then
+  -- Slow-handler timings are recorded quietly; only real problems print.
+  if not foreign and kind ~= "SLOW" then
     message("|cffff5555[Diagnostic]|r " .. kind .. ": " .. detail .. " (see /qg diag)")
   end
 end
@@ -1328,9 +1329,17 @@ frame:RegisterEvent("ADDON_ACTION_BLOCKED")
 frame:RegisterEvent("ADDON_ACTION_FORBIDDEN")
 frame:RegisterEvent("UI_ERROR_MESSAGE")
 -- One bad event must not stop the handler for every later event.
-frame:SetScript("OnEvent", function(...)
-  local ok, err = pcall(onEvent, ...)
+local SLOW_HANDLER_MS = 50
+frame:SetScript("OnEvent", function(_, event, ...)
+  local started = debugprofilestop and debugprofilestop()
+  local ok, err = pcall(onEvent, _, event, ...)
   if not ok then logDiagnostic("LUA_ERROR", "QuebecGold event handler: " .. tostring(err)) end
+  if started then
+    local elapsed = debugprofilestop() - started
+    if elapsed >= SLOW_HANDLER_MS then
+      logDiagnostic("SLOW", string.format("%s took %.0f ms", tostring(event), elapsed))
+    end
+  end
 end)
 
 SLASH_QUEBECGOLD1 = "/qg"

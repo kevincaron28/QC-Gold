@@ -64,3 +64,19 @@ describe("why there is no standing", () => {
     expect(s.run(`return tostring(NS.standingProblem("Amy"))`)).toBe("nil");
   });
 });
+
+describe("module requests are rate limited", () => {
+  it("answers one requester once, then waits for the cooldown", () => {
+    const s = withSync();
+    s.run(`
+      NS.isOfficer = function() return true end
+      NS.getSettings = function() return { guildModules = { updatedAt = 50, by = "Kev", off = {} } } end
+      SENT = 0
+      C_ChatInfo = { RegisterAddonMessagePrefix = function() end, SendAddonMessage = function(_, text) if string.find(text, "^MODS|") then SENT = SENT + 1 end end }
+      fire_event("PLAYER_ENTERING_WORLD")
+      for _ = 1, 4 do fire_event("CHAT_MSG_ADDON", "QuebecGoldSync", "MODSREQ|0", "GUILD", "Amy-Realm") end
+      fire_event("CHAT_MSG_ADDON", "QuebecGoldSync", "MODSREQ|0", "GUILD", "Bob-Realm")
+    `);
+    expect(s.run(`return SENT`)).toBe("2");
+  });
+});
