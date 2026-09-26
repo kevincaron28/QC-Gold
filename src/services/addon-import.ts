@@ -184,7 +184,7 @@ export function createAddonImportService(database: PrismaClient) {
           }));
         }
 
-        // The officer's last /qg consumes scan: newest result per character wins.
+        // The officer's last /guilded consumes scan: newest result per character wins.
         let consumables = 0;
         if (snapshot.consumeScan) {
           const scan = snapshot.consumeScan;

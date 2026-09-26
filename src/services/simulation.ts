@@ -10,7 +10,7 @@ import { createRaidService } from "./raid.js";
 // isTest and removed by cleanupTestRaids; test members are separate
 // Member rows, so real players' EPGP is never touched.
 //
-// The same character names are used by the addon's /qg sim, so an in-game
+// The same character names are used by the addon's /guilded sim, so an in-game
 // test raid exported by the companion matches these characters on import.
 export const SIM_CHARACTERS = [
   "Testalpha", "Testbravo", "Testcharlie", "Testdelta", "Testecho", "Testfoxtrot",
@@ -18,8 +18,8 @@ export const SIM_CHARACTERS = [
 ];
 const SIM_CLASSES = ["Warrior", "Paladin", "Priest", "Druid", "Shaman", "Mage", "Rogue", "Hunter", "Warlock"];
 export const SIM_BOSSES = ["Test Boss One", "Test Boss Two", "Test Boss Three"];
-export const SIM_IMPORT_SOURCE = "QuebecGold-Simulation";
-// Dungeon runs from /testraid dungeon and the addon's /qg sim dungeon: a
+export const SIM_IMPORT_SOURCE = "Guilded-Simulation";
+// Dungeon runs from /testraid dungeon and the addon's /guilded sim dungeon: a
 // made-up dungeon so they never mix with real records, and a SIM- run id
 // so /testraid cleanup can find them.
 export const SIM_DUNGEON = { instanceId: 999001, name: "Test Dungeon" };

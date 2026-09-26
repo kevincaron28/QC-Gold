@@ -24,12 +24,12 @@ export const characterCommand = new SlashCommandBuilder()
   .addSubcommand((subcommand) => subcommand
     .setName("import")
     .setDescription("Link a character from the line the addon gives you (no typing details).")
-    .addStringOption((option) => option.setName("code").setDescription("Paste the line from /qg character in game").setRequired(true))
+    .addStringOption((option) => option.setName("code").setDescription("Paste the line from /guilded character in game").setRequired(true))
     .addBooleanOption((option) => option.setName("main").setDescription("Set as your main (default: main only if you have none)")))
   .addSubcommand((subcommand) => subcommand
     .setName("sync")
-    .setDescription("Send your character, gear check, consumables and attunements from the code /qg share shows.")
-    .addStringOption((option) => option.setName("code").setDescription("Paste the whole code from /qg share in game").setRequired(true))
+    .setDescription("Send your character, gear check, consumables and attunements from the code /guilded share shows.")
+    .addStringOption((option) => option.setName("code").setDescription("Paste the whole code from /guilded share in game").setRequired(true))
     .addBooleanOption((option) => option.setName("main").setDescription("Set as your main (default: main only if you have none)")))
   .addSubcommand((subcommand) => subcommand
     .setName("claim")
@@ -115,7 +115,7 @@ export async function executeCharacter(interaction: ChatInputCommandInteraction)
     const problems = data.findings.filter((finding) => finding.severity !== "INFO").length;
     await interaction.reply({
       content: `${outcome.action === "created" ? "Linked" : "Updated"} **${outcome.name}**${outcome.isMain ? " (your main)" : ""}.`
-        + (outcome.status ? ` Gear check: **${outcome.status}**${problems ? ` (${problems} issue${problems === 1 ? "" : "s"})` : ""}.` : " No gear check in that code (run /qg inspect first).")
+        + (outcome.status ? ` Gear check: **${outcome.status}**${problems ? ` (${problems} issue${problems === 1 ? "" : "s"})` : ""}.` : " No gear check in that code (run /guilded inspect first).")
         + (data.consumables.length ? ` Consumables: ${data.consumables.map((row) => row.name).join(", ")}.` : "")
         + (outcome.attunements ? ` ${outcome.attunements} attunement${outcome.attunements === 1 ? "" : "s"} recorded.` : ""),
       ephemeral: true

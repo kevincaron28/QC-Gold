@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# One-time setup of an Ubuntu server for the Quebec Gold bot.
+# One-time setup of an Ubuntu server for the Guilded bot.
 #   sudo bash deploy/setup-server.sh your-hostname.duckdns.org
 # Run it from inside the cloned repository. Safe to run again.
 set -euo pipefail
@@ -9,7 +9,7 @@ if [ -z "$HOST" ]; then echo "Usage: sudo bash deploy/setup-server.sh <hostname>
 if [ "$(id -u)" -ne 0 ]; then echo "Run with sudo."; exit 1; fi
 
 SRC="$(cd "$(dirname "$0")/.." && pwd)"
-APP=/opt/quebec-gold
+APP=/opt/guilded
 
 echo "== Packages"
 apt-get update -y
@@ -36,21 +36,21 @@ if [ "$(free -m | awk '/^Mem:/{print $2}')" -lt 2000 ] && [ ! -f /swapfile ]; th
 fi
 
 echo "== Application user and files"
-id quebecgold >/dev/null 2>&1 || useradd --system --create-home --shell /usr/sbin/nologin quebecgold
+id guilded >/dev/null 2>&1 || useradd --system --create-home --shell /usr/sbin/nologin guilded
 mkdir -p "$APP"
 if [ "$SRC" != "$APP" ]; then
   rsync -a --delete --exclude node_modules --exclude .env.local --exclude backups --exclude dist "$SRC"/ "$APP"/ 2>/dev/null \
     || { apt-get install -y rsync && rsync -a --delete --exclude node_modules --exclude .env.local --exclude backups --exclude dist "$SRC"/ "$APP"/; }
 fi
 [ -f "$APP/.env.local" ] || { cp "$APP/.env.example" "$APP/.env.local"; echo "Created $APP/.env.local from the example."; }
-chown -R quebecgold:quebecgold "$APP"
+chown -R guilded:guilded "$APP"
 chmod 600 "$APP/.env.local"
-sudo -u quebecgold bash -c "cd $APP && npm ci --no-audit --no-fund"
+sudo -u guilded bash -c "cd $APP && npm ci --no-audit --no-fund"
 
 echo "== systemd"
-cp "$APP/deploy/quebec-gold.service" /etc/systemd/system/quebec-gold.service
+cp "$APP/deploy/guilded.service" /etc/systemd/system/guilded.service
 systemctl daemon-reload
-systemctl enable quebec-gold
+systemctl enable guilded
 
 echo "== Caddy (HTTPS for $HOST)"
 sed "s/YOUR_HOSTNAME/$HOST/" "$APP/deploy/Caddyfile" > /etc/caddy/Caddyfile
@@ -67,8 +67,8 @@ cat <<EOF
 
 Done. Next:
   1. sudo nano $APP/.env.local      (paste your secrets; COMPANION_API_HOST=127.0.0.1)
-  2. sudo systemctl start quebec-gold
-  3. sudo journalctl -u quebec-gold -f
+  2. sudo systemctl start guilded
+  3. sudo journalctl -u guilded -f
   4. Open https://$HOST/health in a browser: it should say {"ok":true}
 Remember to close the bot on your PC first: two copies with one token answer twice.
 EOF

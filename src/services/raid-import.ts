@@ -2,7 +2,7 @@ import type { Prisma } from "@prisma/client";
 import type { AddonLoot, AddonRaid } from "../integrations/addon.js";
 import { findCharacter } from "./character-match.js";
 
-// A Discord raid within this long of the in-game /qg start counts as the
+// A Discord raid within this long of the in-game /guilded start counts as the
 // same raid (people start late, or schedule "8pm" and pull at 8:40).
 const MATCH_WINDOW_MS = 4 * 60 * 60 * 1000;
 
@@ -107,7 +107,7 @@ export async function applyRaidAttendance(
   return summaries;
 }
 
-// Adds items given out in game (/qg loot, GP bidding) to Discord loot
+// Adds items given out in game (/guilded loot, GP bidding) to Discord loot
 // history. Each addon loot row has a stable ref, so re-importing never
 // duplicates. The GP was already imported as a ledger entry; this only
 // records the history row. `raidIds` maps addon raid refs to the Discord

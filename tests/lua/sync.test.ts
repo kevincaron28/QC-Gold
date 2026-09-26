@@ -24,12 +24,12 @@ function withSync(): LuaSession {
 }
 
 describe("Sync.lua", () => {
-  it("/qg peers lists who runs which version and who is older", () => {
+  it("/guilded peers lists who runs which version and who is older", () => {
     const s = withSync();
     s.run(`
       fire_event("PLAYER_ENTERING_WORLD")
-      fire_event("CHAT_MSG_ADDON", "QuebecGoldSync", "VERSION|1.5.0", "GUILD", "Amy-Realm")
-      fire_event("CHAT_MSG_ADDON", "QuebecGoldSync", "VERSION|2.0.0", "GUILD", "Bob-Realm")
+      fire_event("CHAT_MSG_ADDON", "GuildedSync", "VERSION|1.5.0", "GUILD", "Amy-Realm")
+      fire_event("CHAT_MSG_ADDON", "GuildedSync", "VERSION|2.0.0", "GUILD", "Bob-Realm")
       NS.commandHandlers["peers"]({})
     `);
     const text = s.chat().join("\n");
@@ -41,7 +41,7 @@ describe("Sync.lua", () => {
 
   it("ignores message kinds it does not know", () => {
     const s = withSync();
-    s.run(`fire_event("PLAYER_ENTERING_WORLD"); fire_event("CHAT_MSG_ADDON", "QuebecGoldSync", "FUTURE|whatever|1|2", "GUILD", "Amy-Realm"); NS.commandHandlers["peers"]({})`);
+    s.run(`fire_event("PLAYER_ENTERING_WORLD"); fire_event("CHAT_MSG_ADDON", "GuildedSync", "FUTURE|whatever|1|2", "GUILD", "Amy-Realm"); NS.commandHandlers["peers"]({})`);
     expect(s.chat().join("\n")).toContain("No guildmate with the addon has announced a version");
   });
 });
@@ -74,8 +74,8 @@ describe("module requests are rate limited", () => {
       SENT = 0
       C_ChatInfo = { RegisterAddonMessagePrefix = function() end, SendAddonMessage = function(_, text) if string.find(text, "^MODS|") then SENT = SENT + 1 end end }
       fire_event("PLAYER_ENTERING_WORLD")
-      for _ = 1, 4 do fire_event("CHAT_MSG_ADDON", "QuebecGoldSync", "MODSREQ|0", "GUILD", "Amy-Realm") end
-      fire_event("CHAT_MSG_ADDON", "QuebecGoldSync", "MODSREQ|0", "GUILD", "Bob-Realm")
+      for _ = 1, 4 do fire_event("CHAT_MSG_ADDON", "GuildedSync", "MODSREQ|0", "GUILD", "Amy-Realm") end
+      fire_event("CHAT_MSG_ADDON", "GuildedSync", "MODSREQ|0", "GUILD", "Bob-Realm")
     `);
     expect(s.run(`return SENT`)).toBe("2");
   });

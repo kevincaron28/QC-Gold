@@ -1,7 +1,7 @@
--- QuebecGoldAPI: a small READ-ONLY public API for other addons and
+-- GuildedAPI: a small READ-ONLY public API for other addons and
 -- WeakAuras (version 1).
 --
---   local api = _G.QuebecGoldAPI
+--   local api = _G.GuildedAPI
 --   api.GetAPIVersion()          -> 1
 --   api.GetAddonVersion()        -> "3.0.0"
 --   api.IsReady()                -> true once saved data is loaded
@@ -14,7 +14,7 @@
 --
 -- Deliberately read-only: there is no function that awards EP/GP, changes
 -- settings or sends messages, because writes would skip the permission
--- checks, the ledger and the sync rules that Quebec Gold itself follows.
+-- checks, the ledger and the sync rules that Guilded itself follows.
 -- Every call returns NEW tables (safe to keep or change), never touches the
 -- game (no scans, no messages), and returns nil instead of raising.
 local addonName, ns = ...
@@ -103,7 +103,7 @@ api.GetActiveRaid = safe(function()
 end)
 
 -- Freeze the table so another addon cannot replace a function by accident.
-_G.QuebecGoldAPI = setmetatable({}, {
+_G.GuildedAPI = setmetatable({}, {
   __index = api,
   __newindex = function() end,
   __metatable = false

@@ -2,13 +2,13 @@
 -- officer who has it switched on, and gets a guild invite. For recruiting
 -- without typing invites by hand. Officers only, off by default.
 --
---   /qg autoinvite on [phrase]   start (phrase default "ginv")
---   /qg autoinvite off | status
+--   /guilded autoinvite on [phrase]   start (phrase default "ginv")
+--   /guilded autoinvite off | status
 --
 -- Safety: only an officer who can invite, never in combat, players already
 -- in the guild are skipped, each name is invited at most once per hour and
 -- at most 15 invites go out per hour. The last invites are kept for
--- /qg autoinvite status. Whispers the game hides (secret) are ignored.
+-- /guilded autoinvite status. Whispers the game hides (secret) are ignored.
 local addonName, ns = ...
 ns = ns or {}
 
@@ -101,7 +101,7 @@ frame:SetScript("OnEvent", function(_, event, text, sender)
 end)
 
 -- ---------------------------------------------------------------------
--- /qg invite raid | missing: invite everyone signed up for the next raid
+-- /guilded invite raid | missing: invite everyone signed up for the next raid
 -- (the Discord signups the companion wrote into Standings.lua).
 -- ---------------------------------------------------------------------
 
@@ -114,7 +114,7 @@ local function partyInvite(name)
 end
 
 local function nextRaid()
-  local raid = QuebecGoldNextRaid
+  local raid = GuildedNextRaid
   if type(raid) ~= "table" or type(raid.players) ~= "table" then return nil end
   return raid
 end
@@ -163,11 +163,11 @@ ns.commandHandlers["invite"] = function(args)
   local action = string.lower(args[1] or "raid")
   if action == "missing" then
     local missing, raid = module.missingFromGroup()
-    if not raid then ns.message("No raid roster yet (see /qg invite raid).") return end
+    if not raid then ns.message("No raid roster yet (see /guilded invite raid).") return end
     ns.message(#missing == 0 and ("Everyone signed up for " .. tostring(raid.title) .. " is in your group.")
       or (#missing .. " signed up for " .. tostring(raid.title) .. " but not in your group: " .. table.concat(missing, ", ")))
   elseif action == "raid" then inviteRaid()
-  else ns.message("/qg invite raid | missing") end
+  else ns.message("/guilded invite raid | missing") end
 end
 ns.commandHandlers["autoinvite"] = function(args)
   if ns.moduleActive and not ns.moduleActive("autoinvite") then return end
@@ -179,7 +179,7 @@ ns.commandHandlers["autoinvite"] = function(args)
     local phrase = table.concat(args, " ", 2)
     if phrase ~= "" then auto.phrase = phrase end
     auto.enabled = true
-    ns.message("Auto-invite is on: whisper \"" .. auto.phrase .. "\" to you to be invited. Turn it off with /qg autoinvite off.")
+    ns.message("Auto-invite is on: whisper \"" .. auto.phrase .. "\" to you to be invited. Turn it off with /guilded autoinvite off.")
   elseif action == "off" then
     auto.enabled = false
     ns.message("Auto-invite is off.")
@@ -192,5 +192,5 @@ ns.commandHandlers["autoinvite"] = function(args)
   end
 end
 ns.commandHelp = ns.commandHelp or {}
-table.insert(ns.commandHelp, { officer = true, text = "/qg autoinvite on [phrase] | off | status - invite players who whisper you the phrase" })
-table.insert(ns.commandHelp, { officer = true, text = "/qg invite raid | missing - invite everyone signed up for the next raid on Discord" })
+table.insert(ns.commandHelp, { officer = true, text = "/guilded autoinvite on [phrase] | off | status - invite players who whisper you the phrase" })
+table.insert(ns.commandHelp, { officer = true, text = "/guilded invite raid | missing - invite everyone signed up for the next raid on Discord" })

@@ -73,7 +73,7 @@ export const addonAttunementSchema = z.object({
   completed: z.boolean().default(true)
 });
 
-// A raid the officer ran in game (/qg start ... /qg end): who was marked,
+// A raid the officer ran in game (/guilded start ... /guilded end): who was marked,
 // and who was seen in the raid group at any point. Matched to a Discord raid
 // by start time on import.
 export const addonRaidSchema = z.object({
@@ -91,7 +91,7 @@ export const addonRaidSchema = z.object({
 
 export type AddonRaid = z.infer<typeof addonRaidSchema>;
 
-// An item an officer gave out in game (/qg loot, GP bidding Award). The GP
+// An item an officer gave out in game (/guilded loot, GP bidding Award). The GP
 // itself arrives as a normal EPGP ledger entry; this is the loot history row.
 export const addonLootSchema = z.object({
   ref: z.string().min(1),
@@ -118,7 +118,7 @@ export const addonCharacterSchema = z.object({
   professions: z.array(z.object({ name: z.string().min(1), skillLevel: z.number().int().nonnegative() })).default([])
 });
 
-// Result of the officer's last /qg consumes group scan.
+// Result of the officer's last /guilded consumes group scan.
 export const addonConsumeScanSchema = z.object({
   at: z.coerce.date(),
   by: z.string().default(""),

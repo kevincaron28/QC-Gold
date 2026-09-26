@@ -90,7 +90,7 @@ describe("SyncNow.lua", () => {
     expect(s.run(`return #TIMERS`)).toBe("1");
   });
 
-  it("auto can be turned off, and /qg sync saves right away", () => {
+  it("auto can be turned off, and /guilded sync saves right away", () => {
     const s = withSync();
     s.run(`NS.commandHandlers["sync"]({ "auto", "off" })`);
     s.run(`NS.syncNow.mark()`);
@@ -103,11 +103,11 @@ describe("SyncNow.lua", () => {
 
   it("Core marks data as changed when it logs an event", () => {
     session = newLuaSession();
-    session.run(`QuebecGoldDB = nil; NS = {}; MOCK_UNITS = { player = { name = "Kev", buffs = {} } }; time = function() return 5 end`);
+    session.run(`GuildedDB = nil; NS = {}; MOCK_UNITS = { player = { name = "Kev", buffs = {} } }; time = function() return 5 end`);
     session.load("Core.lua");
     session.load("Compat.lua");
     session.load("Modules/SyncNow.lua");
-    session.run(`fire_event("PLAYER_LOGIN"); SlashCmdList["QUEBECGOLD"]("attune Onyxia Key")`);
+    session.run(`fire_event("PLAYER_LOGIN"); SlashCmdList["GUILDED"]("attune Onyxia Key")`);
     expect(session.run(`return tostring(NS.syncNow.isDirty())`)).toBe("true");
   });
 });

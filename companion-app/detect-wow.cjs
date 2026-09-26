@@ -1,4 +1,4 @@
-// Looks for the addon's saved-data file (QuebecGold.lua) in the usual game
+// Looks for the addon's saved-data file (Guilded.lua) in the usual game
 // folders, so most people never have to browse for it.
 const fs = require("node:fs");
 const path = require("node:path");
@@ -45,7 +45,7 @@ function detectSavedVariables() {
       for (const account of subdirs(path.join(wtf, "Account"))) {
         const folder = path.join(account, "SavedVariables");
         if (!fs.existsSync(folder)) continue;
-        const file = path.join(folder, "QuebecGold.lua");
+        const file = path.join(folder, "Guilded.lua");
         results.push({ path: file, exists: fs.existsSync(file) });
       }
     }

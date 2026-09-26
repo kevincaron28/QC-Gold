@@ -5,7 +5,7 @@ import { BRAND } from "../brand.js";
 
 // Turns what the addon captured about a character into a linked Character,
 // so members paste one line instead of typing name, realm, class, race, ...
-// The line comes from `/qg character` in game:
+// The line comes from `/guilded character` in game:
 //   QG1|Name|Realm|CLASS|Race|level|spec|Profession:skill,Profession:skill
 
 export interface ParsedCharacter {
@@ -46,13 +46,13 @@ export function parseCharacterString(input: string): ParsedCharacter {
   if (parts[0] === "QG2" || parts[0] === "QG1") {
     // fine
   } else if (/^QG1/i.test(text)) {
-    throw new Error("The game garbled that line (it swallowed part of it). Update the addon to 2.3 and run /qg character again: the new line uses semicolons.");
+    throw new Error("The game garbled that line (it swallowed part of it). Update the addon to 2.3 and run /guilded character again: the new line uses semicolons.");
   } else {
-    throw new Error(`That doesn't look like a ${BRAND.name} character line. In game, type /qg character and copy the line it shows.`);
+    throw new Error(`That doesn't look like a ${BRAND.name} character line. In game, type /guilded character and copy the line it shows.`);
   }
   const [, name = "", realm = "", className = "", race = "", levelText = "", spec = "", professionText = ""] = parts;
-  if (!name || !realm || !className) throw new Error("The character line is missing the name, realm or class. Run /qg character again in game.");
-  if (name.length > 24 || realm.length > 64) throw new Error("The character line looks damaged. Run /qg character again in game.");
+  if (!name || !realm || !className) throw new Error("The character line is missing the name, realm or class. Run /guilded character again in game.");
+  if (name.length > 24 || realm.length > 64) throw new Error("The character line looks damaged. Run /guilded character again in game.");
   const level = Number(levelText);
   const professions = professionText
     .split(",")

@@ -1,11 +1,11 @@
 {
-  "name": "quebec-gold-companion",
-  "productName": "Quebec Gold Companion",
+  "name": "guilded-companion",
+  "productName": "Guilded Companion",
   "version": "3.0.0",
-  "description": "Sends your Quebec Gold addon data to the Discord bot and keeps in-game standings fresh.",
+  "description": "Sends your Guilded addon data to the Discord bot and keeps in-game standings fresh.",
   "main": "main.cjs",
   "private": true,
-  "author": "Quebec Gold",
+  "author": "Guilded",
   "scripts": {
     "start": "npm run icon && electron .",
     "icon": "node make-icon.mjs",
@@ -17,12 +17,12 @@
     "electron-builder": "^25.1.8"
   },
   "build": {
-    "appId": "com.quebecgold.companion",
-    "productName": "Quebec Gold Companion",
+    "appId": "com.guilded.companion",
+    "productName": "Guilded Companion",
     "directories": { "output": "../dist/companion" },
     "files": ["main.cjs", "preload.cjs", "detect-wow.cjs", "renderer/**", "assets/**", "package.json"],
     "extraResources": [{ "from": "../companion", "to": "engine", "filter": ["engine.mjs", "lua-export.mjs", "standings.mjs"] }],
     "win": { "target": "nsis", "icon": "assets/icon.png" },
-    "nsis": { "oneClick": true, "perMachine": false, "runAfterFinish": true, "shortcutName": "Quebec Gold Companion" }
+    "nsis": { "oneClick": true, "perMachine": false, "runAfterFinish": true, "shortcutName": "Guilded Companion" }
   }
 }

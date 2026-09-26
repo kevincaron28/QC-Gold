@@ -26,30 +26,30 @@ function withApi(): LuaSession {
   return session;
 }
 
-describe("QuebecGoldAPI (read only, v1)", () => {
+describe("GuildedAPI (read only, v1)", () => {
   it("answers standings, readiness, attunements, roster and raid queries", () => {
     const s = withApi();
-    expect(s.run(`local a = QuebecGoldAPI; return a.GetAPIVersion() .. "|" .. a.GetAddonVersion() .. "|" .. tostring(a.IsReady())`)).toBe("1|2.0.0|true");
-    expect(s.run(`local r = QuebecGoldAPI.GetStanding("bob"); return r.ep .. "/" .. r.gp .. "/" .. r.pr`)).toBe("100/50/2");
-    expect(s.run(`return tostring(QuebecGoldAPI.GetStanding("Nobody"))`)).toBe("nil");
-    expect(s.run(`local r = QuebecGoldAPI.GetReadiness("Bob"); return r.status .. "|" .. r.source .. "|" .. r.findings[1].code`)).toBe("PARTIAL|self|NO_FOOD");
-    expect(s.run(`local r = QuebecGoldAPI.GetReadiness("Amy"); return r.status .. "|" .. r.source`)).toBe("READY|peer");
-    expect(s.run(`local l = QuebecGoldAPI.GetAttunements("Bob"); return #l .. l[1].name .. tostring(l[1].completed)`)).toBe("2Molten Corefalse");
-    expect(s.run(`return table.concat(QuebecGoldAPI.GetRosterNames(), ",")`)).toBe("Amy,Bob");
-    expect(s.run(`local r = QuebecGoldAPI.GetActiveRaid(); return r.title .. tostring(r.secret)`)).toBe("MCnil");
+    expect(s.run(`local a = GuildedAPI; return a.GetAPIVersion() .. "|" .. a.GetAddonVersion() .. "|" .. tostring(a.IsReady())`)).toBe("1|2.0.0|true");
+    expect(s.run(`local r = GuildedAPI.GetStanding("bob"); return r.ep .. "/" .. r.gp .. "/" .. r.pr`)).toBe("100/50/2");
+    expect(s.run(`return tostring(GuildedAPI.GetStanding("Nobody"))`)).toBe("nil");
+    expect(s.run(`local r = GuildedAPI.GetReadiness("Bob"); return r.status .. "|" .. r.source .. "|" .. r.findings[1].code`)).toBe("PARTIAL|self|NO_FOOD");
+    expect(s.run(`local r = GuildedAPI.GetReadiness("Amy"); return r.status .. "|" .. r.source`)).toBe("READY|peer");
+    expect(s.run(`local l = GuildedAPI.GetAttunements("Bob"); return #l .. l[1].name .. tostring(l[1].completed)`)).toBe("2Molten Corefalse");
+    expect(s.run(`return table.concat(GuildedAPI.GetRosterNames(), ",")`)).toBe("Amy,Bob");
+    expect(s.run(`local r = GuildedAPI.GetActiveRaid(); return r.title .. tostring(r.secret)`)).toBe("MCnil");
   });
 
   it("returns copies, so callers cannot change saved data", () => {
     const s = withApi();
-    s.run(`local r = QuebecGoldAPI.GetReadiness("Bob"); r.status = "HACKED"; r.findings[1].code = "X"`);
+    s.run(`local r = GuildedAPI.GetReadiness("Bob"); r.status = "HACKED"; r.findings[1].code = "X"`);
     expect(s.run(`return DB.readiness.Bob.status .. DB.readiness.Bob.findings[1].code`)).toBe("PARTIALNO_FOOD");
   });
 
   it("cannot be overwritten and never raises", () => {
     const s = withApi();
-    s.run(`QuebecGoldAPI.GetStanding = function() return "evil" end`);
-    expect(s.run(`return QuebecGoldAPI.GetStanding("Bob").ep`)).toBe("100");
+    s.run(`GuildedAPI.GetStanding = function() return "evil" end`);
+    expect(s.run(`return GuildedAPI.GetStanding("Bob").ep`)).toBe("100");
     s.run(`DB = nil`);
-    expect(s.run(`return tostring(QuebecGoldAPI.GetReadiness("Bob")) .. tostring(QuebecGoldAPI.IsReady())`)).toBe("nilfalse");
+    expect(s.run(`return tostring(GuildedAPI.GetReadiness("Bob")) .. tostring(GuildedAPI.IsReady())`)).toBe("nilfalse");
   });
 });

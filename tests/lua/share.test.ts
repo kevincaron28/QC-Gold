@@ -6,11 +6,11 @@ import { newLuaSession, type LuaSession } from "./harness.js";
 let session: LuaSession | undefined;
 afterEach(() => { session?.close(); session = undefined; });
 
-describe("/qg share -> /character sync", () => {
+describe("/guilded share -> /character sync", () => {
   it("round-trips character, gear check, consumables and attunements", () => {
     session = newLuaSession();
     session.run(`
-      QuebecGoldDB = nil
+      GuildedDB = nil
       NS = {}
       MOCK_RAID = true
       MOCK_UNITS = { player = { name = "Kev", buffs = { "Flask of the Titans" } } }
@@ -25,8 +25,8 @@ describe("/qg share -> /character sync", () => {
     session.load("Modules/Consumables.lua");
     session.run(`
       fire_event("PLAYER_LOGIN")
-      QuebecGoldDB.attunements = { Kev = { ["Onyxia Key"] = { completed = true } } }
-      SlashCmdList["QUEBECGOLD"]("share")
+      GuildedDB.attunements = { Kev = { ["Onyxia Key"] = { completed = true } } }
+      SlashCmdList["GUILDED"]("share")
     `);
     const code = session.run("return NS.lastShareCode");
     expect(code.startsWith("QGEXP1:")).toBe(true);
@@ -42,6 +42,6 @@ describe("/qg share -> /character sync", () => {
   it("rejects damaged or foreign codes with a clear message", () => {
     expect(() => parseSelfExport("hello")).toThrow(/share code/);
     expect(() => parseSelfExport("QGEXP1:@@@@@@@@")).toThrow(/damaged/);
-    expect(() => parseSelfExport(`QGEXP1:${Buffer.from("not a character line").toString("base64")}`)).toThrow(/Quebec Gold character line/);
+    expect(() => parseSelfExport(`QGEXP1:${Buffer.from("not a character line").toString("base64")}`)).toThrow(/Guilded character line/);
   });
 });

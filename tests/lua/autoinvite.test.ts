@@ -88,7 +88,7 @@ describe("AutoInvite.lua: invite the raid from Discord signups", () => {
       PARTY_INVITED = {}
       C_PartyInfo = { InviteUnit = function(name) PARTY_INVITED[#PARTY_INVITED + 1] = name end }
       NS.groupMembers = function() return { "Kev", "Amy" } end
-      QuebecGoldNextRaid = { id = "r1", title = "Molten Core", at = "2026-10-02T00:00:00Z", core = "", players = {
+      GuildedNextRaid = { id = "r1", title = "Molten Core", at = "2026-10-02T00:00:00Z", core = "", players = {
         { name = "Amy", role = "TANK" }, { name = "Bob", role = "DPS" }, { name = "Cy-Realm", role = "HEALER" } }, maybe = {} }
     `);
     return s;
@@ -113,10 +113,10 @@ describe("AutoInvite.lua: invite the raid from Discord signups", () => {
 
   it("explains when there is no roster, when everyone is here, and to non-officers", () => {
     const s = withRaid();
-    s.run(`QuebecGoldNextRaid = nil`);
+    s.run(`GuildedNextRaid = nil`);
     invite(s, "raid");
     expect(s.chat().join("\n")).toContain("No raid roster yet");
-    s.run(`NS.groupMembers = function() return { "Kev", "Amy", "Bob", "Cy" } end; QuebecGoldNextRaid = { title = "MC", players = { { name = "Amy" }, { name = "Bob" } } }`);
+    s.run(`NS.groupMembers = function() return { "Kev", "Amy", "Bob", "Cy" } end; GuildedNextRaid = { title = "MC", players = { { name = "Amy" }, { name = "Bob" } } }`);
     invite(s, "raid");
     expect(s.chat().join("\n")).toContain("already in your group");
     s.run(`NS.isOfficer = function() return false end`);

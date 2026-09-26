@@ -52,7 +52,7 @@ function fakeTx(existingAttendance: { memberId: string }[] = []) {
 }
 
 const addonRaid = parseAddonSnapshot({
-  source: "QuebecGold",
+  source: "Guilded",
   exportedAt: "2026-09-25T03:00:00Z",
   raids: [{
     ref: "1-Kev", title: "MC", startedAt: "2026-09-25T00:30:00Z", endedAt: "2026-09-25T03:00:00Z",
@@ -90,9 +90,9 @@ describe("in-game raid attendance import", () => {
 describe("companion raid export", () => {
   it("exports finished raids with marks and presence", async () => {
     const dir = await mkdtemp(join(tmpdir(), "qg-raids-"));
-    const file = join(dir, "QuebecGold.lua");
+    const file = join(dir, "Guilded.lua");
     await writeFile(file, `
-QuebecGoldDB = {
+GuildedDB = {
   raids = {
     [1] = { id = "100-Kev", title = "MC", startedAt = "2026-09-25T00:30:00Z", endedAt = "2026-09-25T03:00:00Z" },
     [2] = { id = "200-Kev", title = "Still going", startedAt = "2026-09-26T00:30:00Z" },

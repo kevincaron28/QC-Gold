@@ -1,6 +1,6 @@
-# Quebec Gold — Roadmap
+# Guilded — Roadmap
 
-Living roadmap for the Quebec Gold Discord bot + WoW addon. Update this file
+Living roadmap for the Guilded Discord bot + WoW addon. Update this file
 as work happens so a fresh session (or a future you) can resume from it
 alone. Two parts: **Part 1** is the correctness audit that's now done, kept
 as a historical record. **Part 2** is the forward-looking feature roadmap
@@ -14,10 +14,10 @@ priority (P0 = do first) · **S/M/L** = rough size
 ## ⏸ Where we are — resume here (updated 2026-09-26, v3 release day)
 
 **Status: v3.0.0 is built and tested (306 tests, addon validator clean).** Version 3.0.0
-of the addon and bot, the companion desktop app, CHANGELOG, LICENSE (MIT), SECURITY.md
+of the addon and bot, the companion desktop app, CHANGELOG, LICENSE (PolyForm Noncommercial 1.0.0), SECURITY.md
 and the CurseForge kit (docs/RELEASE_CURSEFORGE.md) are done. What is left is in
 **TODAY_TODO.md** (replaces the old launch checklist): free disk space, restart the bot,
-choose the public name (`scripts/rebrand.mjs`), test in game, take screenshots, upload.
+test in game, take screenshots, upload.
 Not seen by anyone yet: how the new window, the forum craft board and the companion tray
 look on a real screen, and the Windows installer build (`npm run dist`).
 
@@ -37,13 +37,13 @@ each item's notes.
 
 **Addon (Lua), tested with the new fengari harness (`tests/lua/`)**
 - [x] **A1 (X3)** Lua test harness: the real addon files run against a mocked game inside vitest.
-- [x] **A2 (X1)** Player identity for Forever (`ns.compat.playerKey/normalizeName`) and `/qg diag` identity line. *(done; `compat.identity`, `/qg diag`, realm-tolerant matching in every bot import)*
+- [x] **A2 (X1)** Player identity for Forever (`ns.compat.playerKey/normalizeName`) and `/guilded diag` identity line. *(done; `compat.identity`, `/guilded diag`, realm-tolerant matching in every bot import)*
 - [x] **A3 (GO5)** Enchant check: which equipped slots lack an enchant, in the snapshot and on the board. *(done; per-slot enchant ids, MISSING_ENCHANTS finding, reason flags in the peer digest)*
-- [x] **A4 (X5)** Login digest: "since your last login" summary, `/qg digest`. *(done; Modules/Digest.lua)*
-- [x] **A5 (X6)** `QuebecGoldAPI` read-only v1. *(done; Modules/API.lua)*
-- [x] **A6 (X4)** Versioned addon-message envelope (accepts old, sends new). *(done in a lighter form: protocol rules documented, `/qg peers`; existing messages were already typed KIND|fields)*
-- [x] **A7 (X2)** `QGEXP1:` paste export + `/import code:` for members without the companion. *(done; `/qg share` + `/character sync`, verified Lua-to-TypeScript)*
-- [x] **A8 (ID3)** Attendance snapshot: `/qg snapshot [label]`. *(done; `/qg snapshot [label]`, local only)*
+- [x] **A4 (X5)** Login digest: "since your last login" summary, `/guilded digest`. *(done; Modules/Digest.lua)*
+- [x] **A5 (X6)** `GuildedAPI` read-only v1. *(done; Modules/API.lua)*
+- [x] **A6 (X4)** Versioned addon-message envelope (accepts old, sends new). *(done in a lighter form: protocol rules documented, `/guilded peers`; existing messages were already typed KIND|fields)*
+- [x] **A7 (X2)** `QGEXP1:` paste export + `/import code:` for members without the companion. *(done; `/guilded share` + `/character sync`, verified Lua-to-TypeScript)*
+- [x] **A8 (ID3)** Attendance snapshot: `/guilded snapshot [label]`. *(done; `/guilded snapshot [label]`, local only)*
 - [x] **A9 (VG1, VG2)** Casino ban list and session stats. *(built, then removed with the whole casino under N3)*
 
 **Bot (Discord)**
@@ -58,7 +58,7 @@ each item's notes.
 - [x] **B9 (#46 prep)** One `BRAND` constant for the product name used in embeds, so the public rename is a one-line change. *(done; `src/brand.ts`)*
 
 **Release**
-- [x] **R1** Addon 2.0.0 (TOC, zip), README/COMMANDS, launch checklist sections for everything new, roadmap final status. *(done; addon and package 2.0.0, `dist/QuebecGold-v2.0.0.zip`, docs, checklist sections 12-13)*
+- [x] **R1** Addon 2.0.0 (TOC, zip), README/COMMANDS, launch checklist sections for everything new, roadmap final status. *(done; addon and package 2.0.0, `dist/Guilded-v2.0.0.zip`, docs, checklist sections 12-13)*
 
 ### v2.4 request list (2026-09-27 night; built in this order, log below)
 
@@ -82,9 +82,9 @@ each item's notes.
 | --- | --- |
 | #46 public rebrand and CurseForge (M3) | needs a name and logo from the user, and a hosting decision |
 | #18 WCL auto-discovery | needs `/wcl report` proven on real Forever logs first |
-| #32 calendar sync | needs the output of `/qg calendar check` |
+| #32 calendar sync | needs the output of `/guilded calendar check` |
 | #17 web dashboard, #20 achievements/graphs | held; data model still moving |
-| #40 fully automatic character linking, IR3 verification | needs the verification design and live testing of `/qg character` |
+| #40 fully automatic character linking, IR3 verification | needs the verification design and live testing of `/guilded character` |
 | PM1/PM2/IR1 recipes, cooldowns, bank stock | need in-game API discovery on Forever (trade skill and guild bank windows) |
 | RF1-RF3 mass invite, group layout, assignments | protected group APIs; needs in-game testing per call |
 | ID1 loot responses, GO1 per-core rules | designs touch bidding/EPGP rules; better after v2 feedback |
@@ -94,24 +94,24 @@ each item's notes.
 
 ### Progress log (update after every commit)
 
-- 2026-09-26 v3.0.0 release prep: versions bumped (addon 3.0.0, package, API), LICENSE, SECURITY.md (GP14), CHANGELOG.md, docs/RELEASE_CURSEFORGE.md, `scripts/rebrand.mjs` (display-name rebrand in one command), TODAY_TODO.md replaces LUNCH_TEST_CHECKLIST.md, stale casino text removed from READMEs. #46 partly done: the name, logo and screenshots are the user's.
+- 2026-09-26 v3.0.0 release prep: versions bumped (addon 3.0.0, package, API), LICENSE, SECURITY.md (GP14), CHANGELOG.md, docs/RELEASE_CURSEFORGE.md, TODAY_TODO.md replaces LUNCH_TEST_CHECKLIST.md, stale casino text removed from READMEs. #46 partly done: the name, logo and screenshots are the user's.
 - 2026-09-26 Companion desktop app: `companion-app/` (Electron: window with Status/Settings/Activity, tray icon with status colours and menu, start with Windows, auto-detect the WoW file, connection test). Shared `companion/engine.mjs`; the command-line watcher now uses it. Screenshots of the window checked; the tray and installer build (`npm run dist`) not verified because the disk was full.
-- 2026-09-28 Small items done: weekly raids (`/raid create weekly:true`; ending one creates the next, migration raid_repeat_weekly), module-request rate limit (GP9), slow-handler timings in `/qg diag` (IR6). 298 tests.
-- 2026-09-28 RF1 done: `/qg invite raid|missing` mass-invites the next raid's Discord signups (bot API -> companion -> Standings.lua -> addon). #40 (automatic character linking) is done in effect: see "Automatic character sync".
+- 2026-09-28 Small items done: weekly raids (`/raid create weekly:true`; ending one creates the next, migration raid_repeat_weekly), module-request rate limit (GP9), slow-handler timings in `/guilded diag` (IR6). 298 tests.
+- 2026-09-28 RF1 done: `/guilded invite raid|missing` mass-invites the next raid's Discord signups (bot API -> companion -> Standings.lua -> addon). #40 (automatic character linking) is done in effect: see "Automatic character sync".
 - 2026-09-28 N6 done: tools window rebuilt with a grouped sidebar, Home page, page titles and tooltips, Player field only where used, permanent Send to Discord button; the real window code is built and exercised in the Lua tests (tests/lua/window.test.ts), but how it LOOKS has not been seen. Addon 2.4.0.
 - 2026-09-28 N7 done: craft board is a forum (post per request, status and profession tags, buttons, "Request a craft" form, DMs, auto-close); old text channel still works.
 - 2026-09-28 N5 done: `/core setup` guided wizard (name form, member menus per role, rules buttons, EP form), pointer in `/setup` and `/help`.
 - 2026-09-28 N4 done: dropdowns for class and profession, suggestions for spec, race, own characters, attunements, items, tags, raid titles and times, reasons and auction length; `/loot auction` needs only the item; realm optional on `/character add`; tests/commands-shape.test.ts checks every command against Discord's rules.
 - 2026-09-28 N3 done: casino, house games and debt ledger removed; Modules/Games.lua (high roll, deathroll, duel, no gold); addon 2.4.0 pending release notes.
-- 2026-09-28 N2 done: /qg sync and auto-save at safe moments (Modules/SyncNow.lua).
+- 2026-09-28 N2 done: /guilded sync and auto-save at safe moments (Modules/SyncNow.lua).
 - 2026-09-28 N1 done: standings message says the real reason; companion refreshes standings every 2 minutes.
 - 2026-09-27 night: the user asked for N1-N7 (table above) and went to sleep; working through them in order N1, N2, N3, N4, N5, N7, N6 (UI last: biggest, least testable).
 
-- 2026-09-26 14:40 A1 done: fengari harness; Consumables.lua and Core.lua (`/qg character`) verified against the mocked game.
+- 2026-09-26 14:40 A1 done: fengari harness; Consumables.lua and Core.lua (`/guilded character`) verified against the mocked game.
 - 2026-09-26 16:10 A2-A9 done (addon side complete, 60 Lua tests through the harness). Next: bot items B1-B9, then release.
 - 2026-09-27 21:00 v2.3: character line fixed (QG2, semicolons), realm rename keeps guild data, recurring recruitment post removed, automatic character discovery and auto-link by Discord name, `/character claim|link|unclaimed|autolink`, `/config auto-import`, companion API host setting and failed-login throttle, Oracle deployment kit (`docs/DEPLOY_ORACLE.md`, `deploy/`). Still open: real ownership verification (IR3) instead of trusting the Discord name.
 - 2026-09-27 06:00 v2.2: auto-invite by whisper (GK1) and Anniversary interface number (G11), addon 2.2.0.
-- 2026-09-27 05:00 v2.1: per-core point rules and pools (GO1), one saved-data set per WoW guild (G10), `/qg backup` and `/qg restore` (GO9), addon 2.1.0, 249 tests. Not built as asked: in-game polls (dropped by you).
+- 2026-09-27 05:00 v2.1: per-core point rules and pools (GO1), one saved-data set per WoW guild (G10), `/guilded backup` and `/guilded restore` (GO9), addon 2.1.0, 249 tests. Not built as asked: in-game polls (dropped by you).
 - 2026-09-27 01:30 B1-B9 and R1 done. **v2.0.0 is complete: addon 2.0.0 zip in `dist/`, 232 tests green, migrations applied to the live database through `20260927010000_polls`.** Next: the user runs checklist sections 0-13, then push and release.
 
 ## History — where we were on 2026-09-24 (kept for reference)
@@ -125,7 +125,7 @@ each item's notes.
 - **Bot confirmed working live** (`/health`, Server Members Intent on,
   companion API running). Phase 8–11 Discord features not yet exercised live.
 - **Addon audit #2 done (v1.2.0, 2026-09-24).** Found after the first
-  live `/qg inspect` returned NOT_READY with no explanation:
+  live `/guilded inspect` returned NOT_READY with no explanation:
   - `READY` was unreachable (INFO findings counted as problems) — status now
     follows the bot's rule (ERROR → NOT_READY, WARNING → PARTIAL), and
     inspect names the empty slots and shows item level.
@@ -142,21 +142,21 @@ each item's notes.
     results counting twice via the sender's own message echo.
   - Active raid now survives `/reload`/disconnect; starting a second raid
     while one is open is refused.
-  - `/qg loot` item names with spaces, `/qg attune Onyxia Key` (was parsed
+  - `/guilded loot` item names with spaces, `/guilded attune Onyxia Key` (was parsed
     as player "Onyxia"), quoted arguments — all fixed.
   - Peer readiness can only be reported by the character itself (no
     spoofing another player's readiness into officer exports).
   - SavedVariables bloat: events capped at 1000, exports are small markers
     (old versions stored a full DB copy per export), peer readiness spam
     kept out of the journal.
-  - Casino: `/qg casino join` never reached the host (group games could
+  - Casino: `/guilded casino join` never reached the host (group games could
     not actually be joined) — now an OPEN/JOIN/JOINED addon-message
     handshake. Roll parsing uses the client's `RANDOM_ROLL_RESULT`, so
     French clients work. Mirrored ledger updates only accepted from someone
     involved, or an officer. Wagers capped.
   - Hardening: all sends pcall-guarded and truncated to 255 bytes, event
     handlers pcall-guarded, Midnight "secret value" chat text ignored.
-  - New `/qg officer list|add|remove|rank` (GM only for changes) so rank
+  - New `/guilded officer list|add|remove|rank` (GM only for changes) so rank
     layout doesn't require editing SavedVariables.
   - Companion watcher watches the folder, not the file (a file watch can go
     deaf after WoW replaces the file on save) and prints the exact
@@ -165,7 +165,7 @@ each item's notes.
     interpreter with stubbed WoW APIs (not committed; lives in the session
     scratchpad), plus 60 bot tests, `tsc`, `eslint`, validator.
 - **Live-confirmed 2026-09-24:** v1.2.0 loads, minimap button shows,
-  `/qg inspect` names empty slots and reports item level.
+  `/guilded inspect` names empty slots and reports item level.
 - **v1.3.0 (2026-09-24, not yet live):** tabbed tools window with a
   target-aware Player box (user found the first panel clunky), attendance
   from raid presence, version check, bot EPGP standings in game. Verified
@@ -181,11 +181,11 @@ each item's notes.
   joins silent, deathroll elimination + next roll in one line); pot entries
   owed to the host; trades with the officer settle debts automatically.
   Window hides officer tabs/tools from members instead of greying them;
-  `/qg help` lists only what your rank can use. In-game raid presence now
+  `/guilded help` lists only what your rank can use. In-game raid presence now
   imports into Discord raid attendance (see section A). Verified: 28-check
   casino simulation, 34-check window/sync simulation, 18 core checks,
   66 bot tests, `tsc`, `eslint`, validator.
-- **Release:** `dist/QuebecGold-v1.4.0.zip` built; GitHub release and the
+- **Release:** `dist/Guilded-v1.4.0.zip` built; GitHub release and the
   install-page artifact still point at v1.1.0 — refresh both once the live
   test passes.
 
@@ -218,13 +218,13 @@ within priority. Update the checkbox the moment an item lands.
 > maybe / 1 waitlisted, late + no-show + walk-in, 3/3 kills, 2 loot
 > auctions, both attendance paths (direct and via addon import), EP
 > approve twice = paid once, report, stats, cleanup left 0 rows. Addon:
-> `/qg sim start|end|bids|clear` (`Modules/Sim.lua`, same fake names).
+> `/guilded sim start|end|bids|clear` (`Modules/Sim.lua`, same fake names).
 >
 > **#0 — P0 / M — Raid test environment / simulation (requested
 > 2026-09-24 for tomorrow).** No raids are released in WoW Forever yet, so
 > the whole raid flow can't be tested for real. Build a way to run a fake
 > raid end to end:
-> - **In game:** an officer-only `/qg sim` (or "Test raid" button) that
+> - **In game:** an officer-only `/guilded sim` (or "Test raid" button) that
 >   runs a raid with made-up raiders and bosses. It would start the raid, fill
 >   presence, mark attendance (some late/absent), record boss kills and loot,
 >   and end it, all tagged as test data, using a 5-man dungeon group or
@@ -361,7 +361,7 @@ within priority. Update the checkbox the moment an item lands.
     started guide, /help follow the guild language from /setup; officer
     admin replies stay English. Addon v1.6.0 `Locale.lua` — player window,
     minimap tooltip, bid popup, and bidding chat lines; auto from the game
-    client, `/qg lang en|fr|auto`; officer tabs and casino chat lines stay
+    client, `/guilded lang en|fr|auto`; officer tabs and casino chat lines stay
     English for now.)* Bot replies and addon text in
     French for a Quebec guild (`/setup` language choice).
 31. [x] **M — Welcome by channel / DM / both, with role buttons.** *(Done
@@ -373,7 +373,7 @@ within priority. Update the checkbox the moment an item lands.
 32. [~] **M — In-game guild calendar sync** *(Requested 2026-09-25.)* Only
     if WoW Forever's client has the calendar and lets addons use it.
     Discord stays the one official signup list.
-    - [~] **S — `/qg calendar check`** (addon v1.6.1): reports whether the
+    - [~] **S — `/guilded calendar check`** (addon v1.6.1): reports whether the
       calendar API exists, whether you can create events, and lists guild
       events for the next 14 days. **Waiting on the user to run it in
       game** — the answer decides the next two steps.
@@ -398,9 +398,9 @@ members, and version skew between parts that talk to each other
 the same choice. Casino, GP bidding and Dungeons are a single project on
 CurseForge; a guild that doesn't want the casino turns it off for everyone.
 
-M1. [x] **M — Module switches** *(Done 2026-09-25.)* `/qg modules`
-    (list), `/qg modules on|off <module>` (just you), officers
-    `/qg modules guild on|off <module>` (everyone, shared through Sync
+M1. [x] **M — Module switches** *(Done 2026-09-25.)* `/guilded modules`
+    (list), `/guilded modules on|off <module>` (just you), officers
+    `/guilded modules guild on|off <module>` (everyone, shared through Sync
     as `MODS|updatedAt|by|off-list`, newest officer setting wins,
     non-officer and stale messages ignored, members who log in later ask
     with `MODSREQ`). Switchable: casino, bidding, dungeon, calendar, sim.
@@ -420,7 +420,7 @@ M2. [x] **S — Module integration audit** *(Done 2026-09-25.)* Checked
 M3. [ ] **M — CurseForge packaging** (when the user wants a public
     listing): CurseForge project + `## X-Curse-Project-ID` in the TOC,
     a `.pkgmeta` (or a packaging step) that ships only
-    `addon/QuebecGold` without `validate-addon.mjs`, a license, the
+    `addon/Guilded` without `validate-addon.mjs`, a license, the
     description/screenshots page, and a GitHub Action with the BigWigs
     packager on tags. Consider whether the Standings.lua file written by
     the companion should move to SavedVariables-free delivery for guilds
@@ -452,7 +452,7 @@ by the addon, only computed by the bot from rules.
 D1. [x] **M — Compatibility layer (addon `Compat.lua`)** *(Done 2026-09-25, v1.7.0.)*: every WoW API
     the dungeon system uses (instance info, group members and roles, GUIDs,
     encounter journal, time, death state) behind `ns.compat`, each checked
-    before use, failures logged to `/qg diag`, `/qg dungeon check` reports
+    before use, failures logged to `/guilded diag`, `/guilded dungeon check` reports
     which features are available on this client.
 D2. [x] **M — Run tracker (addon `Modules/Dungeon.lua`)** *(Done 2026-09-25, v1.7.0; 29-check simulation incl. reload, abandon, peer merge, missing API.)*: state machine
     DETECTED → STARTING → ACTIVE → COMPLETED / ABANDONED / INVALID / ERROR;
@@ -482,14 +482,14 @@ D5. [x] **M — Seasons, records, leaderboards (bot)** *(Done 2026-09-25: /dunge
     `/dungeon history`, `/dungeon season`.
 D6. [x] **S — Announcements** *(Done 2026-09-25: one post per import, dungeon channel or notify fallback, /config dungeon-channel + /setup.)*: completed runs, new personal and guild
     records in a dungeon channel (/setup + `/config`).
-D7. [x] **M — Admin + audit** *(Done 2026-09-25: /dungeon-admin invalidate|award|audit|config|target|season-start; every change is a new point row + DUNGEON_ADMIN audit + officer log. force-complete stays in game: /qg dungeon complete.)*: `/dungeon invalidate`, `award`, `remove`,
+D7. [x] **M — Admin + audit** *(Done 2026-09-25: /dungeon-admin invalidate|award|audit|config|target|season-start; every change is a new point row + DUNGEON_ADMIN audit + officer log. force-complete stays in game: /guilded dungeon complete.)*: `/dungeon invalidate`, `award`, `remove`,
     `force-complete`, `audit`, `config`, `season start|end`, all logged.
 D8. [x] **M — Achievements** *(Done 2026-09-25: permanent, no points; earned at import, revoked with an invalidated run, Season Champion on season-start; Dungeon Master count in /dungeon-admin config. "All dungeons" = N different dungeons, since the client has no reliable list.)*: First Blood, No One Dies, Speed Demon
     (target time), Record Breaker, Dungeon Master (all dungeons), Guild
     Squad, Season Champion — rules in config, permanent.
 D9. [x] **S — In-game view** *(Done 2026-09-25: Dungeons tab for everyone: live run, start/complete/abandon/check, recent runs + sync state, season top from Discord via Standings.lua; EN/FR.)*: a Dungeons tab (current run, timer,
     Start / Complete / Abandon buttons, recent runs, your points).
-D10. [x] **S — Test path** *(Done 2026-09-25: /testraid dungeon through the real import, /qg sim dungeon in game; SIM- runs in a made-up "Test Dungeon", removed by /testraid cleanup and /qg sim clear.)*: `/qg sim dungeon` and `/testraid`-style bot
+D10. [x] **S — Test path** *(Done 2026-09-25: /testraid dungeon through the real import, /guilded sim dungeon in game; SIM- runs in a made-up "Test Dungeon", removed by /testraid cleanup and /guilded sim clear.)*: `/guilded sim dungeon` and `/testraid`-style bot
     fixtures that play a full run (including reload, duplicate
     submission, disconnect) so this can be tested before release.
 
@@ -558,9 +558,9 @@ D10. [x] **S — Test path** *(Done 2026-09-25: /testraid dungeon through the re
     to test). *(Done 2026-09-25, addon v1.5.0 `Modules/Bidding.lua` + Loot
     tab: officer opens bidding (one raid-chat line), addon users bid from a
     popup showing their Discord PR, pugs whisper a number; sealed bids;
-    highest wins, tie → higher PR → earliest; Award runs `/qg loot` +
-    `/qg gp` so the GP has a ledger id and imports into Discord. Popups only
-    accept an officer's bidding. `/qg sim bids` for testing. Verified in
+    highest wins, tie → higher PR → earliest; Award runs `/guilded loot` +
+    `/guilded gp` so the GP has a ledger id and imports into Discord. Popups only
+    accept an officer's bidding. `/guilded sim bids` for testing. Verified in
     the Lua simulation (20 bidding checks). Not yet seen live.)*
 22. [x] **S/M — In-game loot into Discord loot history.** *(Done
     2026-09-25: addon loot rows get a permanent id and the last boss
@@ -575,7 +575,7 @@ D10. [x] **S — Test path** *(Done 2026-09-25: /testraid dungeon through the re
 **P3 — added 2026-09-26**
 
 33. [x] **M — Character import instead of typing** *(Done 2026-09-26, addon
-    v1.8.0.)* `/qg character` in game shows one `QG1|name|realm|CLASS|race|
+    v1.8.0.)* `/guilded character` in game shows one `QG1|name|realm|CLASS|race|
     level|spec|professions` line (class/race as English tokens, so any client
     language works); `/character import code:` links or refreshes the character
     (professions too; never takes over another member's character). The
@@ -590,7 +590,7 @@ D10. [x] **S — Test path** *(Done 2026-09-25: /testraid dungeon through the re
     logs**, officer log), **dungeon channels** (leaderboard, signups, runs),
     **extra channels** (loot and EP log, craft board, recruitment). A
     "Create the whole WoW section" button makes every missing channel under
-    one "Quebec Gold" category; feeds only the bot posts in are read-only for
+    one "Guilded" category; feeds only the bot posts in are read-only for
     members. New `/config` commands: `raid-log-channel`, `loot-channel`,
     `craft-channel`, `dungeon-leaderboard-channel`, `dungeon-signup-channel`.
     Raid reports and Warcraft Logs go to raid logs; loot awards and EP/GP
@@ -612,9 +612,9 @@ D10. [x] **S — Test path** *(Done 2026-09-25: /testraid dungeon through the re
     posts the guild board there; `/import-apply` refreshes it when gear checks
     arrive. `src/services/readiness-board.ts`. Enchant/flask checks are still
     open (G2, ID2, plus an enchant check in the addon).
-42. [x] **M — Consumable scan** *(Built 2026-09-26, addon v1.9.0; Lua only syntax-checked, needs the in-game test in checklist section 9. Flask/elixir/food are matched by buff name (`Flask of`, `Elixir of`, `Well Fed`...); weapon enchants only for yourself; needs `/qg consumes` from an officer, out of combat and in range. Your own snapshot also records them and adds NO_FLASK / NO_FOOD warnings while you're in a raid group.)*
+42. [x] **M — Consumable scan** *(Built 2026-09-26, addon v1.9.0; Lua only syntax-checked, needs the in-game test in checklist section 9. Flask/elixir/food are matched by buff name (`Flask of`, `Elixir of`, `Well Fed`...); weapon enchants only for yourself; needs `/guilded consumes` from an officer, out of combat and in range. Your own snapshot also records them and adds NO_FLASK / NO_FOOD warnings while you're in a raid group.)*
     Addon: each player's own snapshot records active flask/elixir/food/weapon
-    buff; `/qg consumes` (officer) scans the whole group and prints who is
+    buff; `/guilded consumes` (officer) scans the whole group and prints who is
     missing what; results export to the bot (`ConsumableCheck`) and show as a
     "Consumables" section on the raid readiness board. Enchants are a
     separate later step.
@@ -642,11 +642,11 @@ D10. [x] **S — Test path** *(Done 2026-09-25: /testraid dungeon through the re
     where private), re-runnable and never touching existing channels. Adds a
     "Organize existing" step that only *moves* channels the bot made.
 46. [ ] **L — Public bot identity and CurseForge listing** (requested
-    2026-09-26; **last, after the launch test**). Replace the "Quebec Gold"
+    2026-09-26; **last, after the launch test**). Replace the "Guilded"
     name with a neutral product identity so any guild can install it: pick a
     name/logo/tagline (check trademark and that "WoW"/"Warcraft" is used only
     descriptively), rename the addon folder, TOC title, `## SavedVariables`
-    (with a migration from `QuebecGoldDB`), slash prefix (`/qg` stays as an
+    (with a migration from `GuildedDB`), slash prefix (`/guilded` stays as an
     alias), bot username and embed branding, docs, install page, GitHub repo
     and release, a per-guild "guild name" setting so the branding is the
     guild's own, CurseForge project page (screenshots, description,
@@ -680,7 +680,7 @@ none is started.
 - **G1. [ ] S/M — Item tooltips:** show "GP cost / who wishlisted / your PR"
   on item tooltips (GuildOS does wishlist tooltips). Data is already in
   Standings.lua / wishlist; needs a `GameTooltip` post-hook via `Compat.lua`.
-- **G2. [ ] M — Consumable check before pulls:** a `/qg consumes` scan of the
+- **G2. [ ] M — Consumable check before pulls:** a `/guilded consumes` scan of the
   group for flask/food/elixir/weapon buffs, feeding the readiness report
   (GuildOS scores this into attendance). Our attendance stays Present/Late/
   Absent; consumables would be a readiness signal, not a penalty.
@@ -764,7 +764,7 @@ through Forever). Overlaps our `/craft` and `/profession`.
 - **LR2. [ ] S — Real officer permissions:** read what the guild master actually
   granted (`C_GuildInfo` / `GuildControlGetRankFlags`) instead of guessing
   officers from rank position. Fixes wrong officer detection for
-  `/qg modules guild` and officer-only commands.
+  `/guilded modules guild` and officer-only commands.
 - **LR3. [ ] M — Alt groups from the game itself:** treat characters on the same
   account as one player. Ties into #40 and G9; helps auto-linking characters.
 - **LR4. [ ] S — Connected-realm name handling** (`Name-Realm` normalisation),
@@ -775,10 +775,10 @@ through Forever). Overlaps our `/craft` and `/profession`.
 
 **vGambler** (roll-off gold gambling: lowest roller pays the highest). Same
 idea as our Casino module, which is a superset (pot, blackjack, ledger).
-- **VG1. [x] S — Player ban list in the Casino module** (`/qg casino ban|unban|
+- **VG1. [x] S — Player ban list in the Casino module** (`/guilded casino ban|unban|
   bans`): host can exclude people; persists in the SavedVariables. vGambler has
   it, we don't.
-- **VG2. [x] S — Session statistics** (`/qg casino stats`): games, biggest win,
+- **VG2. [x] S — Session statistics** (`/guilded casino stats`): games, biggest win,
   net per player for the session. We keep a ledger already; this is a view.
 - **VG3. [ ] S — Default stake and a "1 to join" prompt line** matching
   vGambler's flow so players who know it feel at home. Only if guildmates ask.
@@ -787,7 +787,7 @@ idea as our Casino module, which is a superset (pot, blackjack, ledger).
 
 **Raidify** (raid roster from a web app, mass invite, group layout, assignments,
 attendance, bench credit).
-- **RF1. [x] M — Mass invite from the signup list:** `/qg invite raid <id>`
+- **RF1. [x] M — Mass invite from the signup list:** `/guilded invite raid <id>`
   (officer) invites everyone signed up for a Discord raid, fuzzy-matching names,
   with a "whisper `inv` to be invited" option for late arrivals. Our signup
   data is already in Standings.lua-style exports; needs the raid roster sent
@@ -816,10 +816,10 @@ The closest thing to us; it's a competitor to watch, not to copy.
   officer sees responses next to PR. Fits `Bidding.lua` and loot history.
 - **ID2. [ ] M — Ready check with consumables** (same as G2): flask/food/buffs
   shown on the ready-check reply, exported to `/readiness raid`.
-- **ID3. [x] S — Attendance snapshots:** an officer button/`/qg snapshot` that
+- **ID3. [x] S — Attendance snapshots:** an officer button/`/guilded snapshot` that
   records who's in the raid *now* with a label ("pre-pull", "after Ragnaros").
   Complements our automatic presence sampling; useful for disputes.
-- **ID4. [ ] S/M — Auto-marking profiles** (`/qg mark <profile>`): set raid
+- **ID4. [ ] S/M — Auto-marking profiles** (`/guilded mark <profile>`): set raid
   target icons on named mobs. Marking in combat is limited; low priority.
 - **ID5. [ ] M — Permission model in the addon:** raid-leader-controlled access
   with assists, guild ranks, or both. We use officer detection; add "assistants
@@ -859,7 +859,7 @@ bridge to IRC or Discord despite the name.
 - **IR2. [ ] S — Onboarding for new guild members in game:** a welcome whisper
   with the Discord invite and `/character import` instructions (same as G8).
 - **IR3. [ ] M — Member verification:** prove a Discord member owns a WoW
-  character with a one-time code typed in a guild note or `/qg verify <code>`
+  character with a one-time code typed in a guild note or `/guilded verify <code>`
   (bot-issued). This is the safe way to do #40's auto-linking and stops people
   claiming someone else's character.
 - **IR4. [x] S — Guild statistics view** (class/race distribution, level
@@ -909,7 +909,7 @@ everything below is an idea to build ourselves, never code to copy.
 - **Forever's names have no realm and carry a hyphen.** Both GuildOS and Guild
   Paragon special-case it (`IsForeverClient` returns the peer name as is; GuildOS
   builds Forever keys itself and tags exports `game = FOREVER`). Our addon takes
-  the realm from `GetRealmName()` (new `/qg character`, consumable scan) and from
+  the realm from `GetRealmName()` (new `/guilded character`, consumable scan) and from
   the companion config. **Verify in game tonight** (checklist section 3) and
   centralise it (item X1).
 - **GuildOS's consumable checker only exists on TBC Anniversary** because it
@@ -926,18 +926,18 @@ everything below is an idea to build ourselves, never code to copy.
   scratch folder and were never committed.
 
 **Recommended next (best value for effort)**
-1. **X1: one place for player identity on Forever** (below) and a `/qg diag`
+1. **X1: one place for player identity on Forever** (below) and a `/guilded diag`
    line showing what `GetRealmName`/`UnitName` return. Prevents silent
    character-matching failures.
 2. **X2: copy-paste export (`QGEXP1:` string)** so a member without the
    companion can send data: in-game box, then `/import code:`. GuildOS ships
    exactly this (`GOSCOMP1:` = compressed, print-safe, pasted into its site).
 3. **X3: commit Lua tests** (mocked WoW API, run in CI with a Lua interpreter
-   such as `fengari` from npm) plus an in-game `/qg selftest`.
+   such as `fengari` from npm) plus an in-game `/guilded selftest`.
 4. **X4: versioned addon-message envelope** with a protocol number, so old and
    new addons can coexist after an update.
 5. **X5: login digest** ("since your last login: new members, loot, raids").
-6. **X6: read-only public API** (`QuebecGoldAPI`, versioned) so WeakAuras or
+6. **X6: read-only public API** (`GuildedAPI`, versioned) so WeakAuras or
    other addons can read standings and readiness without touching saved data.
 
 **From GuildOS** (`GO`)
@@ -994,8 +994,8 @@ everything below is an idea to build ourselves, never code to copy.
   bigger data (guild bank snapshot, recipe lists): 170-byte chunks, a chunk cap,
   a digest to detect a stale copy, tie-break on save time then owner name.
   Required groundwork for IR1, PM1 and #40.
-- **IR6. [x] S (timings only: `/qg diag` now lists handlers slower than 50 ms as SLOW): diagnostics ring buffer** (500 entries, slow-operation threshold in
-  ms, opt-in event tracing). Our `/qg diag` keeps errors only; add timings.
+- **IR6. [x] S (timings only: `/guilded diag` now lists handlers slower than 50 ms as SLOW): diagnostics ring buffer** (500 entries, slow-operation threshold in
+  ms, opt-in event tracing). Our `/guilded diag` keeps errors only; add timings.
 - **IR7. [ ] M: identity store per guild:** characters, former members and
   "missing counts" (how many rosters a name has been absent from) to tell a
   departure from a temporary absence. Feeds GP1 and GK2.
@@ -1017,8 +1017,8 @@ everything below is an idea to build ourselves, never code to copy.
 **Cross-cutting items (new)**
 - **X1. [x] S: player identity on Forever:** a single `ns.compat.playerKey()` /
   `ns.compat.normalizeName()` that knows Forever (no realm, hyphenated names) and
-  is used by the consumable scan, `/qg character`, roster, the companion and the
-  bot's character matching. `/qg diag` prints the raw values.
+  is used by the consumable scan, `/guilded character`, roster, the companion and the
+  bot's character matching. `/guilded diag` prints the raw values.
 - **X2. [x] M: `QGEXP1:` paste export + `/import code:`** (compressed, print-safe;
   needs either bundled LibDeflate or a small pure-Lua compressor, decision
   needed). Uses the existing import path, so no new trust model.
@@ -1026,7 +1026,7 @@ everything below is an idea to build ourselves, never code to copy.
 - **X4. [x] M: versioned message envelope** (`v`, `id`, addon version, payload
   version) with accept-old/send-new during transition.
 - **X5. [x] S: login digest.**
-- **X6. [x] S: `QuebecGoldAPI` read-only v1.**
+- **X6. [x] S: `GuildedAPI` read-only v1.**
 
 ---
 
@@ -1097,12 +1097,12 @@ this is the condensed version now that everything's fixed.
   empty-string `itemName` that failed the bot's validation and would have
   rejected the *entire* export; item name/id were raw WoW item-link markup
   instead of a parsed name/id. Both fixed in
-  `addon/QuebecGold/QuebecGold.lua`.
+  `addon/Guilded/Guilded.lua`.
 - [x] **False NOT_READY for two-handed weapon users** — missing OffHand is
   now a WARNING, not an ERROR (can't reliably tell "2H equipped" from
   "forgot offhand" from the addon API alone).
 - [x] **Slash-command internal name typo** fixed (`QUEBECCOLD` →
-  `QUEBECGOLD`, cosmetic only).
+  `GUILDED`, cosmetic only).
 - [x] **`/profile` shows EP/GP/PR as primary**, DKP explicitly labeled
   legacy; `/dkp`'s description now says it's superseded by `/epgp`.
 
@@ -1122,7 +1122,7 @@ this is the condensed version now that everything's fixed.
     Information does not rename the bot's actual Discord username — that's
     a separate field on the Bot tab. Caused confusion when the bot logged
     in showing its old name after the app was renamed to "Thrall."
-  - **Found a real WoW addon bug on first live run:** "QuebecGold has been
+  - **Found a real WoW addon bug on first live run:** "Guilded has been
     blocked from an action only available to the Blizzard UI" popup on
     login. Leading suspect was the `OnUpdate`-based auto-sync ticker added
     in Phase 10 (per-frame polling is a common WoW "taint" source) — removed
@@ -1138,9 +1138,9 @@ this is the condensed version now that everything's fixed.
     and function name it refused to call — normally invisible unless
     something listens for them) and the global Lua error handler (filtered
     to errors mentioning this addon), logs both into
-    `QuebecGoldDB.diagnostics` and prints immediately to chat, and exposes
-    `/qg diag` to review the last 25 entries. **Next step once retested:**
-    reproduce the popup with this build installed, read what `/qg diag` (or
+    `GuildedDB.diagnostics` and prints immediately to chat, and exposes
+    `/guilded diag` to review the last 25 entries. **Next step once retested:**
+    reproduce the popup with this build installed, read what `/guilded diag` (or
     the immediate chat line) actually names as the blocked function, and
     fix that specifically instead of guessing again.
   - Not yet reached: the rest of the test script below (raid/EPGP/loot/
@@ -1155,8 +1155,8 @@ resolved:
   - `/raid create` → `/raid signup` → `/raid start` → `/raid attendance` →
     `/raid boss` → `/raid end`.
   - `/epgp award-ep`, `/epgp award-gp`, `/epgp balance`, `/epgp decay`.
-  - In-game: `/qg start`, `/qg attendance`, `/qg boss`, `/qg award`,
-    `/qg gp`, `/qg inspect`, `/qg export`. Confirm exported item names are
+  - In-game: `/guilded start`, `/guilded attendance`, `/guilded boss`, `/guilded award`,
+    `/guilded gp`, `/guilded inspect`, `/guilded export`. Confirm exported item names are
     clean (not raw links) and a fully-geared 2H character shows
     PARTIAL/READY, not NOT_READY.
   - Point the companion watcher at a live SavedVariables file with a token
@@ -1171,7 +1171,7 @@ resolved:
 
 ### Research (2026-09-24)
 
-Goal was to benchmark Quebec Gold against the popular WoW guild-management
+Goal was to benchmark Guilded against the popular WoW guild-management
 addons and against Carl-bot's Discord housekeeping feature set, to find
 concrete gaps worth closing.
 
@@ -1220,7 +1220,7 @@ public TBC Anniversary build:
   message edits/deletes and member join/leave, custom commands/tags,
   starboard, leveling. ([docs.carl.gg](http://docs.carl.gg/), [feature overview](https://bforbloggers.com/carl-bot-features-commands/))
 
-**Takeaway:** Quebec Gold's EPGP/raid/loot core is already ahead of a plain
+**Takeaway:** Guilded's EPGP/raid/loot core is already ahead of a plain
 spreadsheet (which is what several other Forever guilds are still using —
 see the CODEX and Mk. Ultra spreadsheet threads on Barrens Chat) but is
 behind Guild OS specifically on *automatic* data collection (roster/gear/
@@ -1232,7 +1232,7 @@ in the existing one.
 ### A. WoW addon upgrades
 
 - [x] **P0 / M — Attunement tracking.** *(Phase 10, done 2026-09-24)*
-  `/qg attune <key>` (self) and `/qg attune <player> <key>` (officer, append
+  `/guilded attune <key>` (self) and `/guilded attune <player> <key>` (officer, append
   `clear`/`false`/`no` to unmark) in the addon, stored in `db.attunements`
   and included in exports. Bot side: new `CharacterAttunement` model
   (migration `20260924124828_phase_10_attunements`), `src/services/
@@ -1243,7 +1243,7 @@ in the existing one.
   block the rest of the import).
 - [x] **P0 / M — Automatic roster/gear sync between guild members.** *(Phase
   10, done 2026-09-24 — completed in two passes, see decision log for why.)*
-  Professions self-report automatically via `/qg inspect`
+  Professions self-report automatically via `/guilded inspect`
   (`GetProfessions`/`GetProfessionInfo`) into the existing `ProfessionSkill`
   table — no new command needed, `/profession list` and `/profile` already
   show addon-synced data. On top of that, per "as much sync as possible":
@@ -1261,9 +1261,9 @@ in the existing one.
   section for the ongoing diagnosis (the popup recurred even after this
   fix, so it isn't confirmed as the sole cause yet). Every other online
   client's addon receives these and stores them in `db.peerRoster`, keyed by
-  character; `/qg export` now includes `peerRoster`, and
+  character; `/guilded export` now includes `peerRoster`, and
   `companion/lua-export.mjs` folds it into synthesized readiness entries
-  (real gear list from `/qg inspect` still only exists for the inspecting
+  (real gear list from `/guilded inspect` still only exists for the inspecting
   player — peer digests carry status/professions only, not item names).
   Spec auto-detection and item-level capture stay scoped out — the client
   genuinely lacks both APIs on this interface version.
@@ -1287,7 +1287,7 @@ in the existing one.
   hand-built JS objects).
 - [x] **P1 / M — Attendance from actual raid presence, not just manual
   marking.** *(Done 2026-09-24. Addon v1.3.0: `db.presence` records
-  everyone seen in the group while a raid is active; `/qg attendance seen`
+  everyone seen in the group while a raid is active; `/guilded attendance seen`
   marks them PRESENT without overwriting manual marks. Bot: the companion
   exports finished raids (marks + presence); `/import-apply` matches each to
   the Discord raid scheduled closest to its start (within 4h), records
@@ -1298,7 +1298,7 @@ in the existing one.
   Hook `GROUP_ROSTER_UPDATE` while a raid is active in the addon
   to auto-record who was actually in the raid group over time, and flag
   "signed up but didn't show" vs. "showed but didn't sign up" — the officer
-  `/qg attendance` command stays as a manual override on top, not a
+  `/guilded attendance` command stays as a manual override on top, not a
   replacement.
 - [x] **P0 / S — Built-in diagnostics for the addon itself.** *(Added
   2026-09-24, unplanned — came out of live-testing the addon for the first
@@ -1307,9 +1307,9 @@ in the existing one.
   `ADDON_ACTION_BLOCKED`/`ADDON_ACTION_FORBIDDEN` (fire with the exact addon
   and function name WoW refused to call — otherwise invisible unless
   something listens for them) and the global Lua error handler (filtered to
-  errors mentioning this addon), logs both to `QuebecGoldDB.diagnostics`
-  (last 25, also included in `/qg export`), and prints immediately to chat.
-  New `/qg diag` command reviews recent entries. This is a permanent
+  errors mentioning this addon), logs both to `GuildedDB.diagnostics`
+  (last 25, also included in `/guilded export`), and prints immediately to chat.
+  New `/guilded diag` command reviews recent entries. This is a permanent
   addition, not a one-off debugging hack — it's the addon's only way to
   surface this class of bug without installing a separate error-display
   addon like BugSack.
@@ -1324,14 +1324,14 @@ in the existing one.
   (common taint sources).)* Original notes: A draggable coin button on the
   minimap opens a plain tools panel: one-click actions plus a text box that
   pre-fills templates for commands needing arguments (refuses to run while
-  `<placeholders>` remain). `/qg menu` and `/qg minimap show|hide|reset` as
+  `<placeholders>` remain). `/guilded menu` and `/guilded minimap show|hide|reset` as
   fallbacks if the button is lost. Built in a way meant to survive Mainline
   API churn: no dropdown-menu APIs, `BackdropTemplate` only when it exists,
   everything created inside `pcall` so a UI failure can never break the core
   addon. Original request text follows. Requested
   2026-09-24 ("we need an addon button in wow to quickly access the
   interface and use all the tools"). A small draggable minimap icon with a
-  right-click dropdown covering the main `/qg` actions (inspect, attune,
+  right-click dropdown covering the main `/guilded` actions (inspect, attune,
   casino games, raid status, diag) so members don't need to remember slash
   command syntax. No external library needed (a hand-rolled draggable
   button is straightforward); deliberately not built yet — held off adding
@@ -1343,28 +1343,28 @@ in the existing one.
   bot (new `WishlistEntry` table, case/space-insensitive item matching,
   priority 1-3), and `/loot auction` now notes how many raiders wishlisted
   the item. Purely informational — doesn't change how loot is awarded.
-  Remaining: an in-game `/qg wishlist` command and syncing addon wishlists
+  Remaining: an in-game `/guilded wishlist` command and syncing addon wishlists
   through the import pipeline — addon work, untestable while the servers
   are down and the addon has an open bug.
-- [ ] **P2 / M — Buff/cooldown coverage check.** Extend `/qg inspect`-style
+- [ ] **P2 / M — Buff/cooldown coverage check.** Extend `/guilded inspect`-style
   reporting to a raid-wide view: which raid buffs/consumable categories are
   covered vs. missing across the current roster. Officer-only, informational.
 - [x] **P1 / S — Addon version check.** *(Done 2026-09-24, v1.3.0,
   `Modules/Sync.lua`; older clients are also whispered directly.)* Broadcast
-  the addon version on login; clients print "a newer Quebec Gold is out"
+  the addon version on login; clients print "a newer Guilded is out"
   when a guildmate runs a higher version. Cheap, and it removes the most
   common support problem (members on stale builds).
 - [x] **P1 / M — EPGP standings in game.** *(Done 2026-09-24, v1.3.0: bot
   `GET /api/v1/standings`, `companion/standings.mjs` writes `Standings.lua`
   every 15 min, `Modules/Sync.lua` shares it guild-wide in chunks, accepted
-  only from officers; `/qg standings`, EPGP tab shows Discord numbers.)* Data
+  only from officers; `/guilded standings`, EPGP tab shows Discord numbers.)* Data
   only flows addon → bot today. The companion could write a generated
   `Standings.lua` into the addon folder (loaded on `/reload`) so
-  `/qg standings` and the loot flow show the bot's real EP/GP/PR.
+  `/guilded standings` and the loot flow show the bot's real EP/GP/PR.
 - [ ] **P1 / L — In-game GP bidding tied to the bot.** *(Suggested
   2026-09-24.)* Officer shift-clicks an item to open bidding, raiders bid
   from a popup, the winner's GP is recorded with a ledger id (so it imports
-  cleanly). Replaces typing `/qg gp` by hand mid-raid.
+  cleanly). Replaces typing `/guilded gp` by hand mid-raid.
 - [~] **P2 / M — Casino debt settlement by trade.** *(Built 2026-09-24,
   v1.4.0, not yet seen live: trade money is read on accept and applied
   when the game reports "Trade complete", in both directions. Unverified
@@ -1473,7 +1473,7 @@ guild before picking up Part 2 work:
 
 1. **Replace Carl-bot entirely, or run alongside it?** Changes how much of
    section C is actually worth building. If Carl-bot stays for
-   moderation/reaction-roles and Quebec Gold stays guild-management-only,
+   moderation/reaction-roles and Guilded stays guild-management-only,
    most of section C can be dropped or deprioritized.
 2. ~~How much automatic addon-comms sync is acceptable?~~ **Resolved
    2026-09-24: as much as possible.** See decision log.
@@ -1493,7 +1493,7 @@ guild before picking up Part 2 work:
   Forever, and Classic-era addons generally need rebuilding for the new API.
   Consequences for this project: (1) the combat-log registration that caused
   the live popup was never going to work; (2) `GetAverageItemLevel` is now
-  tried (guarded) in `/qg inspect`, so readiness reports may carry item
+  tried (guarded) in `/guilded inspect`, so readiness reports may carry item
   level after all; (3) spec detection is worth re-checking once someone can
   test whether Forever exposes specialization APIs; (4) new addon features
   should be checked against the 12.x API-change list *before* being built,
@@ -1509,7 +1509,7 @@ guild before picking up Part 2 work:
   online guild (not just the raid group) on login, on every gear change,
   and every 10 minutes while raiding, and every online client accumulates
   everyone else's digests into `db.peerRoster`. This means one officer's
-  `/qg export` now carries a live readiness picture for the whole online
+  `/guilded export` now carries a live readiness picture for the whole online
   guild, not just themselves — the actual Guild-OS-parity outcome, achieved
   without the chunked-message protocol Guild OS needs, because the digest
   (status/missing-count/durability/professions, no item list) fits in one
@@ -1527,7 +1527,7 @@ guild before picking up Part 2 work:
   about other players from ambient signals (combat log, loot chat), which
   is genuinely unreliable — it doesn't apply to a player's own gear/
   profession self-report, which is the same trust level as the existing
-  manual `/qg inspect`, just automated. Scope trims that fell out of this,
+  manual `/guilded inspect`, just automated. Scope trims that fell out of this,
   based on what the target client (interface 11200 = vanilla 1.12) can
   actually do: no spec auto-detection (no talent-spec API exists pre-MoP;
   `Character.spec` stays the existing manual free-text field) and no item
@@ -1571,3 +1571,5 @@ guild before picking up Part 2 work:
 - [ ] **Backlog:** Starboard; message edit/delete logging (both need extra
   privileged/reaction intents); anything from the Warcraft Logs/dashboard
   discussion (held until it's confirmed WoW Forever logs upload to WCL).
+
+- 2026-09-26 Full rename to Guilded: addon folder `Guilded`, saved variable `GuildedDB` (old `QuebecGoldDB` adopted once), `/guilded` and `/gd` replace `/qg`, `[Guilded]` chat prefix, `guilded-*` channel names, package and deploy names. Kept on purpose: Postgres DB `quebec_gold`, backup file prefix, `qg:` import refs and `QG-` run ids (stored data).

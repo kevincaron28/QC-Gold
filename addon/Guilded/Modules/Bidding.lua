@@ -7,7 +7,7 @@
 --   * Bids are sealed. When time runs out (or the officer closes early) the
 --     highest bid wins; ties go to the higher PR, then to whoever bid first.
 --   * Nothing is recorded until the officer presses Award. Award runs the
---     normal /qg loot and /qg gp commands, so the GP gets a ledger id and
+--     normal /guilded loot and /guilded gp commands, so the GP gets a ledger id and
 --     imports into Discord like any other entry.
 --
 -- Chat: one raid-chat line to open, one to announce the winner (or that
@@ -15,7 +15,7 @@
 local addonName, ns = ...
 ns = ns or {}
 
-local PREFIX = "QuebecGoldBid"
+local PREFIX = "GuildedBid"
 local DEFAULT_SECONDS = 30
 local MAX_BID = 100000
 
@@ -61,7 +61,7 @@ end
 local function announce(text)
   ns.message(text)
   local channel = groupChannel()
-  if channel then sendChat("[QG] " .. text, channel) end
+  if channel then sendChat("[Guilded] " .. text, channel) end
 end
 
 local function changed()
@@ -112,7 +112,7 @@ local function closeBidding(id)
     bidding.current = nil
   else
     auction.winner = ranked[1]
-    ns.message(string.format("Bidding closed: %s leads with %d GP (%d bid%s). Press Award or /qg bid award.",
+    ns.message(string.format("Bidding closed: %s leads with %d GP (%d bid%s). Press Award or /guilded bid award.",
       auction.winner.name, auction.winner.amount, #ranked, #ranked == 1 and "" or "s"))
   end
   changed()
@@ -132,7 +132,7 @@ local function openBidding(args)
   end
   local item = table.concat(args, " ", 2, last)
   if not minimum or minimum < 0 or item == "" then
-    ns.message("Usage: /qg bid start <min GP> <item or shift-click link> [seconds]")
+    ns.message("Usage: /guilded bid start <min GP> <item or shift-click link> [seconds]")
     return
   end
   local id = string.format("%d%03d", time(), math.random(0, 999))
@@ -141,7 +141,7 @@ local function openBidding(args)
     endsAt = clock() + seconds, bids = {}, open = true, channel = channel
   }
   sendAddon(string.format("OPEN|%s|%d|%d|%s", id, bidding.current.min, seconds, item), channel)
-  announce(string.format(L("Bidding on %s: min %d GP, %ds. Whisper me a number (e.g. 25) or use the Quebec Gold popup."),
+  announce(string.format(L("Bidding on %s: min %d GP, %ds. Whisper me a number (e.g. 25) or use the Guilded popup."),
     item, bidding.current.min, seconds))
   if C_Timer and C_Timer.After then C_Timer.After(seconds, function() closeBidding(id) end) end
   changed()
@@ -159,12 +159,12 @@ local function addBid(name, amount, replyTo, reply)
   elseif amount > MAX_BID then problem = "That bid is too high." end
   if problem then
     if reply == "addon" then sendAddon("REJECT|" .. auction.id .. "|" .. problem, "WHISPER", replyTo)
-    elseif reply == "whisper" then sendChat("[QG] " .. problem, "WHISPER", replyTo) end
+    elseif reply == "whisper" then sendChat("[Guilded] " .. problem, "WHISPER", replyTo) end
     return
   end
   auction.bids[name] = { amount = amount, at = clock() }
   if reply == "addon" then sendAddon("ACK|" .. auction.id .. "|" .. amount, "WHISPER", replyTo)
-  elseif reply == "whisper" then sendChat("[QG] " .. string.format(L("Bid of %d GP received for %s."), amount, plainItem(auction.item)), "WHISPER", replyTo) end
+  elseif reply == "whisper" then sendChat("[Guilded] " .. string.format(L("Bid of %d GP received for %s."), amount, plainItem(auction.item)), "WHISPER", replyTo) end
   changed()
 end
 bidding.addBid = addBid
@@ -211,10 +211,10 @@ function bidding.statusText()
   return table.concat(lines, "\n")
 end
 
--- /qg sim bids: fake raiders bid on the open item (test raids).
+-- /guilded sim bids: fake raiders bid on the open item (test raids).
 ns.simulateBids = function()
   local auction = bidding.current
-  if not auction or not auction.open then ns.message("Open bidding first (/qg bid start ...)."); return end
+  if not auction or not auction.open then ns.message("Open bidding first (/guilded bid start ...)."); return end
   local names = ns.SIM_NAMES or {}
   for i = 1, math.min(5, #names) do
     addBid(names[i], auction.min + math.random(0, 4) * 5, nil, nil)
@@ -243,7 +243,7 @@ local function updatePopup()
 end
 
 local function buildPopup()
-  popup = CreateFrame("Frame", "QuebecGoldBidPopup", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
+  popup = CreateFrame("Frame", "GuildedBidPopup", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
   popup:SetWidth(320)
   popup:SetHeight(140)
   popup:SetPoint("TOP", UIParent, "TOP", 0, -140)
@@ -263,7 +263,7 @@ local function buildPopup()
   end
   local title = popup:CreateFontString(nil, "OVERLAY", "GameFontNormal")
   title:SetPoint("TOP", popup, "TOP", 0, -14)
-  title:SetText(L("Quebec Gold - GP bidding"))
+  title:SetText(L("Guilded - GP bidding"))
   popup.item = popup:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
   popup.item:SetPoint("TOP", popup, "TOP", 0, -34)
   popup.info = popup:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
@@ -348,11 +348,11 @@ ns.commandHandlers["bid"] = function(args)
   elseif action == "status" then
     ns.message(bidding.statusText())
   else
-    ns.message("/qg bid start <min GP> <item> [seconds] | close | award | cancel | status")
+    ns.message("/guilded bid start <min GP> <item> [seconds] | close | award | cancel | status")
   end
 end
 ns.commandHelp = ns.commandHelp or {}
-table.insert(ns.commandHelp, { officer = true, text = "/qg bid start <min GP> <item> [seconds] | close | award | cancel | status - GP bidding" })
+table.insert(ns.commandHelp, { officer = true, text = "/guilded bid start <min GP> <item> [seconds] | close | award | cancel | status - GP bidding" })
 
 local function onEvent(_, event, ...)
   if event == "PLAYER_LOGIN" then
@@ -410,7 +410,7 @@ frame:RegisterEvent("PLAYER_LOGIN")
 frame:RegisterEvent("CHAT_MSG_WHISPER")
 frame:RegisterEvent("CHAT_MSG_ADDON")
 frame:SetScript("OnEvent", function(...)
-  if ns.moduleActive and not ns.moduleActive("bidding") then return end -- /qg modules
+  if ns.moduleActive and not ns.moduleActive("bidding") then return end -- /guilded modules
   local ok, err = pcall(onEvent, ...)
   if not ok then ns.message("Bidding error: " .. tostring(err)) end
 end)

@@ -7,9 +7,9 @@ import { createEpgpService } from "../src/services/epgp.js";
 describe("companion standings file", () => {
   it("finds the addon folder next to the WTF folder", () => {
     const path = resolveStandingsPath({
-      watchFile: "C:\\Games\\World of Warcraft\\_forever_\\WTF\\Account\\ME\\SavedVariables\\QuebecGold.lua"
+      watchFile: "C:\\Games\\World of Warcraft\\_forever_\\WTF\\Account\\ME\\SavedVariables\\Guilded.lua"
     });
-    expect(path?.replace(/\\/g, "/")).toBe("C:/Games/World of Warcraft/_forever_/Interface/AddOns/QuebecGold/Standings.lua");
+    expect(path?.replace(/\\/g, "/")).toBe("C:/Games/World of Warcraft/_forever_/Interface/AddOns/Guilded/Standings.lua");
   });
 
   it("writes valid Lua even for awkward names", () => {
@@ -32,9 +32,9 @@ describe("companion standings file", () => {
     });
     expect(() => luaparse.parse(lua)).not.toThrow();
     expect(lua).toContain('"QG-20260925-120000-Kev",');
-    expect(lua).toContain('QuebecGoldDungeonBoard = { season = "Season \\"1\\"", rows = {');
+    expect(lua).toContain('GuildedDungeonBoard = { season = "Season \\"1\\"", rows = {');
     expect(lua).toContain('{ name = "Kev", points = 240 },');
-    expect(standingsToLua({ updatedAt: "x", standings: [] })).toContain("QuebecGoldDungeonBoard = nil");
+    expect(standingsToLua({ updatedAt: "x", standings: [] })).toContain("GuildedDungeonBoard = nil");
   });
 });
 

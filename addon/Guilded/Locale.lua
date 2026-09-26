@@ -1,6 +1,6 @@
 -- Member-facing text in English and French. English text is the key;
 -- French comes from FR below (accents written as byte escapes so this file
--- stays plain ASCII). Language: /qg lang en|fr|auto; "auto" (default)
+-- stays plain ASCII). Language: /guilded lang en|fr|auto; "auto" (default)
 -- follows the game client (frFR = French). Officer-only screens stay English.
 -- To add a translation, add a line to FR below.
 local addonName, ns = ...
@@ -21,7 +21,7 @@ local FR = {
   ["GP bidding"] = "Ench\195\168res GP",
   ["Calendar"] = "Calendrier",
   ["Test tools"] = "Outils de test",
-  ["Minimap button hidden? /qg minimap show. Problem? Press Diagnostics and send a screenshot to an officer."] = "Bouton cach\195\169 ? /qg minimap show. Un probl\195\168me ? Appuyez sur Diagnostic et envoyez une capture \195\160 un officier.",
+  ["Minimap button hidden? /guilded minimap show. Problem? Press Diagnostics and send a screenshot to an officer."] = "Bouton cach\195\169 ? /guilded minimap show. Un probl\195\168me ? Appuyez sur Diagnostic et envoyez une capture \195\160 un officier.",
   ["Status"] = "Statut",
   ["Start now"] = "D959marrer",
   ["Complete"] = "Termin959",
@@ -69,14 +69,14 @@ local FR = {
   ["All commands"] = "Commandes",
   ["Addon version"] = "Version",
   ["Hide minimap button"] = "Cacher le bouton",
-  ["Quebec Gold - GP bidding"] = "Quebec Gold - Ench\195\168res GP",
+  ["Guilded - GP bidding"] = "Guilded - Ench\195\168res GP",
   ["Bid"] = "Miser",
   ["Pass"] = "Passer",
   ["Min %d GP   -   %ds left"] = "Min %d GP   -   %ds restantes",
   ["   -   your PR %.2f"] = "   -   votre PR %.2f",
   ["Your bid: %d GP"] = "Votre mise : %d GP",
   ["You won %s for %s GP."] = "Vous remportez %s pour %s GP.",
-  ["Bidding on %s: min %d GP, %ds. Whisper me a number (e.g. 25) or use the Quebec Gold popup."] = "Ench\195\168res sur %s : min %d GP, %ds. Chuchotez-moi un nombre (ex. 25) ou utilisez la fen\195\170tre Quebec Gold.",
+  ["Bidding on %s: min %d GP, %ds. Whisper me a number (e.g. 25) or use the Guilded popup."] = "Ench\195\168res sur %s : min %d GP, %ds. Chuchotez-moi un nombre (ex. 25) ou utilisez la fen\195\170tre Guilded.",
   ["%s goes to %s for %d GP."] = "%s va \195\160 %s pour %d GP.",
   ["No bids on %s."] = "Aucune mise sur %s.",
   ["Bidding on %s cancelled."] = "Ench\195\168res sur %s annul\195\169es.",
@@ -118,8 +118,8 @@ ns.commandHandlers["lang"] = function(args)
     settings.language = nil
     ns.message(ns.L("Language follows your game client. /reload to update the window."))
   else
-    ns.message("/qg lang en | fr | auto   (now: " .. language() .. ")")
+    ns.message("/guilded lang en | fr | auto   (now: " .. language() .. ")")
   end
 end
 ns.commandHelp = ns.commandHelp or {}
-table.insert(ns.commandHelp, "/qg lang en|fr|auto - language / langue")
+table.insert(ns.commandHelp, "/guilded lang en|fr|auto - language / langue")

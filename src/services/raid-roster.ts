@@ -1,6 +1,6 @@
 import type { PrismaClient } from "@prisma/client";
 
-// The next raid's signed-up players, for the addon's mass invite (/qg invite
+// The next raid's signed-up players, for the addon's mass invite (/guilded invite
 // raid). Signups are per Discord member, so each is shown as their main
 // character (or their first one): the name an officer can invite in game.
 

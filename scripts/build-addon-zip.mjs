@@ -3,14 +3,14 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 
-const addonDir = "addon/QuebecGold";
-const toc = readFileSync(join(addonDir, "QuebecGold.toc"), "utf8");
+const addonDir = "addon/Guilded";
+const toc = readFileSync(join(addonDir, "Guilded.toc"), "utf8");
 const versionMatch = toc.match(/^## Version:\s*(\S+)/m);
-if (!versionMatch) throw new Error("Could not find ## Version in QuebecGold.toc");
+if (!versionMatch) throw new Error("Could not find ## Version in Guilded.toc");
 const version = versionMatch[1];
 
-const staging = mkdtempSync(join(tmpdir(), "quebecgold-zip-"));
-const stagingAddon = join(staging, "QuebecGold");
+const staging = mkdtempSync(join(tmpdir(), "guilded-zip-"));
+const stagingAddon = join(staging, "Guilded");
 
 // validate-addon.mjs is a dev-only sanity check (see the file itself); it has
 // no place in what guild members download and run in WoW.
@@ -21,7 +21,7 @@ cpSync(addonDir, stagingAddon, {
 
 const distDir = "dist";
 if (!existsSync(distDir)) mkdirSync(distDir);
-const zipName = `QuebecGold-v${version}.zip`;
+const zipName = `Guilded-v${version}.zip`;
 const zipPath = join(distDir, zipName);
 if (existsSync(zipPath)) rmSync(zipPath);
 
@@ -30,7 +30,7 @@ console.log(`Building ${zipPath} from addon version ${version}...`);
 // CurseForge and non-Windows unzip tools mishandle. Windows' own bsdtar writes
 // a normal zip with forward slashes.
 const tar = join(process.env.SystemRoot ?? "C:/Windows", "System32", "tar.exe");
-const result = spawnSync(existsSync(tar) ? tar : "tar", ["-a", "-c", "-f", zipPath, "-C", staging, "QuebecGold"], { stdio: "inherit" });
+const result = spawnSync(existsSync(tar) ? tar : "tar", ["-a", "-c", "-f", zipPath, "-C", staging, "Guilded"], { stdio: "inherit" });
 
 rmSync(staging, { recursive: true, force: true });
 

@@ -1,13 +1,13 @@
-# Quebec Gold command reference
+# Guilded command reference
 
-Quick lookup for the in-game addon (`/qg ...`) and the Discord bot (`/...`).
+Quick lookup for the in-game addon (`/guilded ...`) and the Discord bot (`/...`).
 **Who** means who is allowed to run it: *Everyone*, *Officer* (in game: guild
-rank 0/1 unless changed with `/qg officer`; on Discord: the Officer or Guild
+rank 0/1 unless changed with `/guilded officer`; on Discord: the Officer or Guild
 Master role, or Administrator), or the specific Discord role named.
 
-## In game: `/qg`
+## In game: `/guilded`
 
-**Easiest way: click the gold coin on the minimap** (or type `/qg menu`).
+**Easiest way: click the gold coin on the minimap** (or type `/guilded menu`).
 The window has a **sidebar** on the left with the pages grouped under headings:
 
 - **Overview:** **Home** (what is going on right now, your standing from Discord, your gear check, and whether your data has reached Discord, with big buttons for the common things), **Me**, **Standings**
@@ -21,54 +21,54 @@ Hover a page name for what it is for. The **Player** box (target someone, or **M
 
 | Command | What it does |
 | --- | --- |
-| `/qg help` | List commands |
-| `/qg inspect` | Check your gear, durability, professions, and item level. Shows READY / PARTIAL / NOT_READY and names empty slots. Also shares a summary with the guild |
-| `/qg status` | Show the active raid, if any |
-| `/qg roster` | List characters the addon knows about |
-| `/qg attune <key>` | Mark your own attunement done, e.g. `/qg attune Onyxia Key` |
-| `/qg attune <key> clear` | Mark it not done |
-| `/qg diag` | Show recent addon errors / blocked actions (send this when reporting a bug) |
-| `/qg menu` | Open the tools window |
-| `/qg share` | One paste with your character, latest gear check, consumables and attunements (a box to copy). In Discord: `/character sync` |
-| `/qg character` | One line with your character (name, class, race, level, spec, professions) for `/character import` |
-| `/qg enchants [on/off/level <n>]` | Show or change the missing-enchant check (which slots, from what level) |
-| `/qg consumes` / `/qg consumes me` | Officers: who in the group lacks a flask/elixir or food. Anyone: your own active consumables |
-| `/qg invite raid` / `/qg invite missing` | Officers: invite everyone signed up for the next Discord raid (their main characters, from the companion's Standings.lua, for raids in the next 36 hours), or just list who is not in your group yet. Invites go out 0.6 seconds apart; convert to a raid yourself when the group passes 5 |
-| `/qg autoinvite on [phrase]` / `off` / `status` | Officers: guild-invite anyone who whispers you the phrase (default `ginv`). Off by default; skips people already in the guild, never in combat, max 15 invites an hour |
-| `/qg backup` | A box with one code (`QGBKP1:...`) holding this guild's saved data (raids, EPGP ledger, roster, attendance, loot, settings). Copy it somewhere safe |
-| `/qg restore` / `/qg restore undo` | Paste a backup code and press Restore twice (first shows what it holds, then replaces your data). A backup from another guild is refused; `undo` puts back what was there before |
-| `/qg digest [on/off]` | What changed since your last login (also shown once at login) |
-| `/qg peers` | Which guildmates run which addon version this session |
-| `/qg snapshot [label]` / `/qg snapshot list` | Officers: record who is in the group right now (also counts as presence for the active raid) |
-| `/qg calendar check` | Checks whether the in-game guild calendar can be synced (send the result to an officer) |
-| `/qg lang en` / `fr` / `auto` | Language of your window and bid popup (auto = same as your game client) |
-| `/qg standings [player]` | EPGP standings from Discord (top 10, or one player) |
-| `/qg dungeon status` | The dungeon run being recorded: state, timer, bosses, deaths |
-| `/qg dungeon start` / `complete` / `abandon` | Fix a run by hand when detection missed it (group leader, officer, or solo) |
-| `/qg dungeon check` | Checks which dungeon features work on this client (send the result to an officer) |
-| `/qg version` | Your addon version. You're also told automatically when a guildmate has a newer one |
-| `/qg minimap show` / `hide` / `reset` | Control the minimap button |
-| `/qg officer list` | Show which ranks count as officers, and whether you do |
-| `/qg modules` | List the optional parts (games, bidding, dungeon, calendar, sim) and whether each is on |
-| `/qg modules off\|on <module>` | Turn one off or back on just for you (also in the Tools tab). Back on after being off at login needs `/reload` |
+| `/guilded help` | List commands |
+| `/guilded inspect` | Check your gear, durability, professions, and item level. Shows READY / PARTIAL / NOT_READY and names empty slots. Also shares a summary with the guild |
+| `/guilded status` | Show the active raid, if any |
+| `/guilded roster` | List characters the addon knows about |
+| `/guilded attune <key>` | Mark your own attunement done, e.g. `/guilded attune Onyxia Key` |
+| `/guilded attune <key> clear` | Mark it not done |
+| `/guilded diag` | Show recent addon errors / blocked actions (send this when reporting a bug) |
+| `/guilded menu` | Open the tools window |
+| `/guilded share` | One paste with your character, latest gear check, consumables and attunements (a box to copy). In Discord: `/character sync` |
+| `/guilded character` | One line with your character (name, class, race, level, spec, professions) for `/character import` |
+| `/guilded enchants [on/off/level <n>]` | Show or change the missing-enchant check (which slots, from what level) |
+| `/guilded consumes` / `/guilded consumes me` | Officers: who in the group lacks a flask/elixir or food. Anyone: your own active consumables |
+| `/guilded invite raid` / `/guilded invite missing` | Officers: invite everyone signed up for the next Discord raid (their main characters, from the companion's Standings.lua, for raids in the next 36 hours), or just list who is not in your group yet. Invites go out 0.6 seconds apart; convert to a raid yourself when the group passes 5 |
+| `/guilded autoinvite on [phrase]` / `off` / `status` | Officers: guild-invite anyone who whispers you the phrase (default `ginv`). Off by default; skips people already in the guild, never in combat, max 15 invites an hour |
+| `/guilded backup` | A box with one code (`QGBKP1:...`) holding this guild's saved data (raids, EPGP ledger, roster, attendance, loot, settings). Copy it somewhere safe |
+| `/guilded restore` / `/guilded restore undo` | Paste a backup code and press Restore twice (first shows what it holds, then replaces your data). A backup from another guild is refused; `undo` puts back what was there before |
+| `/guilded digest [on/off]` | What changed since your last login (also shown once at login) |
+| `/guilded peers` | Which guildmates run which addon version this session |
+| `/guilded snapshot [label]` / `/guilded snapshot list` | Officers: record who is in the group right now (also counts as presence for the active raid) |
+| `/guilded calendar check` | Checks whether the in-game guild calendar can be synced (send the result to an officer) |
+| `/guilded lang en` / `fr` / `auto` | Language of your window and bid popup (auto = same as your game client) |
+| `/guilded standings [player]` | EPGP standings from Discord (top 10, or one player) |
+| `/guilded dungeon status` | The dungeon run being recorded: state, timer, bosses, deaths |
+| `/guilded dungeon start` / `complete` / `abandon` | Fix a run by hand when detection missed it (group leader, officer, or solo) |
+| `/guilded dungeon check` | Checks which dungeon features work on this client (send the result to an officer) |
+| `/guilded version` | Your addon version. You're also told automatically when a guildmate has a newer one |
+| `/guilded minimap show` / `hide` / `reset` | Control the minimap button |
+| `/guilded officer list` | Show which ranks count as officers, and whether you do |
+| `/guilded modules` | List the optional parts (games, bidding, dungeon, calendar, sim) and whether each is on |
+| `/guilded modules off\|on <module>` | Turn one off or back on just for you (also in the Tools tab). Back on after being off at login needs `/reload` |
 
 ### Officers: raid and EPGP
 
 | Command | What it does |
 | --- | --- |
-| `/qg start <title>` | Start a raid, e.g. `/qg start Molten Core` (survives /reload) |
-| `/qg attendance <player> [PRESENT\|LATE\|ABSENT]` | Record attendance (default PRESENT) |
-| `/qg attendance seen` | Mark PRESENT everyone who was in the raid group at any point since `/qg start` (tracked automatically; keeps anything already marked) |
-| `/qg attendance group [status]` | Mark everyone in the group right now |
-| `/qg boss <name>` | Record a boss kill |
-| `/qg award <player> <amount> [reason]` | Give EP |
-| `/qg award group <amount> [reason]` | Give EP to everyone in the group |
-| `/qg gp <player> <amount> [reason]` | Charge GP for an item |
-| `/qg deduct <player> <amount> [reason]` | Remove EP |
-| `/qg loot <player> <item> [cost]` | Record who got an item (shift-click links work) |
-| `/qg attune <player> <key> [clear]` | Set someone else's attunement, e.g. `/qg attune Bob "Onyxia Key"` |
-| `/qg end` | End the raid |
-| `/qg export` | Mark a sync point, then `/reload` so the game saves, then run the companion |
+| `/guilded start <title>` | Start a raid, e.g. `/guilded start Molten Core` (survives /reload) |
+| `/guilded attendance <player> [PRESENT\|LATE\|ABSENT]` | Record attendance (default PRESENT) |
+| `/guilded attendance seen` | Mark PRESENT everyone who was in the raid group at any point since `/guilded start` (tracked automatically; keeps anything already marked) |
+| `/guilded attendance group [status]` | Mark everyone in the group right now |
+| `/guilded boss <name>` | Record a boss kill |
+| `/guilded award <player> <amount> [reason]` | Give EP |
+| `/guilded award group <amount> [reason]` | Give EP to everyone in the group |
+| `/guilded gp <player> <amount> [reason]` | Charge GP for an item |
+| `/guilded deduct <player> <amount> [reason]` | Remove EP |
+| `/guilded loot <player> <item> [cost]` | Record who got an item (shift-click links work) |
+| `/guilded attune <player> <key> [clear]` | Set someone else's attunement, e.g. `/guilded attune Bob "Onyxia Key"` |
+| `/guilded end` | End the raid |
+| `/guilded export` | Mark a sync point, then `/reload` so the game saves, then run the companion |
 
 ### Officers: GP bidding (Loot tab)
 
@@ -81,34 +81,34 @@ one for the winner.
 
 | Command | What it does |
 | --- | --- |
-| `/qg bid start <min GP> <item> [seconds]` | Open bidding (default 30 s) |
-| `/qg bid close` | Stop early and show the leader |
-| `/qg bid award` | Give it to the winner at their bid (records loot + GP) |
-| `/qg bid cancel` | Cancel, nothing recorded |
-| `/qg bid status` | Current bids |
+| `/guilded bid start <min GP> <item> [seconds]` | Open bidding (default 30 s) |
+| `/guilded bid close` | Stop early and show the leader |
+| `/guilded bid award` | Give it to the winner at their bid (records loot + GP) |
+| `/guilded bid cancel` | Cancel, nothing recorded |
+| `/guilded bid status` | Current bids |
 
 ### Officers: test raid (no raids are out yet)
 
 | Command | What it does |
 | --- | --- |
-| `/qg sim start` | Start a `[TEST]` raid with fake raiders (Testalpha, Testbravo, ...) in the group |
-| `/qg sim bids` | Fake raiders bid on the open item |
-| `/qg sim end` | Kill 3 test bosses, mark attendance, give a test item, end it |
-| `/qg sim dungeon [minutes]` | Save a finished fake dungeon run (you + 4 fake players) to test the export, points and records |
-| `/qg sim clear` | Remove every test raid and the EP/GP it recorded, and test dungeon runs |
+| `/guilded sim start` | Start a `[TEST]` raid with fake raiders (Testalpha, Testbravo, ...) in the group |
+| `/guilded sim bids` | Fake raiders bid on the open item |
+| `/guilded sim end` | Kill 3 test bosses, mark attendance, give a test item, end it |
+| `/guilded sim dungeon [minutes]` | Save a finished fake dungeon run (you + 4 fake players) to test the export, points and records |
+| `/guilded sim clear` | Remove every test raid and the EP/GP it recorded, and test dungeon runs |
 
 ### Officers: modules for the whole guild
 
 | Command | What it does |
 | --- | --- |
-| `/qg modules guild off\|on <module>` | Turn a module off (or back on) for everyone. Shared with online members and with members when they log in; nobody can turn a guild-off module back on for themselves |
+| `/guilded modules guild off\|on <module>` | Turn a module off (or back on) for everyone. Shared with online members and with members when they log in; nobody can turn a guild-off module back on for themselves |
 
 ### Guild master only
 
 | Command | What it does |
 | --- | --- |
-| `/qg officer rank <index> on\|off` | Make a guild rank count as officer (0 = GM, 1 = next rank...) |
-| `/qg officer add\|remove <name>` | Make one person an addon officer |
+| `/guilded officer rank <index> on\|off` | Make a guild rank count as officer (0 = GM, 1 = next rank...) |
+| `/guilded officer add\|remove <name>` | Make one person an addon officer |
 
 ### Roll games (fun only: no gold, nothing owed)
 
@@ -116,10 +116,10 @@ Anyone in a party or raid can run one; your client is the referee. Players type 
 
 | Command | What it does |
 | --- | --- |
-| `/qg games highroll [max]` | Everyone rolls, the highest wins (a tie rolls off) |
-| `/qg games deathroll [max]` | Everyone rolls, the lowest is out, again until one is left |
-| `/qg games duel <player> [max]` | Two players, classic deathroll: each rolls the last number, whoever rolls 1 loses |
-| `/qg games roll` / `remind` / `add <p>` / `remove <p>` / `cancel` / `status` | Call the roll, nudge, add or remove a player, stop, see what is running |
+| `/guilded games highroll [max]` | Everyone rolls, the highest wins (a tie rolls off) |
+| `/guilded games deathroll [max]` | Everyone rolls, the lowest is out, again until one is left |
+| `/guilded games duel <player> [max]` | Two players, classic deathroll: each rolls the last number, whoever rolls 1 loses |
+| `/guilded games roll` / `remind` / `add <p>` / `remove <p>` / `cancel` / `status` | Call the roll, nudge, add or remove a player, stop, see what is running |
 
 The gold casino (wagers, house games, the debt ledger) was removed on purpose: gambling gold inside a guild is too risky.
 
@@ -140,7 +140,7 @@ messages follow the language chosen in `/setup` (English or French).
 | `/who <character>` | Look anyone up: main and alts, professions, EP/GP/PR, 30-day attendance, last seen |
 | `/character add <name> <realm> <class> <main> [spec] [level] [race]` / `/character list` | Link your WoW characters (needed before imports can match you) |
 | `/character claim <name>` | Link a character your addon already reported (pick it from the list; nothing to type or paste). Most people never need it: characters whose name matches the Discord nickname are linked automatically |
-| `/character import <code> [main]` | Link or refresh a character from the line `/qg character` shows in game (name, realm, class, race, level, spec, professions), no typing |
+| `/character import <code> [main]` | Link or refresh a character from the line `/guilded character` shows in game (name, realm, class, race, level, spec, professions), no typing |
 | `/wcl list` | The latest Warcraft Logs reports the officers pulled in |
 | `/apply` | Submit a guild application |
 | `/raid signup <raid> <role> [availability]` | Sign up (Tank, Healer, DPS). `availability:Maybe` doesn't take a slot. If your role is full you go on the **waitlist** and get a DM when a slot opens |
@@ -206,7 +206,7 @@ After each import, completed runs and new records are posted once in the dungeon
 | `/raid boss <raid> <name> <Killed\|Pending>` | Boss status |
 | `/raid attendance <raid> <player> <status> [notes]` | Record attendance |
 | `/raid note <raid> <text> [boss]` | Officer note (general, per boss, what to improve); shown in `/raid status` to raid leaders |
-| `/readiness raid` also shows a **Consumables** section (who has no flask/elixir or food) from the officer's last in-game `/qg consumes` scan, if it is under 3 hours old |
+| `/readiness raid` also shows a **Consumables** section (who has no flask/elixir or food) from the officer's last in-game `/guilded consumes` scan, if it is under 3 hours old |
 | `/readiness member <player>` / `/readiness raid` | Check other people's readiness (also Guild Master, Loot Leader, Class Leader). `/readiness raid` posts the whole-guild board in the private **raid-readiness** channel when one is set (otherwise it replies only to you). The board is also refreshed after every `/import-apply` that carries gear checks |
 
 Proposed EP = attendance EP (present or late) + boss kills × boss EP + a
@@ -236,7 +236,7 @@ Approve, and a raid can never be paid twice.
 | `/config loot-mode <EPGP\|Council>` | Council mode turns `/loot auction` and `/loot bid` off; officers decide with `/loot award` |
 | `/character unclaimed` / `link <name> <player>` / `autolink` | Characters the addons reported that nobody has linked: list them, link one by hand, or link every one whose name matches a Discord member |
 | `/config auto-import <true/false>` | Apply what the companion uploads by itself (ledger, attendance, loot, dungeon runs, gear checks, discovered characters) with no `/import-apply`. Also a button in `/setup` step 7 |
-| `/setup` | **Start here.** Guided setup: roles, channels (core, dungeon, extras; one button makes the whole WoW section under a "Quebec Gold" category), welcome, EPGP values. `/setup status:true` shows the checklist |
+| `/setup` | **Start here.** Guided setup: roles, channels (core, dungeon, extras; one button makes the whole WoW section under a "Guilded" category), welcome, EPGP values. `/setup status:true` shows the checklist |
 | `/wcl report <url> [raid] [post]` | Pull a Warcraft Logs report (link or code): zone, duration, boss kills and wipes, player list. Saved, posted to the raid logs channel, and linked to a Discord raid if you give its id. Needs `WCL_CLIENT_ID` / `WCL_CLIENT_SECRET` in `.env.local` |
 | `/testraid start [raiders] [starts_in] [realm]` | Fake `[TEST]` raid with fake raiders signed up (hits role caps, Maybe, waitlist) |
 | `/testraid finish <raid> [via_addon]` | Play it: attendance (late, no-show, walk-in), boss kills, loot, end, EP proposal. `via_addon` sends attendance through `/import-apply` instead |
@@ -283,14 +283,14 @@ channel once, `raidReminderMinutes` before start (default 60, 0 = off).
 
 ## Getting addon data into Discord
 
-1. In game (officer): `/qg export`, then `/reload`.
+1. In game (officer): `/guilded export`, then `/reload`.
 2. Keep the companion running on your PC (`npm run companion:watch`). When the game
    saves, it uploads automatically and prints the `/import-apply` line to use.
 3. On Discord: `/import-apply <id>` with the id the companion printed.
 
 The companion also writes the bot's EPGP standings into the addon folder
 every 15 minutes. After a `/reload`, your client shares them with online
-guildmates, so everyone gets `/qg standings` and the Discord numbers in the
+guildmates, so everyone gets `/guilded standings` and the Discord numbers in the
 EPGP tab.
 
 Readiness from everyone who was online with the addon rides along in your
@@ -313,7 +313,7 @@ A **raid core** is a named roster (e.g. "Tuesday MC core"); a guild can have sev
 
 ### Point pools
 
-By default everyone has **one guild pool** of EP/GP, whatever raid core they raid with. A core can opt into **its own pool** (`/core rules pool:separate`): from then on its raids pay attendance and boss EP into that pool, GP from its loot auctions and `/loot award` is charged to it, and its standings are separate. Use the `core:` option on `/epgp balance`, `history`, `leaderboard`, `award-ep`, `award-gp` and `decay` to work on a pool; without it you get the guild pool (`/epgp balance` also lists your standing in every separate pool). Decay uses the core's own percentage when set. The in-game standings (`/qg standings`, Standings.lua) show the **guild pool** only. A core that has points in its own pool can't be deleted or switched back to the shared pool.
+By default everyone has **one guild pool** of EP/GP, whatever raid core they raid with. A core can opt into **its own pool** (`/core rules pool:separate`): from then on its raids pay attendance and boss EP into that pool, GP from its loot auctions and `/loot award` is charged to it, and its standings are separate. Use the `core:` option on `/epgp balance`, `history`, `leaderboard`, `award-ep`, `award-gp` and `decay` to work on a pool; without it you get the guild pool (`/epgp balance` also lists your standing in every separate pool). Decay uses the core's own percentage when set. The in-game standings (`/guilded standings`, Standings.lua) show the **guild pool** only. A core that has points in its own pool can't be deleted or switched back to the shared pool.
 
 ## Automatic character sync
 
@@ -323,7 +323,7 @@ By default everyone has **one guild pool** of EP/GP, whatever raid core they rai
 4. Anyone left over picks their character with `/character claim` (a dropdown, no code), or an officer uses `/character link`.
 5. With `/config auto-import true` steps 1-3 happen right after each upload, with no officer action.
 
-The addon's `/qg character` and `/qg share` codes still work as a fallback. Linking trusts the Discord name or the person's own pick (small, trusted guild); officers can see and fix links with `/character unclaimed` and `/character link`. Discord does not let a bot see a member's Battle.net connection without a separate login page, and Blizzard has no character list for Forever, so "linked WoW account" cannot be used.
+The addon's `/guilded character` and `/guilded share` codes still work as a fallback. Linking trusts the Discord name or the person's own pick (small, trusted guild); officers can see and fix links with `/character unclaimed` and `/character link`. Discord does not let a bot see a member's Battle.net connection without a separate login page, and Blizzard has no character list for Forever, so "linked WoW account" cannot be used.
 
 ## Fewer things to type
 

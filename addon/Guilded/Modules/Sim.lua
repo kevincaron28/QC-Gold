@@ -4,7 +4,7 @@
 -- exporting this raid and running the companion lines up with a Discord
 -- test raid started around the same time.
 --
--- Everything is marked test = true and /qg sim clear removes it, including
+-- Everything is marked test = true and /guilded sim clear removes it, including
 -- any EP/GP it recorded, so it never reaches a real export by accident.
 local addonName, ns = ...
 ns = ns or {}
@@ -15,11 +15,11 @@ local SIM_BOSSES = { "Test Boss One", "Test Boss Two", "Test Boss Three" }
 ns.SIM_NAMES = SIM_NAMES
 
 local function db() return ns.getDb and ns.getDb() end
-local clearSimDungeons -- defined with /qg sim dungeon below
+local clearSimDungeons -- defined with /guilded sim dungeon below
 
 local function simStart()
   local raid = ns.getActiveRaid and ns.getActiveRaid()
-  if raid then ns.message("A raid is already active (" .. raid.title .. "). /qg end it first."); return end
+  if raid then ns.message("A raid is already active (" .. raid.title .. "). /guilded end it first."); return end
   ns.runCommand("start [TEST] Simulated raid")
   raid = ns.getActiveRaid()
   if not raid then return end
@@ -31,18 +31,18 @@ local function simStart()
     if name ~= "Testindia" then d.presence[raid.id][name] = { firstSeen = ns.now(), lastSeen = ns.now(), test = true } end
   end
   ns.runCommand("attendance Testbravo LATE")
-  ns.message("Test raid started with " .. (#SIM_NAMES - 1) .. " fake raiders in the group. Try the Raid and EPGP tabs, then /qg sim end.")
+  ns.message("Test raid started with " .. (#SIM_NAMES - 1) .. " fake raiders in the group. Try the Raid and EPGP tabs, then /guilded sim end.")
 end
 
 local function simEnd()
   local raid = ns.getActiveRaid and ns.getActiveRaid()
-  if not raid or not raid.test then ns.message("No test raid running. /qg sim start first."); return end
+  if not raid or not raid.test then ns.message("No test raid running. /guilded sim start first."); return end
   for _, boss in ipairs(SIM_BOSSES) do ns.runCommand("boss " .. boss) end
   ns.runCommand("attendance seen")
   ns.runCommand("loot Testcharlie [Test Helm of Testing] 30")
   ns.runCommand("gp Testcharlie 30 Test Helm of Testing")
   ns.runCommand("end")
-  ns.message("Test raid ended. /reload to save it; the companion will send it to Discord. /qg sim clear removes it.")
+  ns.message("Test raid ended. /reload to save it; the companion will send it to Discord. /guilded sim clear removes it.")
 end
 
 -- Removes every test raid and everything recorded during one.
@@ -121,7 +121,7 @@ local function simDungeon(minutesArg)
     completedBy = "boss", recorder = ns.playerName(), reporters = { [ns.playerName()] = true },
     encounters = {}, players = players
   }
-  ns.message(string.format("Test dungeon run saved (%d:%02d, you + %s). /reload so the companion sends it; an officer runs /import-apply. /qg sim clear removes it here, /testraid cleanup in Discord.",
+  ns.message(string.format("Test dungeon run saved (%d:%02d, you + %s). /reload so the companion sends it; an officer runs /import-apply. /guilded sim clear removes it here, /testraid cleanup in Discord.",
     math.floor(duration / 60), duration % 60, table.concat({ SIM_NAMES[1], SIM_NAMES[2], SIM_NAMES[3], SIM_NAMES[4] }, ", ")))
 end
 
@@ -144,14 +144,14 @@ ns.commandHandlers["sim"] = function(args)
   elseif action == "end" then simEnd()
   elseif action == "clear" then simClear()
   elseif action == "dungeon" then
-    if ns.moduleActive and not ns.moduleActive("dungeon") then ns.message("The Dungeons module is off (/qg modules)."); return end
+    if ns.moduleActive and not ns.moduleActive("dungeon") then ns.message("The Dungeons module is off (/guilded modules)."); return end
     simDungeon(args[2])
   elseif action == "bids" then
-    if ns.moduleActive and not ns.moduleActive("bidding") then ns.message("GP bidding is off (/qg modules).")
+    if ns.moduleActive and not ns.moduleActive("bidding") then ns.message("GP bidding is off (/guilded modules).")
     elseif ns.simulateBids then ns.simulateBids() else ns.message("GP bidding is not loaded.") end
   else
-    ns.message("/qg sim start | end | bids (fake bids on open bidding) | dungeon [minutes] | clear")
+    ns.message("/guilded sim start | end | bids (fake bids on open bidding) | dungeon [minutes] | clear")
   end
 end
 ns.commandHelp = ns.commandHelp or {}
-table.insert(ns.commandHelp, { officer = true, text = "/qg sim start|end|bids|dungeon|clear - test raid or dungeon run with fake players" })
+table.insert(ns.commandHelp, { officer = true, text = "/guilded sim start|end|bids|dungeon|clear - test raid or dungeon run with fake players" })

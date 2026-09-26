@@ -1,4 +1,4 @@
--- Login digest: "since your last login" in one chat line, and /qg digest.
+-- Login digest: "since your last login" in one chat line, and /guilded digest.
 --
 -- Reads only what this client already saved (new guild members seen, EPGP
 -- ledger entries, finished raids, loot rows), so it needs no new sync. It
@@ -105,4 +105,4 @@ ns.commandHandlers["digest"] = function(args)
   end
 end
 ns.commandHelp = ns.commandHelp or {}
-table.insert(ns.commandHelp, "/qg digest [on|off] - what changed since your last login (shown once at login)")
+table.insert(ns.commandHelp, "/guilded digest [on|off] - what changed since your last login (shown once at login)")

@@ -16,7 +16,7 @@ describe("character import line", () => {
   });
 
   it("rejects text that is not a character line", () => {
-    expect(() => parseCharacterString("hello")).toThrow(/Quebec Gold character line/);
+    expect(() => parseCharacterString("hello")).toThrow(/Guilded character line/);
     expect(() => parseCharacterString("QG1|Bob||WARRIOR|Human|60||")).toThrow(/missing/);
   });
 

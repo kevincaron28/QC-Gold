@@ -3,9 +3,9 @@
 -- Turns a guild group's dungeon run into one permanent record:
 --   DETECTED  entered a 5-player dungeon (type "party")
 --   STARTING  waiting for the first pull
---   ACTIVE    timer running (first combat, or /qg dungeon start)
---   COMPLETED final boss killed (Encounter Journal) or /qg dungeon complete
---   ABANDONED left for 15 minutes, group disbanded, or /qg dungeon abandon
+--   ACTIVE    timer running (first combat, or /guilded dungeon start)
+--   COMPLETED final boss killed (Encounter Journal) or /guilded dungeon complete
+--   ABANDONED left for 15 minutes, group disbanded, or /guilded dungeon abandon
 --   INVALID   marked unusable (e.g. zero duration)
 --
 -- Every addon user in the group tracks the run; one "recorder" (lowest
@@ -17,12 +17,12 @@
 -- NOT computed here: the bot applies its own rules to validated runs.
 --
 -- All WoW API access goes through ns.compat (Compat.lua). Everything is
--- saved in QuebecGoldDB.dungeon on every change, so /reload, a disconnect,
+-- saved in GuildedDB.dungeon on every change, so /reload, a disconnect,
 -- or a crash resumes the run.
 local addonName, ns = ...
 ns = ns or {}
 
-local PREFIX = "QuebecGoldDgn"
+local PREFIX = "GuildedDgn"
 local PROTOCOL_VERSION = 1
 local SCHEMA_VERSION = 1
 local ABANDON_AFTER_SECONDS = 15 * 60
@@ -211,7 +211,7 @@ local function finish(state, reason)
   local run = d and d.current
   if not run or TERMINAL[run.state] then return end
   if state == "COMPLETED" and run.state ~= "ACTIVE" then
-    ns.message("The run hasn't started yet (no pull). Use /qg dungeon start first, or abandon it.")
+    ns.message("The run hasn't started yet (no pull). Use /guilded dungeon start first, or abandon it.")
     return
   end
   run.state = state
@@ -268,7 +268,7 @@ local function evaluate()
     local fresh = newRun(instance)
     save(fresh)
     if fresh.recorder == me() then send(string.format("START|%s|%d", fresh.id, fresh.instanceId)) end
-    ns.message(string.format("Dungeon detected: %s. The timer starts on the first pull (or /qg dungeon start).", instance.name))
+    ns.message(string.format("Dungeon detected: %s. The timer starts on the first pull (or /guilded dungeon start).", instance.name))
     if ns.onDungeonChange then pcall(ns.onDungeonChange) end
   end
 end
@@ -475,14 +475,14 @@ end
 
 -- ---------------------------------------------------------------------
 -- Sync acknowledgement: the companion writes the run ids the bot accepted
--- into Standings.lua (QuebecGoldDungeonAccepted); mark those synced and
+-- into Standings.lua (GuildedDungeonAccepted); mark those synced and
 -- forget them after 30 days.
 -- ---------------------------------------------------------------------
 
 function dungeon.markSynced()
   local d = db()
   if not d then return end
-  local accepted = type(QuebecGoldDungeonAccepted) == "table" and QuebecGoldDungeonAccepted or {}
+  local accepted = type(GuildedDungeonAccepted) == "table" and GuildedDungeonAccepted or {}
   for _, id in ipairs(accepted) do
     if d.runs[id] then d.runs[id].synced = true end
   end
@@ -552,11 +552,11 @@ ns.commandHandlers["dungeon"] = function(args)
     if not canControl() then ns.message("Only the group leader or an officer can do that.") return end
     finish("ABANDONED", "manual")
   else
-    ns.message("/qg dungeon status | start | complete | abandon | check")
+    ns.message("/guilded dungeon status | start | complete | abandon | check")
   end
 end
 ns.commandHelp = ns.commandHelp or {}
-table.insert(ns.commandHelp, "/qg dungeon status | start | complete | abandon | check - dungeon runs")
+table.insert(ns.commandHelp, "/guilded dungeon status | start | complete | abandon | check - dungeon runs")
 
 local frame = CreateFrame("Frame")
 for _, event in ipairs({ "PLAYER_LOGIN", "PLAYER_ENTERING_WORLD", "ZONE_CHANGED_NEW_AREA", "GROUP_ROSTER_UPDATE",
@@ -564,9 +564,9 @@ for _, event in ipairs({ "PLAYER_LOGIN", "PLAYER_ENTERING_WORLD", "ZONE_CHANGED_
   compat.registerEvent(frame, event)
 end
 frame:SetScript("OnEvent", function(...)
-  if ns.moduleActive and not ns.moduleActive("dungeon") then return end -- /qg modules
+  if ns.moduleActive and not ns.moduleActive("dungeon") then return end -- /guilded modules
   local ok, err = pcall(onEvent, ...)
-  if not ok and ns.logDiagnostic then ns.logDiagnostic("LUA_ERROR", "QuebecGold dungeon: " .. tostring(err)) end
+  if not ok and ns.logDiagnostic then ns.logDiagnostic("LUA_ERROR", "Guilded dungeon: " .. tostring(err)) end
 end)
 
 -- Presence time and the abandon check, every 30 seconds while a run exists.

@@ -316,7 +316,7 @@ export async function executeConfig(interaction: ChatInputCommandInteraction): P
     await guildService.updateSettings(context.guildId, { lootMode: mode });
     await interaction.reply({
       content: mode === "COUNCIL"
-        ? "Loot council on: `/loot auction` and `/loot bid` are off; officers use `/loot award`. In game, an officer can also turn GP bidding off for everyone: `/qg modules guild off bidding`."
+        ? "Loot council on: `/loot auction` and `/loot bid` are off; officers use `/loot award`. In game, an officer can also turn GP bidding off for everyone: `/guilded modules guild off bidding`."
         : "Loot mode: EPGP bids. `/loot auction` and `/loot bid` work again.",
       ephemeral: true
     });

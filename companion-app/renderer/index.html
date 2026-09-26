@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self'">
-  <title>Quebec Gold Companion</title>
+  <title>Guilded Companion</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <aside class="sidebar">
-    <div class="brand"><img src="../assets/icon.png" alt=""><div><strong>Quebec Gold</strong><span>Companion</span></div></div>
+    <div class="brand"><img src="../assets/icon.png" alt=""><div><strong>Guilded</strong><span>Companion</span></div></div>
     <nav>
       <button class="nav active" data-page="status">Status</button>
       <button class="nav" data-page="settings">Settings <span id="setupBadge" class="badge" hidden>!</span></button>
@@ -35,7 +35,7 @@
       <div class="how">
         <h2>How it works</h2>
         <ol>
-          <li>In game, your addon saves its data when you <b>/reload</b> or log out (<b>/qg sync</b> does it for you).</li>
+          <li>In game, your addon saves its data when you <b>/reload</b> or log out (<b>/guilded sync</b> does it for you).</li>
           <li>This app notices the change and sends it to the Discord bot within seconds.</li>
           <li>The bot answers with the newest standings, and this app writes them where the addon reads them.</li>
         </ol>
@@ -58,8 +58,8 @@
           <input id="guildDiscordId" placeholder="e.g. 123456789012345678">
           <small>Discord: Settings, Advanced, turn on Developer Mode, then right-click your server and Copy Server ID.</small>
         </label>
-        <label>Addon saved data file (QuebecGold.lua)
-          <div class="row"><input id="watchFile" placeholder="...\WTF\Account\YOURACCOUNT\SavedVariables\QuebecGold.lua"><button type="button" id="btnDetect" class="small">Find it</button><button type="button" id="btnBrowse" class="small">Browse...</button></div>
+        <label>Addon saved data file (Guilded.lua)
+          <div class="row"><input id="watchFile" placeholder="...\WTF\Account\YOURACCOUNT\SavedVariables\Guilded.lua"><button type="button" id="btnDetect" class="small">Find it</button><button type="button" id="btnBrowse" class="small">Browse...</button></div>
           <small id="detectNote">Press Find it and the app looks in the usual game folders.</small>
         </label>
         <details>

@@ -7,7 +7,7 @@ function fakeDatabase() {
   const epgpRows: { sourceRef: string | null; epAmount: number }[] = [];
   const imports = new Map<string, { id: string; status: string; payload: unknown }>();
   const payload = (refs: string[]) => ({
-    source: "QuebecGold",
+    source: "Guilded",
     exportedAt: "2026-09-24T00:00:00Z",
     epgpTransactions: refs.map((ref) => ({
       character: "Kevin", realm: "Forever", epAmount: 10, gpAmount: 0, type: "EP_AWARD", reason: "Raid attendance", sourceRef: ref

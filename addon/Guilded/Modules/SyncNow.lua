@@ -4,9 +4,9 @@
 -- and the companion can only read that file. So "send to Discord" means "save
 -- now", which is a UI reload. This module makes that easy and regular:
 --
---   /qg sync              save now (reloads the UI) so the companion uploads
---   /qg sync auto on|off [minutes]   reload by itself at SAFE moments
---   /qg sync status
+--   /guilded sync              save now (reloads the UI) so the companion uploads
+--   /guilded sync auto on|off [minutes]   reload by itself at SAFE moments
+--   /guilded sync status
 --
 -- Safe moment = out of combat, not inside an instance, data actually changed
 -- since the last reload, changes quiet for 90 seconds, and at least
@@ -92,7 +92,7 @@ end
 local function showBanner()
   bannerShownAt = clock()
   if not banner then
-    banner = CreateFrame("Frame", "QuebecGoldSyncBanner", UIParent)
+    banner = CreateFrame("Frame", "GuildedSyncBanner", UIParent)
     banner:SetSize(320, 56)
     banner:SetPoint("TOP", 0, -120)
     banner:SetFrameStrata("HIGH")
@@ -101,7 +101,7 @@ local function showBanner()
     background:SetColorTexture(0, 0, 0, 0.8)
     local text = banner:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     text:SetPoint("TOPLEFT", 10, -8)
-    text:SetText("Quebec Gold: new data is waiting to go to Discord.")
+    text:SetText("Guilded: new data is waiting to go to Discord.")
     local send = CreateFrame("Button", nil, banner, "UIPanelButtonTemplate")
     send:SetSize(140, 22)
     send:SetPoint("BOTTOMLEFT", 10, 6)
@@ -127,7 +127,7 @@ function module.tick()
   if not module.safeMoment() then return end
   if autoEnabled() then
     pending = true
-    ns.message(string.format("Saving your data for Discord: reloading in %d seconds. (/qg sync auto off to stop this.)", COUNTDOWN_SECONDS))
+    ns.message(string.format("Saving your data for Discord: reloading in %d seconds. (/guilded sync auto off to stop this.)", COUNTDOWN_SECONDS))
     local function go()
       pending = false
       if module.safeMoment() then module.reloadNow() end
@@ -179,9 +179,9 @@ ns.commandHandlers["sync"] = function(args)
       autoEnabled() and "on" or "off", s.minutes or DEFAULT_MINUTES))
   else
     local waiting = dirtyAt and ("changes waiting since " .. math.floor((clock() - dirtyAt) / 60) .. " min") or "nothing waiting"
-    ns.message(string.format("Sync to Discord: %s. Auto-save %s every %d min (%s). /qg sync = save now.", waiting,
+    ns.message(string.format("Sync to Discord: %s. Auto-save %s every %d min (%s). /guilded sync = save now.", waiting,
       autoEnabled() and "on" or "off", s.minutes or DEFAULT_MINUTES, officer() and "officer default: on" or "you: banner only"))
   end
 end
 ns.commandHelp = ns.commandHelp or {}
-table.insert(ns.commandHelp, "/qg sync | sync auto on/off [min] | sync status - save now so the companion sends your data to Discord")
+table.insert(ns.commandHelp, "/guilded sync | sync auto on/off [min] | sync status - save now so the companion sends your data to Discord")

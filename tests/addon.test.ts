@@ -33,7 +33,7 @@ describe("parseAddonSnapshot", () => {
 
   it("accepts an EPGP-shaped transaction separate from the DKP transactions", () => {
     const snapshot = normalizeAddonSnapshot(parseAddonSnapshot({
-      source: "QuebecGold",
+      source: "Guilded",
       exportedAt: "2026-09-24T00:00:00.000Z",
       epgpTransactions: [{
         character: " Kevin ",
@@ -51,7 +51,7 @@ describe("parseAddonSnapshot", () => {
 
   it("rejects an EPGP transaction that changes neither EP nor GP", () => {
     expect(() => parseAddonSnapshot({
-      source: "QuebecGold",
+      source: "Guilded",
       exportedAt: "2026-09-24T00:00:00.000Z",
       epgpTransactions: [{
         character: "Kevin",
@@ -66,7 +66,7 @@ describe("parseAddonSnapshot", () => {
 
   it("accepts a readiness entry with no missing-slot findings", () => {
     const snapshot = parseAddonSnapshot({
-      source: "QuebecGold",
+      source: "Guilded",
       exportedAt: "2026-09-24T00:00:00.000Z",
       readiness: [{
         character: "Kevin",
@@ -81,7 +81,7 @@ describe("parseAddonSnapshot", () => {
 
   it("accepts professions embedded in a readiness entry", () => {
     const snapshot = parseAddonSnapshot({
-      source: "QuebecGold",
+      source: "Guilded",
       exportedAt: "2026-09-24T00:00:00.000Z",
       readiness: [{
         character: "Kevin",
@@ -94,7 +94,7 @@ describe("parseAddonSnapshot", () => {
 
   it("accepts and trims a top-level attunement entry", () => {
     const snapshot = normalizeAddonSnapshot(parseAddonSnapshot({
-      source: "QuebecGold",
+      source: "Guilded",
       exportedAt: "2026-09-24T00:00:00.000Z",
       attunements: [{ character: " Kevin ", realm: " WoW Forever ", name: " Onyxia Key ", completed: true }]
     }));

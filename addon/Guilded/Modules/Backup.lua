@@ -1,9 +1,9 @@
 -- Backup and restore of this guild's saved data as one copyable string.
 --
---   /qg backup         shows a box with the code (Ctrl+C to copy it somewhere safe)
---   /qg restore        opens a box: paste a code, press Restore (twice: it shows
+--   /guilded backup         shows a box with the code (Ctrl+C to copy it somewhere safe)
+--   /guilded restore        opens a box: paste a code, press Restore (twice: it shows
 --                      what the backup holds first, then replaces your data)
---   /qg restore undo   puts back what was there before the last restore
+--   /guilded restore undo   puts back what was there before the last restore
 --
 -- The code is "QGBKP1:<checksum>:<base64>". The payload is our own small
 -- format read by a plain parser (never loadstring), so pasting a code can't
@@ -242,7 +242,7 @@ function module.inspect(code)
   code = string.gsub(code, "%s", "")
   if #code > MAX_CHARS then return nil, "That is too large to be a backup." end
   local sum, body = string.match(code, "^" .. FORMAT .. ":(%x+):(.+)$")
-  if not sum then return nil, "That is not a Quebec Gold backup code (it should start with " .. FORMAT .. ":)." end
+  if not sum then return nil, "That is not a Guilded backup code (it should start with " .. FORMAT .. ":)." end
   local payload = b64decode(body)
   if not payload then return nil, "The backup code is damaged (bad characters). Copy the whole code again." end
   if checksum(payload) ~= sum then return nil, "The backup code is damaged (checksum does not match). Copy the whole code again." end
@@ -264,7 +264,7 @@ function module.inspect(code)
 end
 
 -- Replaces the guild's saved data with the backup. The data that was there
--- is kept once, so /qg restore undo can put it back.
+-- is kept once, so /guilded restore undo can put it back.
 function module.restore(code)
   local info, err = module.inspect(code)
   if not info then return nil, err end
@@ -304,7 +304,7 @@ local previewed
 
 local function ensureFrame()
   if frame then return frame end
-  frame = CreateFrame("Frame", "QuebecGoldBackupFrame", UIParent)
+  frame = CreateFrame("Frame", "GuildedBackupFrame", UIParent)
   frame:SetSize(600, 190)
   frame:SetPoint("CENTER")
   frame:SetFrameStrata("DIALOG")
@@ -338,7 +338,7 @@ local function ensureFrame()
     if not info then ns.message(err) return end
     if previewed ~= #code then
       previewed = #code
-      ns.message(string.format("Backup from %s by %s: %d raid(s), %d ledger entries, %d known members. Press Restore again to replace your saved data (undo: /qg restore undo).",
+      ns.message(string.format("Backup from %s by %s: %d raid(s), %d ledger entries, %d known members. Press Restore again to replace your saved data (undo: /guilded restore undo).",
         info.parsed.at ~= "" and info.parsed.at or "?", info.parsed.by ~= "" and info.parsed.by or "?", info.raids, info.ledger, info.members))
       return
     end
@@ -374,7 +374,7 @@ ns.commandHandlers["backup"] = function()
   ns.message(string.format("Backup code: %d characters. Copy it from the box (Ctrl+C) and keep it somewhere safe.%s", #code,
     #code > 200000 and " It is large; paste it into a text file, not a chat window." or ""))
   ns.lastBackupCode = code
-  openBox("Quebec Gold backup - copy this (Ctrl+C)", code, false)
+  openBox("Guilded backup - copy this (Ctrl+C)", code, false)
 end
 ns.commandHandlers["restore"] = function(args)
   if ns.moduleActive and not ns.moduleActive("backup") then return end
@@ -383,7 +383,7 @@ ns.commandHandlers["restore"] = function(args)
     ns.message(ok and "Put back what was there before the last restore. /reload now." or err)
     return
   end
-  openBox("Quebec Gold restore - paste your backup code, then press Restore", "", true)
+  openBox("Guilded restore - paste your backup code, then press Restore", "", true)
 end
 ns.commandHelp = ns.commandHelp or {}
-table.insert(ns.commandHelp, "/qg backup | restore [undo] - copy this guild's saved data as one code / put it back")
+table.insert(ns.commandHelp, "/guilded backup | restore [undo] - copy this guild's saved data as one code / put it back")

@@ -90,7 +90,7 @@ function setEnvValue(text, key, value) {
 }
 
 async function main() {
-  console.log("\n=== Quebec Gold companion setup ===\n");
+  console.log("\n=== Guilded companion setup ===\n");
 
   const games = await findGameFolders();
   if (games.length === 0) {
@@ -116,9 +116,9 @@ async function main() {
     ? await choose("Realm (must match your characters' realm in /character add):", realms)
     : await ask("Realm name", "WoW Forever");
 
-  const watchFile = join(accountsDir, account, "SavedVariables", "QuebecGold.lua");
+  const watchFile = join(accountsDir, account, "SavedVariables", "Guilded.lua");
   if (!(await exists(watchFile))) {
-    console.log("\nNote: QuebecGold.lua doesn't exist yet. That's fine; it appears after you log in with the addon and /reload once.");
+    console.log("\nNote: Guilded.lua doesn't exist yet. That's fine; it appears after you log in with the addon and /reload once.");
   }
 
   const envText = (await exists(ENV_FILE)) ? await readFile(ENV_FILE, "utf8") : "";

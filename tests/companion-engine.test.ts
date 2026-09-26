@@ -12,8 +12,8 @@ function gameFolder() {
   dirs.push(root);
   const saved = join(root, "WTF", "Account", "ACC", "SavedVariables");
   mkdirSync(saved, { recursive: true });
-  mkdirSync(join(root, "Interface", "AddOns", "QuebecGold"), { recursive: true });
-  return { root, file: join(saved, "QuebecGold.lua"), standings: join(root, "Interface", "AddOns", "QuebecGold", "Standings.lua") };
+  mkdirSync(join(root, "Interface", "AddOns", "Guilded"), { recursive: true });
+  return { root, file: join(saved, "Guilded.lua"), standings: join(root, "Interface", "AddOns", "Guilded", "Standings.lua") };
 }
 
 const config = (file: string) => ({ watchFile: file, realm: "R", uploadUrl: "http://bot.test/api/v1/addon-imports", guildDiscordId: "123", uploadToken: "x".repeat(32) });
@@ -58,7 +58,7 @@ describe("companion engine", () => {
   });
 
   it("does not start with an incomplete config or a missing folder", async () => {
-    const engine = createEngine({ ...config("Z:/nope/WTF/QuebecGold.lua") }, {});
+    const engine = createEngine({ ...config("Z:/nope/WTF/Guilded.lua") }, {});
     expect(await engine.start()).toBe(false);
     expect(engine.state().lastError?.message).toContain("does not exist");
     const bare = createEngine({}, {});
@@ -67,7 +67,7 @@ describe("companion engine", () => {
 
   it("uploads when the saved file changes", async () => {
     const game = gameFolder();
-    writeFileSync(game.file, 'QuebecGoldDB = { version = 1 }\n');
+    writeFileSync(game.file, 'GuildedDB = { version = 1 }\n');
     const fetchMock = vi.fn().mockImplementation(async (url: URL | string) => String(url).includes("standings")
       ? { ok: true, status: 200, json: async () => ({ updatedAt: "x", baseGp: 0, standings: [] }) }
       : { ok: true, status: 200, json: async () => ({ transactionCount: 0, importId: "i1", autoApplied: { epgp: 0, discovered: 0 } }) });

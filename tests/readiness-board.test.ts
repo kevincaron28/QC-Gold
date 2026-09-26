@@ -75,7 +75,7 @@ describe("consumable scan", () => {
 
   it("accepts the export's consumeScan block", () => {
     const parsed = parseAddonSnapshot({
-      source: "QuebecGold", exportedAt: "2026-10-01T20:00:00Z",
+      source: "Guilded", exportedAt: "2026-10-01T20:00:00Z",
       consumeScan: { at: "2026-10-01T19:48:00Z", by: "Kev", players: [{ character: "Amy", realm: "R", flask: "Flask of Power", elixirs: [] }] }
     });
     expect(parsed.consumeScan?.players).toHaveLength(1);

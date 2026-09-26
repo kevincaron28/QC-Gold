@@ -88,7 +88,7 @@ export async function executeTestRaid(interaction: ChatInputCommandInteraction):
         "Try it: `/raid signup` yourself, `/raid cancel-signup`, `/raid edit` caps (waitlist moves up), `/raid roster`, `/raid note`.",
         "The raid reminder fires 60 minutes before start (if a signup channel is set).",
         `When ready: \`/testraid finish raid:${result.raid.id}\` (add \`via_addon:true\` to test the import path). Clean up with \`/testraid cleanup\`.`,
-        `In game, \`/qg sim\` uses the same fake names (${SIM_CHARACTERS.slice(0, 3).join(", ")}...) so an addon export matches.`
+        `In game, \`/guilded sim\` uses the same fake names (${SIM_CHARACTERS.slice(0, 3).join(", ")}...) so an addon export matches.`
       ].join("\n"),
       ephemeral: true
     });

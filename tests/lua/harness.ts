@@ -9,7 +9,7 @@ import fengari from "fengari";
 
 const { lua, lauxlib, lualib, to_luastring, to_jsstring } = fengari;
 
-const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "addon", "QuebecGold");
+const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "addon", "Guilded");
 
 export function addonSource(file: string): string {
   return readFileSync(join(root, file), "utf8");
@@ -80,7 +80,7 @@ end }
 function loadaddon(name, source, ns)
   local chunk, err = load(source, "=" .. name)
   if not chunk then error(err) end
-  return chunk("QuebecGold", ns)
+  return chunk("Guilded", ns)
 end
 `;
 

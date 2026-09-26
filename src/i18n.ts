@@ -52,7 +52,7 @@ const STRINGS = {
   "notify.epAwarded": { en: "💰 EP awarded for **{raid}**: {count} raider(s), {total} EP total", fr: "💰 EP attribués pour **{raid}** : {count} raideur(s), {total} EP au total" },
 
   // Raid report
-  "report.title": { en: "⚜️ Quebec Gold — {raid}", fr: "⚜️ Quebec Gold — {raid}" },
+  "report.title": { en: "⚜️ Guilded — {raid}", fr: "⚜️ Guilded — {raid}" },
   "report.completed": { en: "Raid completed", fr: "Raid terminé" },
   "report.inProgress": { en: "Raid in progress", fr: "Raid en cours" },
   "report.duration": { en: "🕐 Duration", fr: "🕐 Durée" },
@@ -68,8 +68,8 @@ const STRINGS = {
   "report.topItems": { en: "Top items", fr: "Meilleurs objets" },
 
   // Weekly stats
-  "stats.titleDays": { en: "⚜️ Quebec Gold — last {days} day(s)", fr: "⚜️ Quebec Gold — {days} dernier(s) jour(s)" },
-  "stats.titleWeekly": { en: "⚜️ Quebec Gold — weekly report", fr: "⚜️ Quebec Gold — rapport de la semaine" },
+  "stats.titleDays": { en: "⚜️ Guilded — last {days} day(s)", fr: "⚜️ Guilded — {days} dernier(s) jour(s)" },
+  "stats.titleWeekly": { en: "⚜️ Guilded — weekly report", fr: "⚜️ Guilded — rapport de la semaine" },
   "stats.since": { en: "Since {date}", fr: "Depuis le {date}" },
   "stats.raids": { en: "⚔️ Raids", fr: "⚔️ Raids" },
   "stats.raidsValue": { en: "{count} (avg {avg} raiders)", fr: "{count} (moy. {avg} raideurs)" },
@@ -94,19 +94,19 @@ const STRINGS = {
   "welcome.removed": { en: "Removed **{role}**. Click again to get it back.", fr: "**{role}** retiré. Recliquez pour le récupérer." },
 
   // Getting started guide
-  "guide.title": { en: "⚜️ Getting started with Quebec Gold", fr: "⚜️ Bien commencer avec Quebec Gold" },
+  "guide.title": { en: "⚜️ Getting started with Guilded", fr: "⚜️ Bien commencer avec Guilded" },
   "guide.body": {
     en: "**1. Link your character** — `/character add` (name and realm exactly as in game).\n**2. Sign up for raids** — click the buttons on the raid posts in the raid signups channel.\n**3. Install the addon** (optional but recommended) — download the zip from {url}, unzip into `World of Warcraft\\_forever_\\Interface\\AddOns\\`, restart the game, click the gold coin on the minimap.\n**4. See your standing** — `/epgp balance`, `/profile`, `/raid progress`.\n**5. Need something?** — `/bank request` for the guild bank, `/craft request` for crafters.\n\n`/help` lists every command.",
     fr: "**1. Liez votre personnage** — `/character add` (nom et royaume exactement comme en jeu).\n**2. Inscrivez-vous aux raids** — cliquez les boutons sur les annonces de raid dans le salon des inscriptions.\n**3. Installez l'addon** (optionnel mais recommandé) — téléchargez le zip sur {url}, décompressez-le dans `World of Warcraft\\_forever_\\Interface\\AddOns\\`, redémarrez le jeu, cliquez la pièce d'or près de la minicarte.\n**4. Voyez votre classement** — `/epgp balance`, `/profile`, `/raid progress`.\n**5. Besoin de quelque chose ?** — `/bank request` pour la banque de guilde, `/craft request` pour les artisans.\n\n`/help` liste toutes les commandes."
   },
 
   // Help
-  "help.title": { en: "⚜️ Quebec Gold — commands", fr: "⚜️ Quebec Gold — commandes" },
+  "help.title": { en: "⚜️ Guilded — commands", fr: "⚜️ Guilded — commandes" },
   "help.everyone": { en: "Everyone", fr: "Tout le monde" },
   "help.raidLeaders": { en: "Raid Leaders", fr: "Chefs de raid" },
   "help.epgpOfficers": { en: "EPGP Officers", fr: "Officiers EPGP" },
   "help.officers": { en: "Officers", fr: "Officiers" },
-  "help.footer": { en: "In game: click the gold coin on the minimap, or type /qg help.", fr: "En jeu : cliquez la pièce d'or près de la minicarte, ou tapez /qg help." },
+  "help.footer": { en: "In game: click the gold coin on the minimap, or type /guilded help.", fr: "En jeu : cliquez la pièce d'or près de la minicarte, ou tapez /guilded help." },
 
   // Dungeon challenge
   "dungeon.board.week": { en: "🏰 Dungeon points — this week", fr: "🏰 Points de donjon — cette semaine" },

@@ -1,9 +1,9 @@
--- Quebec Gold is intentionally manual-first. Combat and loot events are hints, not proof.
+-- Guilded is intentionally manual-first. Combat and loot events are hints, not proof.
 local addonName, ns = ...
 ns = ns or {}
-QuebecGold = ns
+Guilded = ns
 
-local PREFIX = "QuebecGold"
+local PREFIX = "Guilded"
 local DB_VERSION = 4
 -- SavedVariables are rewritten on every logout; unbounded journals slowly
 -- make login/logout (and the companion's parse) slower for months, so the
@@ -26,7 +26,7 @@ local function playerName()
 end
 
 local function message(text)
-  DEFAULT_CHAT_FRAME:AddMessage("|cffd4af37[QuebecGold]|r " .. tostring(text))
+  DEFAULT_CHAT_FRAME:AddMessage("|cffd4af37[Guilded]|r " .. tostring(text))
   -- Lets the tools panel show the latest result without reading chat.
   if ns.onMessage then pcall(ns.onMessage, tostring(text)) end
 end
@@ -59,8 +59,13 @@ local function defaultSettings()
 end
 
 local function ensureDb()
-  QuebecGoldDB = QuebecGoldDB or {}
-  db = QuebecGoldDB
+  -- Early builds saved under the old name; adopt that data once.
+  if not GuildedDB and type(_G.QuebecGoldDB) == "table" then
+    GuildedDB = _G.QuebecGoldDB
+    _G.QuebecGoldDB = nil
+  end
+  GuildedDB = GuildedDB or {}
+  db = GuildedDB
   db.version = DB_VERSION
   -- Fill in any setting missing from an older saved file instead of only
   -- creating settings when the whole table is absent.
@@ -92,7 +97,7 @@ local function ensureDb()
   db.attunements = db.attunements or {}
   -- Diagnostics: blocked-action reports (ADDON_ACTION_BLOCKED/FORBIDDEN,
   -- which name the exact function WoW refused to let an addon call) and
-  -- captured Lua errors. See /qg diag.
+  -- captured Lua errors. See /guilded diag.
   db.diagnostics = db.diagnostics or {}
   -- Roster digests broadcast by other guildmates' clients (gear/profession
   -- summary only, not full detail) so one officer's export can carry the
@@ -134,7 +139,7 @@ end
 -- Records a diagnostic entry (blocked action or captured Lua error) so it
 -- survives past the moment it happened -- the in-game popup for a blocked
 -- action disappears without saying which function was blocked, and a
--- regular Lua error can scroll off before anyone reads it. /qg diag prints
+-- regular Lua error can scroll off before anyone reads it. /guilded diag prints
 -- the last few of these.
 -- `foreign` marks noise from other addons (recorded quietly, evicted first).
 -- Consecutive identical entries collapse into one with a count, so an
@@ -172,7 +177,7 @@ local function logDiagnostic(kind, detail, foreign)
   end
   -- Slow-handler timings are recorded quietly; only real problems print.
   if not foreign and kind ~= "SLOW" then
-    message("|cffff5555[Diagnostic]|r " .. kind .. ": " .. detail .. " (see /qg diag)")
+    message("|cffff5555[Diagnostic]|r " .. kind .. ": " .. detail .. " (see /guilded diag)")
   end
 end
 
@@ -185,7 +190,7 @@ if seterrorhandler then
   seterrorhandler(function(err)
     pcall(function()
       local text = tostring(err)
-      logDiagnostic("LUA_ERROR", text, not string.find(text, "QuebecGold", 1, true))
+      logDiagnostic("LUA_ERROR", text, not string.find(text, "Guilded", 1, true))
     end)
     if previousErrorHandler then return previousErrorHandler(err) end
   end)
@@ -229,7 +234,7 @@ local function requireOfficer()
 end
 
 -- Splits on whitespace but keeps "double quoted phrases" together, so
--- /qg attune Bob "Onyxia Key" works as documented.
+-- /guilded attune Bob "Onyxia Key" works as documented.
 local function split(text)
   local result = {}
   text = text or ""
@@ -279,7 +284,7 @@ local recordPresence
 
 local function raidStart(title)
   if activeRaid then
-    message("Raid '" .. activeRaid.title .. "' is still active. Use /qg end first.")
+    message("Raid '" .. activeRaid.title .. "' is still active. Use /guilded end first.")
     return
   end
   if not title or title == "" then title = "Raid" end
@@ -325,7 +330,7 @@ end
 
 local function bossKill(name)
   if not activeRaid then message("Start a raid first."); return end
-  if not name or name == "" then message("Usage: /qg boss <name>"); return end
+  if not name or name == "" then message("Usage: /guilded boss <name>"); return end
   db.bosses[activeRaid.id] = db.bosses[activeRaid.id] or {}
   table.insert(db.bosses[activeRaid.id], { name = name, at = now(), by = playerName() })
   logEvent("BOSS_KILL", { raid = activeRaid.id, boss = name })
@@ -352,7 +357,7 @@ local function changeEpgp(rawName, rawAmount, reason, kind, quiet)
   local name = normalizeName(rawName)
   local amount = tonumber(rawAmount)
   if not name or not amount or amount <= 0 or amount > MAX_EPGP_AMOUNT then
-    message(string.format("Usage: /qg %s <player> <amount 1-%d> [reason]", spec.command, MAX_EPGP_AMOUNT)); return
+    message(string.format("Usage: /guilded %s <player> <amount 1-%d> [reason]", spec.command, MAX_EPGP_AMOUNT)); return
   end
   amount = math.floor(amount + 0.5)
   -- The bot requires a reason of at least 3 characters on import.
@@ -396,7 +401,7 @@ local function groupMembers()
   return names
 end
 
--- /qg attendance group [status]: one command for the whole raid.
+-- /guilded attendance group [status]: one command for the whole raid.
 recordPresence = function()
   if not activeRaid then return end
   db.presence[activeRaid.id] = db.presence[activeRaid.id] or {}
@@ -408,7 +413,7 @@ recordPresence = function()
   end
 end
 
--- /qg attendance seen: PRESENT for everyone who was in the group at any
+-- /guilded attendance seen: PRESENT for everyone who was in the group at any
 -- point during this raid, without overwriting anything already recorded
 -- (so a manual LATE or ABSENT stays).
 local function seenAttendance()
@@ -432,9 +437,9 @@ local function groupAttendance(status)
   message(string.format("Marked %d group member(s) %s.", count, string.upper(status or "PRESENT")))
 end
 
--- /qg snapshot [label]: a named "who is here right now" (pre-pull, after a
+-- /guilded snapshot [label]: a named "who is here right now" (pre-pull, after a
 -- boss...). It also records presence for the active raid, so it counts toward
--- attendance, and is kept (last 50) for disputes: /qg snapshot list.
+-- attendance, and is kept (last 50) for disputes: /guilded snapshot list.
 local function takeSnapshot(label)
   local names = groupMembers()
   db.snapshots = db.snapshots or {}
@@ -447,14 +452,14 @@ end
 
 local function listSnapshots()
   local list = db.snapshots or {}
-  if #list == 0 then message("No snapshots yet. /qg snapshot [label]"); return end
+  if #list == 0 then message("No snapshots yet. /guilded snapshot [label]"); return end
   for i = math.max(1, #list - 4), #list do
     local entry = list[i]
     message(string.format("%s  %s  %d player(s)", entry.at, entry.label ~= "" and entry.label or "(no label)", #entry.names))
   end
 end
 
--- /qg award group <amount> [reason]: EP to everyone in the group.
+-- /guilded award group <amount> [reason]: EP to everyone in the group.
 local function groupAward(rawAmount, reason)
   local names = groupMembers()
   local count = 0
@@ -561,12 +566,12 @@ local function selfExportString(info, snapshot, attunements)
 end
 
 local exportFrame
-local exportTitle = "Quebec Gold - copy this line (Ctrl+C), then in Discord: /character import"
+local exportTitle = "Guilded - copy this line (Ctrl+C), then in Discord: /character import"
 local function showCharacterExport(text, title)
   exportTitle = title or exportTitle
   if exportFrame and exportFrame.titleText then exportFrame.titleText:SetText(exportTitle) end
   if not exportFrame then
-    exportFrame = CreateFrame("Frame", "QuebecGoldCharacterExport", UIParent)
+    exportFrame = CreateFrame("Frame", "GuildedCharacterExport", UIParent)
     exportFrame:SetSize(520, 110)
     exportFrame:SetPoint("CENTER")
     exportFrame:SetFrameStrata("DIALOG")
@@ -605,7 +610,7 @@ local READINESS_SLOTS = {
 }
 
 -- Equipment slots where a missing enchant is worth flagging. Officers can
--- turn the check off or set the level it starts at with /qg enchants.
+-- turn the check off or set the level it starts at with /guilded enchants.
 local ENCHANTABLE = { Chest = true, Legs = true, Feet = true, Wrist = true, Hands = true, MainHand = true }
 local DEFAULT_ENCHANT_MIN_LEVEL = 60
 
@@ -765,7 +770,7 @@ end
 
 -- Automatic sync: re-run inspectReadiness (silently, broadcasting to GUILD)
 -- on login, on gear changes, and when the raid roster changes, instead of
--- requiring everyone to run /qg inspect manually. Deliberately event-driven
+-- requiring everyone to run /guilded inspect manually. Deliberately event-driven
 -- only (no OnUpdate ticker).
 local lastAutoSyncAt = 0
 local AUTO_SYNC_DEBOUNCE_SECONDS = 5
@@ -784,7 +789,7 @@ local function maybeAutoSync(minInterval)
   inspectReadiness(true, "GUILD")
 end
 
--- /qg loot <player> <item, may contain spaces or be a shift-clicked link> [cost]
+-- /guilded loot <player> <item, may contain spaces or be a shift-clicked link> [cost]
 local function recordLoot(args)
   local name = normalizeName(args[2])
   local last = #args
@@ -794,7 +799,7 @@ local function recordLoot(args)
     last = last - 1
   end
   local item = table.concat(args, " ", 3, last)
-  if not name or item == "" then message("Usage: /qg loot <player> <item> [cost]"); return end
+  if not name or item == "" then message("Usage: /guilded loot <player> <item> [cost]"); return end
   -- The id lets the bot import each loot row into Discord loot history
   -- exactly once; the boss is the last one killed in this raid, if any.
   local bosses = activeRaid and db.bosses[activeRaid.id]
@@ -846,7 +851,7 @@ local function showDiagnostics()
   end
 end
 
--- /qg officer add|remove <name>, /qg officer rank <index> on|off, /qg officer list
+-- /guilded officer add|remove <name>, /guilded officer rank <index> on|off, /guilded officer list
 -- Guild master only: changes who the addon treats as an officer without
 -- hand-editing SavedVariables.
 local function officerCommand(args)
@@ -865,17 +870,17 @@ local function officerCommand(args)
   if not isGuildMaster() then message("Only the guild master can change officer settings."); return end
   if action == "add" or action == "remove" then
     local name = normalizeName(args[3])
-    if not name then message("Usage: /qg officer add|remove <name>"); return end
+    if not name then message("Usage: /guilded officer add|remove <name>"); return end
     db.settings.officers[name] = action == "add" or nil
     message(name .. (action == "add" and " added as" or " removed as") .. " an addon officer.")
   elseif action == "rank" then
     local rank = tonumber(args[3])
     local on = string.lower(args[4] or "")
-    if not rank or (on ~= "on" and on ~= "off") then message("Usage: /qg officer rank <index> on|off"); return end
+    if not rank or (on ~= "on" and on ~= "off") then message("Usage: /guilded officer rank <index> on|off"); return end
     db.settings.officerRanks[rank] = on == "on" or nil
     message("Guild rank index " .. rank .. " is " .. (on == "on" and "now" or "no longer") .. " an officer rank.")
   else
-    message("Usage: /qg officer list | add <name> | remove <name> | rank <index> on|off")
+    message("Usage: /guilded officer list | add <name> | remove <name> | rank <index> on|off")
   end
 end
 
@@ -883,36 +888,36 @@ end
 -- plain strings (everyone) or { officer = true, text = "..." }.
 local function showHelp()
   local officer = isOfficer()
-  message("/qg menu (or click the minimap coin) | inspect | status | roster | standings [player] | diag | version")
-  message("/qg attune <key> [clear] - mark your own attunement")
-  message("/qg snapshot [label] | list - record who is in the group right now (officers)")
-  message("/qg enchants - show or change the missing-enchant check (on/off, starting level)")
-  message("/qg share - one paste with your character, gear check, consumables and attunements (Discord: /character sync)")
-  message("/qg character - copy a line to link this character in Discord (/character import)")
+  message("/guilded menu (or click the minimap coin) | inspect | status | roster | standings [player] | diag | version")
+  message("/guilded attune <key> [clear] - mark your own attunement")
+  message("/guilded snapshot [label] | list - record who is in the group right now (officers)")
+  message("/guilded enchants - show or change the missing-enchant check (on/off, starting level)")
+  message("/guilded share - one paste with your character, gear check, consumables and attunements (Discord: /character sync)")
+  message("/guilded character - copy a line to link this character in Discord (/character import)")
   if officer then
-    message("Officer: /qg start [title] | end | attendance <name>|group|seen [PRESENT|ABSENT|LATE] | boss <name>")
-    message("Officer: /qg award <name>|group <amount> [reason] | gp <name> <amount> [reason] | deduct <name> <amount> [reason]")
-    message("Officer: /qg loot <name> <item> [cost] | export | attune <player> <key> [clear] | officer list|add|remove|rank")
+    message("Officer: /guilded start [title] | end | attendance <name>|group|seen [PRESENT|ABSENT|LATE] | boss <name>")
+    message("Officer: /guilded award <name>|group <amount> [reason] | gp <name> <amount> [reason] | deduct <name> <amount> [reason]")
+    message("Officer: /guilded loot <name> <item> [cost] | export | attune <player> <key> [clear] | officer list|add|remove|rank")
   end
   for _, line in pairs(ns.commandHelp or {}) do
     local text = type(line) == "table" and line.text or line
-    -- Lines for a module that is off are left out ("/qg casino ..." -> casino).
-    local key = ns.commandModuleOf and ns.commandModuleOf(string.match(text or "", "^/qg (%a+)"))
+    -- Lines for a module that is off are left out ("/guilded casino ..." -> casino).
+    local key = ns.commandModuleOf and ns.commandModuleOf(string.match(text or "", "^/guilded (%a+)"))
     if not key or ns.moduleActive(key) then
       if type(line) ~= "table" or officer or not line.officer then message(text) end
     end
   end
-  message("/qg modules - turn optional parts (games, bidding, dungeons...) on or off")
+  message("/guilded modules - turn optional parts (games, bidding, dungeons...) on or off")
 end
 
 -- Extension point for modules loaded after Core.lua (see Modules/Casino.lua):
--- ns.commandHandlers["casino"] = function(args) ... end registers /qg casino ...
--- table.insert(ns.commandHelp, "...") adds a line to /qg help.
+-- ns.commandHandlers["casino"] = function(args) ... end registers /guilded casino ...
+-- table.insert(ns.commandHelp, "...") adds a line to /guilded help.
 ns.commandHandlers = ns.commandHandlers or {}
 ns.commandHelp = ns.commandHelp or {}
 
--- Optional modules. Each can be turned off for yourself (/qg modules off
--- casino) or for the whole guild by an officer (/qg modules guild off
+-- Optional modules. Each can be turned off for yourself (/guilded modules off
+-- casino) or for the whole guild by an officer (/guilded modules guild off
 -- casino; shared through Modules/Sync.lua). Core (raids, EPGP, loot, gear
 -- check) and Sync (standings, version check) always run: everything else
 -- is built on them.
@@ -941,7 +946,7 @@ for _, module in ipairs(ns.MODULES) do
 end
 
 local function moduleSettings()
-  return QuebecGoldDB and QuebecGoldDB.settings
+  return GuildedDB and GuildedDB.settings
 end
 
 -- Wanted by this player and allowed by the guild.
@@ -999,10 +1004,10 @@ local function modulesCommand(args)
     for _, module in ipairs(ns.MODULES) do
       message(string.format("  %s (%s) - %s: %s", module.name, module.key, module.desc, moduleStateText(module.key)))
     end
-    message("/qg modules on|off <module> - just for you. Officers: /qg modules guild on|off <module> - for everyone.")
+    message("/guilded modules on|off <module> - just for you. Officers: /guilded modules guild on|off <module> - for everyone.")
     return
   end
-  if action ~= "on" and action ~= "off" then message("Usage: /qg modules [list] | on|off <module> | guild on|off <module>"); return end
+  if action ~= "on" and action ~= "off" then message("Usage: /guilded modules [list] | on|off <module> | guild on|off <module>"); return end
   local wanted = string.lower(args[3] or "")
   local key = MODULE_ALIASES[wanted] or wanted
   if not moduleByKey[key] then
@@ -1024,7 +1029,7 @@ local function modulesCommand(args)
     s.modules = s.modules or {}
     if action == "on" then s.modules[key] = nil else s.modules[key] = false end
     if action == "off" then
-      message(name .. " is off for you. /qg modules on " .. key .. " to turn it back on.")
+      message(name .. " is off for you. /guilded modules on " .. key .. " to turn it back on.")
     elseif s.guildModules and s.guildModules.off and s.guildModules.off[key] then
       message(name .. " is turned off for the whole guild by an officer, so it stays off.")
     end
@@ -1061,7 +1066,7 @@ local function command(text)
       db.settings.enchantMinLevel = math.floor(tonumber(args[3]))
       message("Enchants are checked from level " .. db.settings.enchantMinLevel .. ".")
     else
-      message(string.format("Enchant check is %s, from level %d. /qg enchants on|off|level <n>.",
+      message(string.format("Enchant check is %s, from level %d. /guilded enchants on|off|level <n>.",
         db.settings.enchantCheck ~= false and "on" or "off", db.settings.enchantMinLevel or DEFAULT_ENCHANT_MIN_LEVEL))
     end
   elseif action == "share" then
@@ -1071,7 +1076,7 @@ local function command(text)
     db.character = info
     local code = selfExportString(info, db.readiness[playerName()], db.attunements[playerName()])
     message("Your share code is " .. #code .. " characters (also shown in a box to copy). In Discord: /character sync")
-    showCharacterExport(code, "Quebec Gold - copy this (Ctrl+C), then in Discord: /character sync")
+    showCharacterExport(code, "Guilded - copy this (Ctrl+C), then in Discord: /character sync")
     ns.lastShareCode = code
   elseif action == "character" then
     local info = collectCharacter()
@@ -1100,7 +1105,7 @@ local function command(text)
       completed = false
       table.remove(args, #args)
     end
-    -- "/qg attune Onyxia Key" is a key for yourself; the first word is only
+    -- "/guilded attune Onyxia Key" is a key for yourself; the first word is only
     -- treated as a player when it is a known guild member and a key follows.
     local target = playerName()
     local keyStart = 2
@@ -1109,7 +1114,7 @@ local function command(text)
       target, keyStart = candidate, 3
     end
     local key = table.concat(args, " ", keyStart)
-    if key == "" then message("Usage: /qg attune <key> [clear] | /qg attune <player> <key> [clear]"); return end
+    if key == "" then message("Usage: /guilded attune <key> [clear] | /guilded attune <player> <key> [clear]"); return end
     if target ~= playerName() and not requireOfficer() then return end
     setAttunement(target, key, completed)
   elseif action == "inspect" then inspectReadiness()
@@ -1119,7 +1124,7 @@ local function command(text)
   elseif action == "modules" or action == "module" then modulesCommand(args)
   elseif commandModule[action] and not ns.moduleActive(commandModule[action]) then
     local key = commandModule[action]
-    message(ns.moduleName(key) .. " is " .. moduleStateText(key) .. ". /qg modules to see or change it.")
+    message(ns.moduleName(key) .. " is " .. moduleStateText(key) .. ". /guilded modules to see or change it.")
   elseif ns.commandHandlers[action] then
     -- args[1] is the action itself; hand the module the remaining tokens.
     table.remove(args, 1)
@@ -1184,8 +1189,8 @@ end
 -- ---------------------------------------------------------------------
 -- One saved-data set per WoW guild. A WoW install with characters in two
 -- guilds must not mix their ledgers, rosters and raids, so the active data
--- lives at the top of QuebecGoldDB (every module reads it as before) and the
--- data of other guilds is parked in QuebecGoldDB.otherGuilds[key]. When the
+-- lives at the top of GuildedDB (every module reads it as before) and the
+-- data of other guilds is parked in GuildedDB.otherGuilds[key]. When the
 -- character's guild differs from the one the data belongs to, the two are
 -- swapped in place. The guild is only known once the client has loaded it,
 -- so this is tried on entering the world and on guild roster updates.
@@ -1253,7 +1258,7 @@ local function onEvent(_, event, ...)
     if capturedOk then db.character = captured end
     snapshotModules()
     registerPrefix()
-    message("Loaded. /qg help for commands" .. (activeRaid and (" - raid '" .. activeRaid.title .. "' is still active.") or "."))
+    message("Loaded. /guilded help for commands" .. (activeRaid and (" - raid '" .. activeRaid.title .. "' is still active.") or "."))
     for _, pending in ipairs(pendingDiagnostics) do
       logDiagnostic(pending.kind, pending.detail, pending.foreign)
     end
@@ -1333,7 +1338,7 @@ local SLOW_HANDLER_MS = 50
 frame:SetScript("OnEvent", function(_, event, ...)
   local started = debugprofilestop and debugprofilestop()
   local ok, err = pcall(onEvent, _, event, ...)
-  if not ok then logDiagnostic("LUA_ERROR", "QuebecGold event handler: " .. tostring(err)) end
+  if not ok then logDiagnostic("LUA_ERROR", "Guilded event handler: " .. tostring(err)) end
   if started then
     local elapsed = debugprofilestop() - started
     if elapsed >= SLOW_HANDLER_MS then
@@ -1342,8 +1347,9 @@ frame:SetScript("OnEvent", function(_, event, ...)
   end
 end)
 
-SLASH_QUEBECGOLD1 = "/qg"
-SlashCmdList["QUEBECGOLD"] = command
+SLASH_GUILDED1 = "/guilded"
+SLASH_GUILDED2 = "/gd"
+SlashCmdList["GUILDED"] = command
 
 -- Shared namespace API for modules (see Modules/Casino.lua).
 ns.ensureDb = ensureDb

@@ -5,7 +5,7 @@ import { join } from "node:path";
 
 const root = new URL(".", import.meta.url);
 const rootPath = fileURLToPath(root);
-const toc = readFileSync(new URL("QuebecGold.toc", root), "utf8");
+const toc = readFileSync(new URL("Guilded.toc", root), "utf8");
 // 16001 is WoW Forever's interface number (from /dump select(4, GetBuildInfo())).
 if (!toc.includes("## Interface: 16001") || !toc.includes("## SavedVariables:")) {
   throw new Error("TOC is missing interface or SavedVariables metadata");
@@ -42,7 +42,7 @@ for (const file of ["Core.lua", "Modules/Games.lua"]) {
     throw new Error(`${file} registers a combat log event, which addons are blocked from doing`);
   }
 }
-if (!core.includes("QuebecGoldDB")) {
+if (!core.includes("GuildedDB")) {
   throw new Error("Core.lua does not reference its SavedVariables database");
 }
 
@@ -50,7 +50,7 @@ const games = readFileSync(new URL("Modules/Games.lua", root), "utf8");
 if (!games.includes("commandHandlers")) {
   throw new Error("Games.lua does not register into Core.lua's command extension point");
 }
-if (/QuebecGoldCasino|debt|ledger|wager/i.test(games.replace(/no ledger|no wagers|nothing owed/gi, ""))) {
+if (/GuildedCasino|debt|ledger|wager/i.test(games.replace(/no ledger|no wagers|nothing owed/gi, ""))) {
   throw new Error("Games.lua must stay free of gold, wagers and ledgers");
 }
 
@@ -71,7 +71,7 @@ for (const file of addonFiles) {
 
 for (const file of addonFiles) {
   const name = file.replace("/", "\\");
-  if (!toc.includes(name)) throw new Error(`${file} is not listed in QuebecGold.toc, so the game would never load it`);
+  if (!toc.includes(name)) throw new Error(`${file} is not listed in Guilded.toc, so the game would never load it`);
 }
 
 // Lua syntax: one broken file stops the whole addon from loading in game.
@@ -92,4 +92,4 @@ if (luaparse) {
   }
 }
 
-console.log("QuebecGold addon static validation passed.");
+console.log("Guilded addon static validation passed.");

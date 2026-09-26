@@ -40,7 +40,7 @@ function openWindow(rank: number): LuaSession {
   session = newLuaSession();
   session.run(RICH_FRAMES);
   session.run(String.raw`
-    QuebecGoldDB = nil; NS = {}
+    GuildedDB = nil; NS = {}
     MOCK_UNITS = { player = { name = "Kev", buffs = {} } }
     function GetGuildInfo() return "Alpha", "Rank", ${rank} end
   `);
@@ -78,9 +78,9 @@ describe("the tools window (sidebar and Home page)", () => {
   it("Home shows the standing when Discord has sent it, and unsent changes when something happened", () => {
     const s = openWindow(1);
     s.run(`
-      QuebecGoldDB.standings = { updatedAt = "2026-09-28T00:00:00Z", baseGp = 0, players = { Kev = { ep = 120, gp = 40, pr = 3 } } }
+      GuildedDB.standings = { updatedAt = "2026-09-28T00:00:00Z", baseGp = 0, players = { Kev = { ep = 120, gp = 40, pr = 3 } } }
       NS.syncNow.mark()
-      SlashCmdList["QUEBECGOLD"]("menu"); SlashCmdList["QUEBECGOLD"]("menu")
+      SlashCmdList["GUILDED"]("menu"); SlashCmdList["GUILDED"]("menu")
     `);
     expect(homeText(s, "homeStanding")).toBe("EP 120    GP 40    PR 3.00");
     expect(homeText(s, "homeSync")).toContain("Changes are waiting");

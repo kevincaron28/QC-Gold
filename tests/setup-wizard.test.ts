@@ -53,7 +53,7 @@ describe("setup wizard screens", () => {
       }
       const embed = screen.embeds[0]!.toJSON();
       expect((embed.description ?? "").length).toBeLessThanOrEqual(4096);
-      expect(embed.title).toContain("Quebec Gold setup");
+      expect(embed.title).toContain("Guilded setup");
     }
   });
 

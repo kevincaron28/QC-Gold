@@ -73,7 +73,7 @@ $("btnBrowse").addEventListener("click", async () => {
 $("btnDetect").addEventListener("click", async () => {
   $("detectNote").textContent = "Looking...";
   const found = await api.detectWow();
-  if (found.length === 0) { $("detectNote").textContent = "Nothing found. Press Browse and pick QuebecGold.lua (it appears after your first /reload in game with the addon)."; return; }
+  if (found.length === 0) { $("detectNote").textContent = "Nothing found. Press Browse and pick Guilded.lua (it appears after your first /reload in game with the addon)."; return; }
   $("watchFile").value = found[0].path;
   $("detectNote").textContent = found.length === 1
     ? (found[0].exists ? "Found it." : "Found your account folder. The file itself appears after your first /reload in game.")

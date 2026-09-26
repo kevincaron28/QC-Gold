@@ -4,15 +4,15 @@
 --    login; anyone running an older build is told a newer one exists.
 --
 -- 2. EPGP standings from the Discord bot. The officer PC's companion writes
---    Standings.lua (global QuebecGoldStandings) into this addon folder. A
+--    Standings.lua (global GuildedStandings) into this addon folder. A
 --    client that has fresher standings than its saved copy adopts them and
 --    shares them with the guild in small chunks, so members who don't run
---    the companion still get /qg standings. Only standings sent by an
+--    the companion still get /guilded standings. Only standings sent by an
 --    officer are accepted.
 local addonName, ns = ...
 ns = ns or {}
 
-local PREFIX = "QuebecGoldSync"
+local PREFIX = "GuildedSync"
 local CHUNK_BYTES = 220
 local STARTUP_DELAY_SECONDS = 20
 local SHARE_COOLDOWN_SECONDS = 60
@@ -143,7 +143,7 @@ end
 
 -- Adopt the companion-written Standings.lua if it is newer than the saved copy.
 local function adoptFileStandings()
-  local file = QuebecGoldStandings
+  local file = GuildedStandings
   local d = db()
   if not d or type(file) ~= "table" or type(file.updatedAt) ~= "string" then return false end
   if d.standings and d.standings.updatedAt and d.standings.updatedAt >= file.updatedAt then return false end
@@ -161,7 +161,7 @@ local function adoptFileStandings()
 end
 
 -- ---------------------------------------------------------------------
--- /qg standings [player]
+-- /guilded standings [player]
 -- ---------------------------------------------------------------------
 
 -- Why there is no standing for `name`: the three real cases, in words.
@@ -214,12 +214,12 @@ local function showStandings(args)
     local r = rows[i]
     ns.message(string.format("%d. %s  PR %.2f  (EP %d / GP %d)", i, r.name, r.row.pr, r.row.ep, r.row.gp))
   end
-  if #rows > 10 then ns.message("/qg standings <player> for anyone else.") end
+  if #rows > 10 then ns.message("/guilded standings <player> for anyone else.") end
 end
 
 ns.commandHandlers = ns.commandHandlers or {}
 ns.commandHandlers["standings"] = showStandings
-ns.commandHandlers["version"] = function() ns.message("Quebec Gold version " .. myVersion .. ".") end
+ns.commandHandlers["version"] = function() ns.message("Guilded version " .. myVersion .. ".") end
 -- Who runs which version (this session). Messages are "KIND|field|..." and
 -- every receiver ignores kinds and trailing fields it doesn't know, so an
 -- older addon keeps working next to a newer one; this shows who is behind.
@@ -243,7 +243,7 @@ ns.commandHandlers["peers"] = function()
 end
 ns.peerVersions = function() return peerVersions end
 ns.commandHelp = ns.commandHelp or {}
-table.insert(ns.commandHelp, "/qg peers - which guildmates run which addon version (this session)")
+table.insert(ns.commandHelp, "/guilded peers - which guildmates run which addon version (this session)")
 ns.getStanding = lookup
 ns.getStandingsUpdatedAt = function()
   local s = standings()
@@ -251,7 +251,7 @@ ns.getStandingsUpdatedAt = function()
 end
 
 -- ---------------------------------------------------------------------
--- Guild module switches (/qg modules guild off casino). Officers share
+-- Guild module switches (/guilded modules guild off casino). Officers share
 -- them; everyone keeps the newest one an officer sent.
 -- MODS|<updatedAt>|<by>|<comma-separated keys that are off>
 -- ---------------------------------------------------------------------
@@ -286,7 +286,7 @@ local function receiveModules(text, sender)
     table.insert(names, ns.moduleName and ns.moduleName(key) or key)
   end
   if not ns.applyGuildModules(off, updatedAt, by ~= "" and by or sender) then return end
-  ns.message("Guild module settings from " .. (by ~= "" and by or sender) .. ": " .. (#names > 0 and ("off: " .. table.concat(names, ", ")) or "everything on") .. ". /qg modules for details.")
+  ns.message("Guild module settings from " .. (by ~= "" and by or sender) .. ": " .. (#names > 0 and ("off: " .. table.concat(names, ", ")) or "everything on") .. ". /guilded modules for details.")
   for _, module in ipairs(ns.MODULES or {}) do
     if ns.moduleEnabled(module.key) and not ns.moduleActive(module.key) then
       ns.message(module.name .. " was turned back on - /reload to start it.")
@@ -332,7 +332,7 @@ local function onEvent(_, event, ...)
       if theirs then peerVersions[sender] = theirs end
       if versionNewer(theirs, myVersion) and not warnedNewer then
         warnedNewer = true
-        ns.message("A newer Quebec Gold (" .. theirs .. ") is out - you have " .. myVersion .. ". Grab it from the guild's download link.")
+        ns.message("A newer Guilded (" .. theirs .. ") is out - you have " .. myVersion .. ". Grab it from the guild's download link.")
       elseif versionNewer(myVersion, theirs) and channel == "GUILD" and not repliedTo[sender] then
         -- Tell the outdated player directly, once per session.
         repliedTo[sender] = true

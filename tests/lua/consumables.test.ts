@@ -40,7 +40,7 @@ describe("Consumables.lua (real file, mocked game)", () => {
       .toBe("Flask of Supreme Power|Well Fed|true");
   });
 
-  it("/qg consumes lists who lacks a flask or food in the group", () => {
+  it("/guilded consumes lists who lacks a flask or food in the group", () => {
     const s = withModule();
     s.run(`
       MOCK_RAID = false

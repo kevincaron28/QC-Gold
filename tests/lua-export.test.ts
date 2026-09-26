@@ -11,7 +11,7 @@ import { parseAddonSnapshot, normalizeAddonSnapshot } from "../src/integrations/
 // just a stylistic choice, so the fixture below intentionally uses that
 // syntax throughout instead of the shorthand.
 const FIXTURE = `
-QuebecGoldDB = {
+GuildedDB = {
   version = 3,
   epgp = {
     ["Kevin"] = {
@@ -56,7 +56,7 @@ describe("readAddonExport (real WoW SavedVariables array syntax)", () => {
 
   beforeEach(async () => {
     dir = await mkdtemp(join(tmpdir(), "qg-lua-export-"));
-    file = join(dir, "QuebecGold.lua");
+    file = join(dir, "Guilded.lua");
     await writeFile(file, FIXTURE, "utf8");
   });
 

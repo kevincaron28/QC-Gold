@@ -12,7 +12,7 @@ import { writeStandings } from "./standings.mjs";
 //   onState(state)                    a snapshot after every change
 export function validateConfig(config) {
   const problems = [];
-  if (!config.watchFile) problems.push("The saved-data file (QuebecGold.lua) is not set.");
+  if (!config.watchFile) problems.push("The saved-data file (Guilded.lua) is not set.");
   if (!config.uploadUrl) problems.push("The bot address is not set.");
   if (!config.guildDiscordId) problems.push("The Discord server ID is not set.");
   if (typeof config.uploadToken !== "string" || config.uploadToken.length < 32) problems.push("The upload token must be at least 32 characters.");

@@ -8,17 +8,17 @@ A big release: everything below since 1.x, polished for the public.
 - A new tools window: a sidebar with grouped pages, a **Home** page (what is going
   on, your standing, your gear check, whether your data reached Discord) and
   tooltips. Officers get Raid, EPGP and Loot pages.
-- **Send to Discord**: one button (or `/qg sync`) saves your data; officers'
+- **Send to Discord**: one button (or `/guilded sync`) saves your data; officers'
   addons also do it by themselves at safe moments (out of combat, outside instances).
 - **Roll games** (high roll, deathroll, duel). No gold, no wagers, no debts.
-- **Mass invite**: `/qg invite raid` invites everyone signed up for the next raid on Discord;
-  `/qg invite missing` lists who is not in your group.
+- **Mass invite**: `/guilded invite raid` invites everyone signed up for the next raid on Discord;
+  `/guilded invite missing` lists who is not in your group.
 - **Gear and consumable checks**: missing enchants, flasks, food; a readiness line
   for the whole raid.
-- **Backup and restore** of your saved data (`/qg backup`, `/qg restore`), separate
+- **Backup and restore** of your saved data (`/guilded backup`, `/guilded restore`), separate
   saved data per WoW guild.
 - **Auto-invite** by whisper, login digest, read-only API for other addons
-  (`QuebecGoldAPI`), `/qg diag` with slow-handler timings.
+  (`GuildedAPI`), `/guilded diag` with slow-handler timings.
 - Clear reasons when standings are missing instead of a generic "not linked".
 
 **Discord bot (optional)**

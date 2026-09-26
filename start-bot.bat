@@ -1,7 +1,7 @@
 @echo off
 cd /d "%~dp0"
-title Quebec Gold Bot
-echo Starting Quebec Gold Bot...
+title Guilded Bot
+echo Starting Guilded Bot...
 echo (this window is the bot's console - closing it stops the bot)
 echo.
 
@@ -24,7 +24,7 @@ if errorlevel 1 (
 
 rem Start the companion (sends addon data to the bot) in its own window.
 rem The first time, it asks a few setup questions there.
-start "Quebec Gold Companion" cmd /c "%~dp0start-companion.bat"
+start "Guilded Companion" cmd /c "%~dp0start-companion.bat"
 
 rem Restarts the bot automatically if it crashes or its connection drops.
 rem Close this window (or press Ctrl+C, then Y) to stop it for good.

@@ -1,4 +1,4 @@
--- Minimap button and the Quebec Gold tools window.
+-- Minimap button and the Guilded tools window.
 --
 -- Each rank sees only what it can use:
 --   officers: Raid, EPGP, Loot, Games, Me, Standings, Dungeons, Tools
@@ -9,7 +9,7 @@
 -- One shared Player box sits at the top. Targeting a player fills it in
 -- automatically, Me / Group... fill it on demand (Group... lists your
 -- raid/party, or online guildmates when solo). Every button runs the
--- matching /qg command, so permissions and validation stay in one place.
+-- matching /guilded command, so permissions and validation stay in one place.
 --
 -- Deliberately avoided: dropdown-menu APIs, hooks into Blizzard's
 -- right-click unit menus, and StaticPopup dialogs - the usual ways an addon
@@ -68,7 +68,7 @@ local function officerOnly(widget)
   return widget
 end
 
--- Widgets that belong to an optional module (/qg modules): shown only while
+-- Widgets that belong to an optional module (/guilded modules): shown only while
 -- it is on (and, with officer = true, only to officers).
 local function forModule(key, widget, officer)
   ui.moduleWidgets = ui.moduleWidgets or {}
@@ -202,7 +202,7 @@ end
 
 local function showPicker()
   if not picker then
-    picker = CreateFrame("Frame", "QuebecGoldPlayerPicker", panel, BackdropTemplateMixin and "BackdropTemplate" or nil)
+    picker = CreateFrame("Frame", "GuildedPlayerPicker", panel, BackdropTemplateMixin and "BackdropTemplate" or nil)
     picker:SetFrameStrata("DIALOG")
     picker:SetFrameLevel(panel:GetFrameLevel() + 20)
     picker:SetPoint("TOPLEFT", panel, "TOPRIGHT", -4, 0)
@@ -475,7 +475,7 @@ local function buildToolsPage(page)
   end
 
   local help = at(newLabel(page,
-    L("Minimap button hidden? /qg minimap show. Problem? Press Diagnostics and send a screenshot to an officer."),
+    L("Minimap button hidden? /guilded minimap show. Problem? Press Diagnostics and send a screenshot to an officer."),
     "GameFontHighlightSmall"), page, 0, -300)
   help:SetWidth(PAGE_WIDTH)
 end
@@ -535,7 +535,7 @@ local function buildHomePage(page)
   at(newButton(page, L("Standings"), 130, function() ui.selectTabByName("Standings") end, 30), page, 376, -322)
   officerOnly(at(newButton(page, L("Run a raid"), 170, function() ui.selectTabByName("Raid") end, 30), page, 0, -360))
   officerOnly(at(newButton(page, L("Give loot"), 190, function() ui.selectTabByName("Loot") end, 30), page, 178, -360))
-  at(newLabel(page, L("Everything here is also a chat command: /qg help lists them."), "GameFontDisableSmall"), page, 0, -402)
+  at(newLabel(page, L("Everything here is also a chat command: /guilded help lists them."), "GameFontDisableSmall"), page, 0, -402)
 end
 
 -- Sidebar order: pages are grouped under these headings.
@@ -609,7 +609,7 @@ local function refreshDungeons(db)
   end
   ui.dgnRuns:SetText(#lines > 0 and table.concat(lines, "\n") or L("None yet."))
 
-  local board = QuebecGoldDungeonBoard
+  local board = GuildedDungeonBoard
   if type(board) == "table" and type(board.rows) == "table" and #board.rows > 0 then
     ui.dgnBoardTitle:SetText(string.format(L("Dungeon points - %s (from Discord)"), tostring(board.season or "")))
     local rows = {}
@@ -848,7 +848,7 @@ end
 -- ---------------------------------------------------------------------
 
 local function buildPanel()
-  panel = CreateFrame("Frame", "QuebecGoldPanel", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
+  panel = CreateFrame("Frame", "GuildedPanel", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
   panel:SetWidth(PANEL_WIDTH)
   panel:SetHeight(PANEL_HEIGHT)
   panel:SetFrameStrata("DIALOG")
@@ -878,7 +878,7 @@ local function buildPanel()
   sidebar:SetPoint("BOTTOMLEFT", panel, "BOTTOMLEFT", 14, 14)
   sidebar:SetWidth(SIDEBAR_WIDTH)
   if sidebar.SetColorTexture then sidebar:SetColorTexture(0, 0, 0, 0.35) end
-  local title = newLabel(panel, "Quebec Gold", "GameFontNormalLarge")
+  local title = newLabel(panel, "Guilded", "GameFontNormalLarge")
   title:SetPoint("TOPLEFT", panel, "TOPLEFT", 24, -20)
   local close = CreateFrame("Button", nil, panel, "UIPanelCloseButton")
   close:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -4, -4)
@@ -959,7 +959,7 @@ local function buildPanel()
   end
 
   -- Escape closes the window like other dialogs.
-  if UISpecialFrames then table.insert(UISpecialFrames, "QuebecGoldPanel") end
+  if UISpecialFrames then table.insert(UISpecialFrames, "GuildedPanel") end
 
   local s = settings()
   ui.currentTab = 1
@@ -1006,7 +1006,7 @@ local function cursorAngle()
 end
 
 local function buildButton()
-  button = CreateFrame("Button", "QuebecGoldMinimapButton", Minimap)
+  button = CreateFrame("Button", "GuildedMinimapButton", Minimap)
   button:SetWidth(32)
   button:SetHeight(32)
   button:SetFrameStrata("MEDIUM")
@@ -1032,7 +1032,7 @@ local function buildButton()
   end)
   button:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-    GameTooltip:AddLine("Quebec Gold")
+    GameTooltip:AddLine("Guilded")
     GameTooltip:AddLine(L("Left-click: open the tools window"), 1, 1, 1)
     GameTooltip:AddLine(L("Right-click: check my gear"), 1, 1, 1)
     GameTooltip:AddLine(L("Drag: move this button"), 1, 1, 1)
@@ -1059,7 +1059,7 @@ local function init()
   if s and s.minimapHidden then button:Hide() end
 end
 
--- /qg minimap show|hide|reset  and  /qg menu
+-- /guilded minimap show|hide|reset  and  /guilded menu
 ns.commandHandlers = ns.commandHandlers or {}
 ns.commandHandlers["menu"] = function() togglePanel() end
 ns.commandHandlers["minimap"] = function(args)
@@ -1069,7 +1069,7 @@ ns.commandHandlers["minimap"] = function(args)
   if action == "hide" then
     s.minimapHidden = true
     button:Hide()
-    ns.message("Minimap button hidden. /qg minimap show brings it back.")
+    ns.message("Minimap button hidden. /guilded minimap show brings it back.")
   elseif action == "show" then
     s.minimapHidden = false
     button:Show()
@@ -1079,11 +1079,11 @@ ns.commandHandlers["minimap"] = function(args)
     place(DEFAULT_ANGLE)
     button:Show()
   else
-    ns.message("/qg minimap show | hide | reset   (or /qg menu to open the tools window)")
+    ns.message("/guilded minimap show | hide | reset   (or /guilded menu to open the tools window)")
   end
 end
 ns.commandHelp = ns.commandHelp or {}
-table.insert(ns.commandHelp, "/qg minimap show|hide|reset - the minimap button")
+table.insert(ns.commandHelp, "/guilded minimap show|hide|reset - the minimap button")
 
 -- Wait until the world has loaded so Core.lua's saved settings exist.
 local frame = CreateFrame("Frame")

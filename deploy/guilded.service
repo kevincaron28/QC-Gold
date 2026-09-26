@@ -1,14 +1,14 @@
-# systemd unit for the Quebec Gold Discord bot (installed by deploy/setup-server.sh)
+# systemd unit for the Guilded Discord bot (installed by deploy/setup-server.sh)
 [Unit]
-Description=Quebec Gold Discord bot
+Description=Guilded Discord bot
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-User=quebecgold
-WorkingDirectory=/opt/quebec-gold
-EnvironmentFile=/opt/quebec-gold/.env.local
+User=guilded
+WorkingDirectory=/opt/guilded
+EnvironmentFile=/opt/guilded/.env.local
 # Apply database migrations and regenerate the client before every start.
 ExecStartPre=/usr/bin/npm run db:update
 ExecStart=/usr/bin/npm run start:local

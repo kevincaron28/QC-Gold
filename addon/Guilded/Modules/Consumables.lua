@@ -1,7 +1,7 @@
 -- Consumable scan: who has a flask/elixir and food up, before the pull.
 --
---   /qg consumes          scan everyone in your group and print who is missing what
---   /qg consumes me       show your own active consumables
+--   /guilded consumes          scan everyone in your group and print who is missing what
+--   /guilded consumes me       show your own active consumables
 --
 -- Reads buffs only (never uses or changes anything). Names are matched with
 -- the plain-text patterns below, so a new flask or food works without an
@@ -10,7 +10,7 @@
 -- consumable has an unusual name. Weapon enchants (oils, stones) can only be
 -- read for yourself.
 --
--- The last group scan is saved in QuebecGoldDB.consumeScan and rides along
+-- The last group scan is saved in GuildedDB.consumeScan and rides along
 -- in the next export, so the Discord bot can show it next to gear readiness.
 local addonName, ns = ...
 ns = ns or {}
@@ -177,11 +177,11 @@ ns.commandHandlers["consumes"] = function(args)
   if action == "me" then mine()
   elseif action == "" or action == "scan" then
     if ns.isOfficer and not ns.isOfficer() then
-      ns.message("Only officers can scan the group. Use /qg consumes me for your own.")
+      ns.message("Only officers can scan the group. Use /guilded consumes me for your own.")
       return
     end
     report()
-  else ns.message("/qg consumes [scan] | me") end
+  else ns.message("/guilded consumes [scan] | me") end
 end
 ns.commandHelp = ns.commandHelp or {}
-table.insert(ns.commandHelp, { officer = true, text = "/qg consumes - who in your group is missing a flask/elixir or food (also /qg consumes me)" })
+table.insert(ns.commandHelp, { officer = true, text = "/guilded consumes - who in your group is missing a flask/elixir or food (also /guilded consumes me)" })

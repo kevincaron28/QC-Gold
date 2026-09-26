@@ -46,9 +46,9 @@ function readDatabase(lua) {
   const ast = luaparse.parse(lua);
   const assignment = ast.body.find((statement) =>
     statement.type === "AssignmentStatement" &&
-    statement.variables.some((variable) => variable.type === "Identifier" && variable.name === "QuebecGoldDB")
+    statement.variables.some((variable) => variable.type === "Identifier" && variable.name === "GuildedDB")
   );
-  if (!assignment) throw new Error("QuebecGoldDB was not found in the SavedVariables file.");
+  if (!assignment) throw new Error("GuildedDB was not found in the SavedVariables file.");
   return evaluate(assignment.init[0]);
 }
 
@@ -70,7 +70,7 @@ export async function readAddonExport(path, realm) {
         ? `qg:${entry.id}`
         : `qg:${character}:${entry.at ?? "unknown"}:${entry.by ?? "unknown"}:${index}`;
       let reason = String(entry.reason ?? "").trim();
-      if (reason.length < 3) reason = `Quebec Gold addon ledger${reason ? `: ${reason}` : ""}`;
+      if (reason.length < 3) reason = `Guilded addon ledger${reason ? `: ${reason}` : ""}`;
       if (usingEpgpLedger) {
         epgpTransactions.push({
           character,
@@ -102,7 +102,7 @@ export async function readAddonExport(path, realm) {
 
   // Peer roster digests are compact status/profession summaries broadcast by
   // other online clients (see the addon README's "Automatic readiness sync"
-  // section) rather than a full /qg inspect. They carry no item list, so
+  // section) rather than a full /guilded inspect. They carry no item list, so
   // they're converted into readiness entries with synthesized findings
   // instead of real gear data — this is what lets one officer's export
   // carry a readiness picture for the whole online guild, not just themselves.
@@ -162,7 +162,7 @@ export async function readAddonExport(path, realm) {
     }));
 
   // Finished in-game raids: explicit attendance marks plus everyone the addon
-  // saw in the raid group (db.presence). Still-running raids wait for /qg end.
+  // saw in the raid group (db.presence). Still-running raids wait for /guilded end.
   const raids = [];
   for (const raid of Object.values(database.raids ?? {})) {
     if (!raid?.id || !raid.startedAt || !raid.endedAt) continue;
@@ -236,7 +236,7 @@ export async function readAddonExport(path, realm) {
   const exportKeys = Object.keys(database.exports ?? {}).sort();
   const exportedAt = exportKeys.at(-1) ?? new Date().toISOString();
   return {
-    source: "QuebecGold",
+    source: "Guilded",
     exportedAt,
     // The WoW guild this saved data belongs to ("Guild Name-Realm").
     ...(database.guildKey ? { wowGuild: String(database.guildKey) } : {}),

@@ -92,7 +92,7 @@ export function startCompanionApi(client?: Client): ReturnType<typeof createServ
       }
       if (isStandings) {
         // Read-only EP/GP/PR per linked character. The companion writes it
-        // into the addon folder so /qg standings shows the bot's numbers.
+        // into the addon folder so /guilded standings shows the bot's numbers.
         const guild = await prisma.guild.findUnique({ where: { discordId: url.searchParams.get("guild") ?? "" } });
         if (!guild) {
           json(response, 404, { error: "Guild is not initialized" });

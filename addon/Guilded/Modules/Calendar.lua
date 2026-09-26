@@ -1,10 +1,10 @@
--- /qg calendar check: does WoW Forever's in-game calendar work for addons?
+-- /guilded calendar check: does WoW Forever's in-game calendar work for addons?
 --
 -- Before building calendar sync we need to know three things about this
 -- client: whether the calendar API exists, whether this character may create
 -- events, and whether guild events are visible to addons. This command
 -- checks all three, lists guild events for the next 14 days, prints the
--- result, and saves it in QuebecGoldDB.calendarCheck (so it rides along in
+-- result, and saves it in GuildedDB.calendarCheck (so it rides along in
 -- the next export). It only reads; it never creates or changes events.
 local addonName, ns = ...
 ns = ns or {}
@@ -103,7 +103,7 @@ local function report(result)
     ns.message("No guild events found. To test fully, have an officer create a test guild event in the calendar, then run this again.")
   end
   if #result.errors > 0 then ns.message("Errors: " .. table.concat(result.errors, " | ")) end
-  ns.message("Saved. Send a screenshot of these lines (or /qg export) so we know what to build.")
+  ns.message("Saved. Send a screenshot of these lines (or /guilded export) so we know what to build.")
 end
 
 -- The calendar loads asynchronously: ask for it, then scan once the game
@@ -136,7 +136,7 @@ end
 ns.commandHandlers = ns.commandHandlers or {}
 ns.commandHandlers["calendar"] = function(args)
   local action = string.lower(args[1] or "check")
-  if action == "check" then check() else ns.message("/qg calendar check") end
+  if action == "check" then check() else ns.message("/guilded calendar check") end
 end
 ns.commandHelp = ns.commandHelp or {}
-table.insert(ns.commandHelp, "/qg calendar check - can this game client's calendar be synced?")
+table.insert(ns.commandHelp, "/guilded calendar check - can this game client's calendar be synced?")

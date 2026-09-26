@@ -5,7 +5,7 @@ in the cloud (Neon), so the only thing that has to move is the bot process.
 
 ## Can the *companion* move too? No, and it doesn't need to
 
-The companion reads the addon's saved file (`WTF\...\SavedVariables\QuebecGold.lua`)
+The companion reads the addon's saved file (`WTF\...\SavedVariables\Guilded.lua`)
 on the computer where WoW runs. The game only writes that file when you log out
 or `/reload`, so a server can never see it. What changes with a cloud bot:
 
@@ -87,19 +87,19 @@ Make a free name at duckdns.org pointing at the server's public IP (for example
 SSH in (`ssh ubuntu@<ip>`) and run:
 
 ```bash
-git clone https://github.com/<you>/<repo>.git quebec-gold
-cd quebec-gold
+git clone https://github.com/<you>/<repo>.git guilded
+cd guilded
 sudo bash deploy/setup-server.sh qcgold.duckdns.org
 ```
 
-The script installs Node 22, Caddy, creates a `quebecgold` user, installs the
+The script installs Node 22, Caddy, creates a `guilded` user, installs the
 systemd service and the Caddy config, opens ports 80/443 in the Ubuntu firewall,
 and adds 1 GB swap on small machines. It stops and tells you what to do next:
 
 ```bash
-sudo nano /opt/quebec-gold/.env.local     # paste your secrets (see .env.example)
-sudo systemctl start quebec-gold
-sudo journalctl -u quebec-gold -f         # watch it start
+sudo nano /opt/guilded/.env.local     # paste your secrets (see .env.example)
+sudo systemctl start guilded
+sudo journalctl -u guilded -f         # watch it start
 ```
 
 Set in `.env.local`: `COMPANION_API_HOST=127.0.0.1` (Caddy is the only thing
@@ -122,11 +122,11 @@ allowed to reach it) and the same `COMPANION_UPLOAD_TOKEN` as on your PC.
 ### 5. Updates
 
 ```bash
-cd /opt/quebec-gold && sudo -u quebecgold git pull && sudo systemctl restart quebec-gold
+cd /opt/guilded && sudo -u guilded git pull && sudo systemctl restart guilded
 ```
 
 The service runs `npm run db:update` before starting, so database changes apply
-themselves. Logs: `journalctl -u quebec-gold -n 100`.
+themselves. Logs: `journalctl -u guilded -n 100`.
 
 ## Security notes
 

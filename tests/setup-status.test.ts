@@ -5,7 +5,7 @@ const channel = (name: string) => ({ name, exists: true, botCanPost: true });
 const done: SetupFacts = {
   existingRoleNames: ["Guild Master", "Officer", "Raid Leader", "DKP Officer"],
   requiredRoleNames: ["Guild Master", "Officer", "Raid Leader", "DKP Officer"],
-  notifyChannel: channel("qg-announcements"),
+  notifyChannel: channel("guilded-announcements"),
   raidChannel: channel("raid-signups"),
   logChannel: channel("officer-log"),
   welcomeChannel: null,

@@ -63,7 +63,7 @@ describe("Backup.lua", () => {
     const s = withBackup();
     const code = s.run(`return NS.backup.build()`);
     const check = (input: string) => s.run(`local info, err = NS.backup.inspect(${JSON.stringify(input)}); return tostring(info) .. "|" .. tostring(err)`);
-    expect(check("hello")).toContain("not a Quebec Gold backup code");
+    expect(check("hello")).toContain("not a Guilded backup code");
     expect(check(code.slice(0, -8) + "AAAAAAAA")).toContain("damaged");
     expect(check(code.replace(/^QGBKP1:[0-9a-f]+:/, "QGBKP1:00000000:"))).toContain("checksum");
     // A backup made in another guild.
@@ -94,7 +94,7 @@ describe("Backup.lua", () => {
     expect(parses('{"a":1}')).toBe("true");
   });
 
-  it("/qg backup announces the size and keeps the code", () => {
+  it("/guilded backup announces the size and keeps the code", () => {
     const s = withBackup();
     s.run(`NS.commandHandlers["backup"]({})`);
     expect(s.chat().join("\n")).toMatch(/Backup code: \d+ characters/);

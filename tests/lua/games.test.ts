@@ -102,12 +102,12 @@ describe("Games.lua (fun roll games, no gold)", () => {
     const s = withGames();
     s.run(`C_Timer = { After = function(_, fn) fn() end }`);
     game(s, "highroll");
-    expect(s.run(`return SENT_CHAT[1]:sub(1, 5)`)).toBe("[QG] ");
+    expect(s.run(`return SENT_CHAT[1]:sub(1, 10)`)).toBe("[Guilded] ");
     expect(s.run(`return SENT_CHAT[1]`)).toContain("High Roll up to 100!");
     expect(s.run(`return tostring(NS.games.ledger) .. tostring(NS.commandHandlers["games"] ~= nil)`)).toBe("niltrue");
   });
 
-  it("the old /qg casino command only points at the new games", () => {
+  it("the old /guilded casino command only points at the new games", () => {
     const s = withGames();
     s.run(`NS.commandHandlers["casino"]({ "pot", "10g" })`);
     expect(chat(s)).toContain("The casino was removed");

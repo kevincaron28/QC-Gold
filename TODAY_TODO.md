@@ -3,42 +3,47 @@
 Everything that could be built and tested without you is done (306 automated
 tests, addon validator clean, zip built). What is left needs your hands, your
 game or your accounts. Do it top to bottom; report anything that fails with a
-screenshot or `/qg diag` output. Tick as you go.
+screenshot or `/guilded diag` output. Tick as you go.
 
 ## A. Make room and restart (10 min)
 
-- [ ] **Free disk space.** C: was at 0 MB free. Delete something big (downloads,
-      old installers, game recordings). The Windows installer build needs about 1 GB.
-- [ ] Close the bot window, then run **start-bot.bat**. It applies the newest
-      database migration (weekly raids) and starts the bot and the companion.
-      If it says EPERM, another copy is still open: close it and run again.
-- [ ] `/reload` is not needed yet. In Discord, `/health` answers.
+- [x] **Free disk space.** Done.
+- [x] Closed the bot window and ran **start-bot.bat**.
+- [x] The companion reached the bot (`/health` answers, upload works).
 
-## B. Decide two things (5 min)
+## B. Name and license (done, two chores left)
 
-- [ ] **Public name.** Keep "Quebec Gold" for v3, or pick a new one and tell me
-      (or run `node scripts/rebrand.mjs "Name"`, then `npx vitest run`). Only display
-      text changes; saved data and `/qg` do not.
-- [ ] **License** is MIT (file added). Say so if you want another.
+- [x] **Public name: Guilded**, fully renamed: addon folder `Guilded`, saved data `GuildedDB`
+      (your old data is adopted once), `/guilded` and `/gd` replace `/qg`, `[Guilded]` in chat,
+      channels `guilded-*`. 304 tests green. Logo saved in docs/branding/ (400x400 ready).
+      Still by hand: set the bot username and avatar (the logo) in the Discord developer portal.
+      Note the logo image itself still reads GILDED; regenerate it with the u if you want them to match.
+- [x] CurseForge project created (name Guilded). Copy-paste text: docs/CURSEFORGE_COPYPASTE.md.
+- [ ] **Clean install for your game.** Delete `Interface\AddOns\QuebecGold`, copy in
+      `addon\Guilded`, restart the game. Run `/setup status:true`: the bot now names its
+      channels `guilded-*`, so an existing test server may need `/setup` again.
+- [x] **License: PolyForm Noncommercial 1.0.0** (LICENSE, addon LICENSE.txt, TOC, release kit).
+      On CurseForge pick "Custom License" and paste the LICENSE text. Others may use it
+      noncommercially but not resell it. This is not legal advice.
 
 ## C. Before release: test the addon in game (45 min)
 
-Install: copy `addon\QuebecGold\` (or unzip `dist\QuebecGold-v3.0.0.zip` after
+Install: copy `addon\Guilded\` (or unzip `dist\Guilded-v3.0.0.zip` after
 `npm run addon:zip`) into `Interface\AddOns\`, restart the game.
 
-- [ ] Login: no error popup, no "blocked action". `/qg version` says 3.0.0.
-      `/qg diag` first line `Identity: ...` (send it to me once, for the realm check).
+- [ ] Login: no error popup, no "blocked action". `/guilded version` says 3.0.0.
+      `/guilded diag` first line `Identity: ...` (send it to me once, for the realm check).
 - [ ] **Click the gold coin.** The window has a sidebar (Home, Me, Standings...).
       Nothing overlaps or runs off the window. **Tell me what looks cramped.**
 - [ ] Home page: your name and rank, the standing sentence, the gear check, the sync line.
 - [ ] Officer pages (Raid, EPGP, Loot) show for you; a non-officer alt sees fewer pages.
-- [ ] `/qg sim start`, open a bid on any item (Loot page), bid from a second
-      character or whisper `30`, award it, `/qg sim end`, `/qg sim clear`.
+- [ ] `/guilded sim start`, open a bid on any item (Loot page), bid from a second
+      character or whisper `30`, award it, `/guilded sim end`, `/guilded sim clear`.
       (Party of 2 needed for the bid popup.)
-- [ ] `/qg games duel <player>` with a friend; `/qg casino` only says it was removed.
-- [ ] `/qg backup` then `/qg restore` (the round trip prints no error).
-- [ ] `/qg sync` reloads the UI. After it, `/qg diag` has no red LUA_ERROR lines.
-- [ ] Optional: `/qg modules off games` hides the Games page; `/qg modules on games` restores it.
+- [ ] `/guilded games duel <player>` with a friend; `/guilded casino` only says it was removed.
+- [ ] `/guilded backup` then `/guilded restore` (the round trip prints no error).
+- [ ] `/guilded sync` reloads the UI. After it, `/guilded diag` has no red LUA_ERROR lines.
+- [ ] Optional: `/guilded modules off games` hides the Games page; `/guilded modules on games` restores it.
 
 ## D. Discord side (only if you ship the bot to guilds; 45 min)
 
@@ -53,16 +58,16 @@ Install: copy `addon\QuebecGold\` (or unzip `dist\QuebecGold-v3.0.0.zip` after
 - [ ] Companion app: `start-companion-app.bat` opens the window and a tray coin.
       Settings: **Find it**, **Test connection**, **Save and start**. Coin turns green.
       `/reload` in game: Status shows a fresh upload within seconds.
-- [ ] `/qg invite missing` (officer in a party after creating a raid you signed up for).
+- [ ] `/guilded invite missing` (officer in a party after creating a raid you signed up for).
 - [ ] Warcraft Logs (optional, not a release blocker): put WCL_CLIENT_ID and
       WCL_CLIENT_SECRET in `.env.local`, restart, `/wcl report`.
 
 ## E. Package and publish (30 min, see docs/RELEASE_CURSEFORGE.md)
 
-- [ ] `node addon/QuebecGold/validate-addon.mjs`, then `npm run addon:zip`.
+- [ ] `node addon/Guilded/validate-addon.mjs`, then `npm run addon:zip`.
 - [ ] 3 to 5 screenshots from game, a 400x400 logo.
 - [ ] Create the CurseForge project, paste the description from
-      docs/RELEASE_CURSEFORGE.md, upload `dist/QuebecGold-v3.0.0.zip` as **Beta**,
+      docs/RELEASE_CURSEFORGE.md, upload `dist/Guilded-v3.0.0.zip` as **Beta**,
       paste the 3.0.0 changelog.
 - [ ] Publish the GitHub repo (or keep it private and skip the source URL) and, if you
       want a downloadable companion installer, `cd companion-app`, `npm install`,

@@ -1,4 +1,4 @@
-# Quebec Gold Companion
+# Guilded Companion
 
 **Easiest: the desktop app** (`companion-app/`): a window with status, settings
 and an activity log, plus a tray icon (green = running, red = a problem, amber =
@@ -26,7 +26,7 @@ a normalized JSON export matching the bot import contract:
 
 ```json
 {
-  "source": "QuebecGold",
+  "source": "Guilded",
   "exportedAt": "2026-09-24T00:00:00.000Z",
   "transactions": [
     {
@@ -48,7 +48,7 @@ SavedVariables file does not reliably contain a realm identifier.
 
 On start and every 15 minutes the watcher also asks the bot for EPGP
 standings (`GET /api/v1/standings`, same token) and writes them to
-`Interface\AddOns\QuebecGold\Standings.lua`. The path is worked out from
+`Interface\AddOns\Guilded\Standings.lua`. The path is worked out from
 `watchFile` (the folder that contains `WTF`); if your install is laid out
 differently, add `"standingsFile": "<full path to Standings.lua>"` to
 `companion.config.json`. The game reads it on login or `/reload`, and the

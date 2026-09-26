@@ -8,7 +8,7 @@ afterEach(() => { session?.close(); session = undefined; });
 function loggedIn(): LuaSession {
   session = newLuaSession();
   session.run(`
-    QuebecGoldDB = nil
+    GuildedDB = nil
     SLASH = SlashCmdList
     NS = {}
     MOCK_UNITS = { player = { name = "Kev", buffs = { "Flask of the Titans", "Well Fed" } } }
@@ -21,24 +21,24 @@ function loggedIn(): LuaSession {
 }
 
 describe("Core.lua (real file, mocked game)", () => {
-  it("loads, logs in, and registers /qg", () => {
+  it("loads, logs in, and registers /guilded", () => {
     const s = loggedIn();
-    expect(s.run(`return tostring(SlashCmdList["QUEBECGOLD"] ~= nil)`)).toBe("true");
+    expect(s.run(`return tostring(SlashCmdList["GUILDED"] ~= nil)`)).toBe("true");
     expect(s.chat().join("\n")).toContain("Loaded.");
   });
 
-  it("/qg character prints the QG1 line with class and race tokens", () => {
+  it("/guilded character prints the QG1 line with class and race tokens", () => {
     const s = loggedIn();
-    s.run(`SlashCmdList["QUEBECGOLD"]("character")`);
+    s.run(`SlashCmdList["GUILDED"]("character")`);
     expect(s.chat().join("\n")).toContain("QG2;Kev;TestRealm;WARRIOR;NightElf;60;");
   });
 });
 
 describe("player identity (Forever has no real realms)", () => {
-  it("reads name and realm from the client, and /qg diag shows the raw values", () => {
+  it("reads name and realm from the client, and /guilded diag shows the raw values", () => {
     const s = loggedIn();
     expect(s.run(`local id = NS.compat.identity(); return id.name .. "|" .. id.realm .. "|" .. tostring(id.hasRealm)`)).toBe("Kev|TestRealm|true");
-    s.run(`SlashCmdList["QUEBECGOLD"]("diag")`);
+    s.run(`SlashCmdList["GUILDED"]("diag")`);
     expect(s.chat().join("\n")).toContain("Identity: name=Kev realm=TestRealm");
   });
 
@@ -46,7 +46,7 @@ describe("player identity (Forever has no real realms)", () => {
     const s = loggedIn();
     s.run(`GetRealmName = function() return "" end; GetNormalizedRealmName = nil`);
     expect(s.run(`local id = NS.compat.identity(); return tostring(id.hasRealm) .. "|" .. id.realm`)).toBe("false|");
-    s.run(`SlashCmdList["QUEBECGOLD"]("character")`);
+    s.run(`SlashCmdList["GUILDED"]("character")`);
     expect(s.chat().join("\n")).toContain("QG2;Kev;;WARRIOR");
   });
 });
@@ -69,28 +69,28 @@ describe("gear check: enchants, consumables and the peer digest", () => {
   it("finds equipped slots without an enchant and reports them", () => {
     const s = loggedIn();
     withGear(s);
-    s.run(`SlashCmdList["QUEBECGOLD"]("inspect")`);
-    const findings = s.run(`local f = {}; for _, x in ipairs(QuebecGoldDB.readiness["Kev"].findings) do f[#f + 1] = x.code .. "=" .. x.message end; return table.concat(f, ";")`);
+    s.run(`SlashCmdList["GUILDED"]("inspect")`);
+    const findings = s.run(`local f = {}; for _, x in ipairs(GuildedDB.readiness["Kev"].findings) do f[#f + 1] = x.code .. "=" .. x.message end; return table.concat(f, ";")`);
     // Chest and Feet have enchant ids; Legs, Wrist, Hands and MainHand do not.
     expect(findings).toContain("MISSING_ENCHANTS=Missing enchants: Legs, Wrist, Hands, MainHand.");
-    expect(s.run(`return QuebecGoldDB.readiness["Kev"].status`)).toBe("PARTIAL");
-    expect(s.run(`return QuebecGoldDB.readiness["Kev"].items[3].enchants[1].enchantId`)).toBe("1891");
+    expect(s.run(`return GuildedDB.readiness["Kev"].status`)).toBe("PARTIAL");
+    expect(s.run(`return GuildedDB.readiness["Kev"].items[3].enchants[1].enchantId`)).toBe("1891");
   });
 
   it("does not check enchants below the starting level, or when switched off", () => {
     const s = loggedIn();
     withGear(s);
-    s.run(`UnitLevel = function() return 30 end; SlashCmdList["QUEBECGOLD"]("inspect")`);
-    expect(s.run(`return QuebecGoldDB.readiness["Kev"].status`)).toBe("READY");
-    s.run(`UnitLevel = function() return 60 end; SlashCmdList["QUEBECGOLD"]("enchants off"); SlashCmdList["QUEBECGOLD"]("inspect")`);
-    expect(s.run(`return QuebecGoldDB.readiness["Kev"].status`)).toBe("READY");
+    s.run(`UnitLevel = function() return 30 end; SlashCmdList["GUILDED"]("inspect")`);
+    expect(s.run(`return GuildedDB.readiness["Kev"].status`)).toBe("READY");
+    s.run(`UnitLevel = function() return 60 end; SlashCmdList["GUILDED"]("enchants off"); SlashCmdList["GUILDED"]("inspect")`);
+    expect(s.run(`return GuildedDB.readiness["Kev"].status`)).toBe("READY");
   });
 
   it("in a raid group with no flask or food it warns, and the digest carries reason flags", () => {
     const s = loggedIn();
     withGear(s);
-    s.run(`MOCK_RAID = true; MOCK_UNITS = { player = { name = "Kev", buffs = { "Blessing of Kings" } } }; SENT = {}; SlashCmdList["QUEBECGOLD"]("inspect")`);
-    const codes = s.run(`local f = {}; for _, x in ipairs(QuebecGoldDB.readiness["Kev"].findings) do f[#f + 1] = x.code end; return table.concat(f, ",")`);
+    s.run(`MOCK_RAID = true; MOCK_UNITS = { player = { name = "Kev", buffs = { "Blessing of Kings" } } }; SENT = {}; SlashCmdList["GUILDED"]("inspect")`);
+    const codes = s.run(`local f = {}; for _, x in ipairs(GuildedDB.readiness["Kev"].findings) do f[#f + 1] = x.code end; return table.concat(f, ",")`);
     expect(codes).toContain("NO_FLASK");
     expect(codes).toContain("NO_FOOD");
     const digest = s.run(`return SENT[#SENT].text`);
@@ -100,10 +100,10 @@ describe("gear check: enchants, consumables and the peer digest", () => {
 
   it("reads a peer digest whose profession field is empty (flags must not shift)", () => {
     const s = loggedIn();
-    s.run(`fire_event("CHAT_MSG_ADDON", "QuebecGold", "READINESS|Amy|PARTIAL|0|95||F:NOFOOD", "GUILD", "Amy-Realm")`);
-    expect(s.run(`return QuebecGoldDB.peerRoster["Amy"].flags .. "|" .. QuebecGoldDB.peerRoster["Amy"].professions`)).toBe("NOFOOD|");
-    s.run(`fire_event("CHAT_MSG_ADDON", "QuebecGold", "READINESS|Bob|READY|0|100|Mining:300|F:NOFLASK", "GUILD", "Bob-Realm")`);
-    expect(s.run(`return QuebecGoldDB.peerRoster["Bob"].flags .. "|" .. QuebecGoldDB.peerRoster["Bob"].professions`)).toBe("NOFLASK|Mining:300");
+    s.run(`fire_event("CHAT_MSG_ADDON", "Guilded", "READINESS|Amy|PARTIAL|0|95||F:NOFOOD", "GUILD", "Amy-Realm")`);
+    expect(s.run(`return GuildedDB.peerRoster["Amy"].flags .. "|" .. GuildedDB.peerRoster["Amy"].professions`)).toBe("NOFOOD|");
+    s.run(`fire_event("CHAT_MSG_ADDON", "Guilded", "READINESS|Bob|READY|0|100|Mining:300|F:NOFLASK", "GUILD", "Bob-Realm")`);
+    expect(s.run(`return GuildedDB.peerRoster["Bob"].flags .. "|" .. GuildedDB.peerRoster["Bob"].professions`)).toBe("NOFLASK|Mining:300");
   });
 });
 
@@ -114,13 +114,13 @@ describe("attendance snapshot", () => {
       MOCK_UNITS.party1 = { name = "Amy" }; MOCK_UNITS.party2 = { name = "Bob" }
       function IsInGroup() return true end
       NS.isOfficerName = function() return true end
-      QuebecGoldDB.settings.officers = { Tester = true, Kev = true }
-      SlashCmdList["QUEBECGOLD"]("snapshot pre pull")
+      GuildedDB.settings.officers = { Tester = true, Kev = true }
+      SlashCmdList["GUILDED"]("snapshot pre pull")
     `);
     expect(s.chat().join("\n")).toMatch(/Snapshot 'pre pull': 3 player\(s\)/);
-    expect(s.run(`return QuebecGoldDB.snapshots[1].label .. "|" .. table.concat(QuebecGoldDB.snapshots[1].names, ",")`)).toBe("pre pull|Kev,Amy,Bob");
-    s.run(`for i = 1, 60 do SlashCmdList["QUEBECGOLD"]("snapshot n" .. i) end`);
-    expect(s.run(`return #QuebecGoldDB.snapshots`)).toBe("50");
+    expect(s.run(`return GuildedDB.snapshots[1].label .. "|" .. table.concat(GuildedDB.snapshots[1].names, ",")`)).toBe("pre pull|Kev,Amy,Bob");
+    s.run(`for i = 1, 60 do SlashCmdList["GUILDED"]("snapshot n" .. i) end`);
+    expect(s.run(`return #GuildedDB.snapshots`)).toBe("50");
   });
 });
 
@@ -130,9 +130,9 @@ describe("one saved-data set per WoW guild", () => {
   it("claims existing data for the first guild it sees", () => {
     const s = loggedIn();
     inGuild(s, "Alpha");
-    s.run(`QuebecGoldDB.roster = { Bob = {} }; fire_event("GUILD_ROSTER_UPDATE")`);
-    expect(s.run(`return QuebecGoldDB.guildKey`)).toBe("Alpha-TestRealm");
-    expect(s.run(`return tostring(QuebecGoldDB.roster.Bob ~= nil)`)).toBe("true");
+    s.run(`GuildedDB.roster = { Bob = {} }; fire_event("GUILD_ROSTER_UPDATE")`);
+    expect(s.run(`return GuildedDB.guildKey`)).toBe("Alpha-TestRealm");
+    expect(s.run(`return tostring(GuildedDB.roster.Bob ~= nil)`)).toBe("true");
   });
 
   it("parks one guild's data and brings it back, never mixing ledgers", () => {
@@ -140,7 +140,7 @@ describe("one saved-data set per WoW guild", () => {
     const t = session;
     // Saved variables from earlier play in guild Alpha.
     t.run(`
-      QuebecGoldDB = { version = 4, guildKey = "Alpha-TestRealm", epgp = { Bob = { ep = 50, gp = 0, ledger = {} } }, roster = { Bob = {} }, settings = { officers = {} }, raids = { r1 = { id = "r1", title = "MC" } } }
+      GuildedDB = { version = 4, guildKey = "Alpha-TestRealm", epgp = { Bob = { ep = 50, gp = 0, ledger = {} } }, roster = { Bob = {} }, settings = { officers = {} }, raids = { r1 = { id = "r1", title = "MC" } } }
       NS = {}
       MOCK_UNITS = { player = { name = "Kev", buffs = {} } }
       function GetGuildInfo() return "Beta", "Member", 3 end
@@ -155,36 +155,36 @@ describe("one saved-data set per WoW guild", () => {
 
     // Login on a character in guild Beta: it starts clean, Alpha's ledger is parked.
     login();
-    expect(t.run(`return QuebecGoldDB.guildKey`)).toBe("Beta-TestRealm");
-    expect(t.run(`return tostring(next(QuebecGoldDB.epgp)) .. tostring(next(QuebecGoldDB.raids))`)).toBe("nilnil");
-    expect(t.run(`return QuebecGoldDB.otherGuilds["Alpha-TestRealm"].epgp.Bob.ep`)).toBe("50");
+    expect(t.run(`return GuildedDB.guildKey`)).toBe("Beta-TestRealm");
+    expect(t.run(`return tostring(next(GuildedDB.epgp)) .. tostring(next(GuildedDB.raids))`)).toBe("nilnil");
+    expect(t.run(`return GuildedDB.otherGuilds["Alpha-TestRealm"].epgp.Bob.ep`)).toBe("50");
     expect(t.chat().join("\n")).toContain("Guild changed: now using the saved data for Beta-TestRealm (new)");
 
     // Beta gets its own ledger.
-    t.run(`QuebecGoldDB.epgp = { Bob = { ep = 7, gp = 0, ledger = {} } }`);
+    t.run(`GuildedDB.epgp = { Bob = { ep = 7, gp = 0, ledger = {} } }`);
 
     // Later, a character in Alpha logs in: Alpha's data comes back, Beta's is parked.
     t.run(`function GetGuildInfo() return "Alpha", "Officer", 1 end`);
     login();
-    expect(t.run(`return QuebecGoldDB.guildKey`)).toBe("Alpha-TestRealm");
-    expect(t.run(`return QuebecGoldDB.epgp.Bob.ep`)).toBe("50");
-    expect(t.run(`return QuebecGoldDB.raids.r1.title`)).toBe("MC");
-    expect(t.run(`return QuebecGoldDB.otherGuilds["Beta-TestRealm"].epgp.Bob.ep`)).toBe("7");
+    expect(t.run(`return GuildedDB.guildKey`)).toBe("Alpha-TestRealm");
+    expect(t.run(`return GuildedDB.epgp.Bob.ep`)).toBe("50");
+    expect(t.run(`return GuildedDB.raids.r1.title`)).toBe("MC");
+    expect(t.run(`return GuildedDB.otherGuilds["Beta-TestRealm"].epgp.Bob.ep`)).toBe("7");
     expect(t.chat().join("\n")).toContain("(restored)");
   });
 
   it("does nothing until the client knows the guild, or when there is no guild", () => {
     const s = loggedIn();
     s.run(`function GetGuildInfo() return nil end; fire_event("GUILD_ROSTER_UPDATE")`);
-    expect(s.run(`return tostring(QuebecGoldDB.guildKey)`)).toBe("nil");
+    expect(s.run(`return tostring(GuildedDB.guildKey)`)).toBe("nil");
     s.run(`function IsInGuild() return false end; function GetGuildInfo() return "Alpha", "x", 1 end; fire_event("GUILD_ROSTER_UPDATE")`);
-    expect(s.run(`return tostring(QuebecGoldDB.guildKey)`)).toBe("nil");
+    expect(s.run(`return tostring(GuildedDB.guildKey)`)).toBe("nil");
   });
 
-  it("/qg diag shows which guild the data belongs to", () => {
+  it("/guilded diag shows which guild the data belongs to", () => {
     const s = loggedIn();
     inGuild(s, "Alpha");
-    s.run(`fire_event("GUILD_ROSTER_UPDATE"); SlashCmdList["QUEBECGOLD"]("diag")`);
+    s.run(`fire_event("GUILD_ROSTER_UPDATE"); SlashCmdList["GUILDED"]("diag")`);
     expect(s.chat().join("\n")).toContain("Saved data belongs to guild: Alpha-TestRealm");
   });
 });
@@ -194,7 +194,7 @@ describe("a realm rename is not a different guild", () => {
     session = newLuaSession();
     const t = session;
     t.run(`
-      QuebecGoldDB = { version = 4, guildKey = "Alpha-Classic Beta PvP", epgp = { Bob = { ep = 50, gp = 0, ledger = {} } }, roster = { Bob = {} }, settings = { officers = {} } }
+      GuildedDB = { version = 4, guildKey = "Alpha-Classic Beta PvP", epgp = { Bob = { ep = 50, gp = 0, ledger = {} } }, roster = { Bob = {} }, settings = { officers = {} } }
       NS = {}
       MOCK_UNITS = { player = { name = "Kev", buffs = {} } }
       function GetGuildInfo() return "Alpha", "Officer", 1 end
@@ -203,9 +203,9 @@ describe("a realm rename is not a different guild", () => {
     t.load("Compat.lua");
     t.run(`fire_event("PLAYER_LOGIN"); fire_event("GUILD_ROSTER_UPDATE")`);
     // The mocked game now reports realm "TestRealm" instead of "Classic Beta PvP".
-    expect(t.run(`return QuebecGoldDB.guildKey`)).toBe("Alpha-TestRealm");
-    expect(t.run(`return QuebecGoldDB.epgp.Bob.ep`)).toBe("50");
-    expect(t.run(`return tostring(next(QuebecGoldDB.otherGuilds))`)).toBe("nil");
+    expect(t.run(`return GuildedDB.guildKey`)).toBe("Alpha-TestRealm");
+    expect(t.run(`return GuildedDB.epgp.Bob.ep`)).toBe("50");
+    expect(t.run(`return tostring(next(GuildedDB.otherGuilds))`)).toBe("nil");
     expect(t.chat().join("\n")).toContain("your saved data was kept");
   });
 });
@@ -213,14 +213,14 @@ describe("a realm rename is not a different guild", () => {
 describe("the guild digest tells everyone who you are", () => {
   it("adds an I: identity field and reads it from a peer, in any field order", () => {
     const s = loggedIn();
-    s.run(`GetInventoryItemLink = function() return nil end; SENT = {}; SlashCmdList["QUEBECGOLD"]("inspect")`);
+    s.run(`GetInventoryItemLink = function() return nil end; SENT = {}; SlashCmdList["GUILDED"]("inspect")`);
     const digest = s.run(`return SENT[#SENT].text`);
     expect(digest).toContain("|I:WARRIOR,NightElf,60,");
     // A peer digest: professions, identity and flags together, then with no professions.
-    s.run(`fire_event("CHAT_MSG_ADDON", "QuebecGold", "READINESS|Amy|READY|0|100|Mining:300|I:MAGE,Human,58,Fire|F:NOFOOD", "GUILD", "Amy-Realm")`);
-    expect(s.run(`local p = QuebecGoldDB.peerRoster["Amy"]; return p.professions .. "|" .. p.identity.class .. "|" .. p.identity.race .. "|" .. p.identity.level .. "|" .. p.identity.spec .. "|" .. p.flags`)).toBe("Mining:300|MAGE|Human|58|Fire|NOFOOD");
-    s.run(`fire_event("CHAT_MSG_ADDON", "QuebecGold", "READINESS|Bob|READY|0|100||I:ROGUE,Gnome,30,", "GUILD", "Bob-Realm")`);
-    expect(s.run(`local p = QuebecGoldDB.peerRoster["Bob"]; return p.professions .. "|" .. p.identity.class .. "|" .. p.identity.level`)).toBe("|ROGUE|30");
+    s.run(`fire_event("CHAT_MSG_ADDON", "Guilded", "READINESS|Amy|READY|0|100|Mining:300|I:MAGE,Human,58,Fire|F:NOFOOD", "GUILD", "Amy-Realm")`);
+    expect(s.run(`local p = GuildedDB.peerRoster["Amy"]; return p.professions .. "|" .. p.identity.class .. "|" .. p.identity.race .. "|" .. p.identity.level .. "|" .. p.identity.spec .. "|" .. p.flags`)).toBe("Mining:300|MAGE|Human|58|Fire|NOFOOD");
+    s.run(`fire_event("CHAT_MSG_ADDON", "Guilded", "READINESS|Bob|READY|0|100||I:ROGUE,Gnome,30,", "GUILD", "Bob-Realm")`);
+    expect(s.run(`local p = GuildedDB.peerRoster["Bob"]; return p.professions .. "|" .. p.identity.class .. "|" .. p.identity.level`)).toBe("|ROGUE|30");
   });
 });
 
@@ -228,7 +228,7 @@ describe("slow handler timings", () => {
   it("records a slow event quietly, without printing", () => {
     session = newLuaSession();
     session.run(`
-      QuebecGoldDB = nil; NS = {}
+      GuildedDB = nil; NS = {}
       local ticks = { 0, 120 }
       debugprofilestop = function() return table.remove(ticks, 1) or 120 end
     `);
@@ -240,7 +240,7 @@ describe("slow handler timings", () => {
       debugprofilestop = function() return table.remove(ticks, 1) or 120 end
       fire_event("GROUP_ROSTER_UPDATE")
     `);
-    expect(session.run(`local last = QuebecGoldDB.diagnostics[#QuebecGoldDB.diagnostics]; return last.kind .. ":" .. last.detail`)).toContain("SLOW:");
+    expect(session.run(`local last = GuildedDB.diagnostics[#GuildedDB.diagnostics]; return last.kind .. ":" .. last.detail`)).toContain("SLOW:");
     expect(session.chat().slice(before).join("\n")).not.toContain("[Diagnostic]");
   });
 });

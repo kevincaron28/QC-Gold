@@ -4,7 +4,7 @@ const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 const { detectSavedVariables } = require("./detect-wow.cjs");
 
-// Quebec Gold Companion: a tray app around companion/engine.mjs. The window is
+// Guilded Companion: a tray app around companion/engine.mjs. The window is
 // for setup and a look at what is happening; day to day it lives in the tray.
 
 const DEFAULTS = {
@@ -83,7 +83,7 @@ function onState(state) {
   win?.webContents.send("state", { state, health: status });
   if (tray) {
     tray.setImage(nativeImage.createFromPath(asset(`tray-${status.level}.png`)));
-    tray.setToolTip(`Quebec Gold Companion\n${status.text}`);
+    tray.setToolTip(`Guilded Companion\n${status.text}`);
   }
 }
 
@@ -103,7 +103,7 @@ function createWindow() {
   win = new BrowserWindow({
     width: 900, height: 660, minWidth: 720, minHeight: 520,
     show: false, autoHideMenuBar: true, backgroundColor: "#15120d",
-    title: "Quebec Gold Companion", icon: asset("icon.png"),
+    title: "Guilded Companion", icon: asset("icon.png"),
     webPreferences: { preload: path.join(__dirname, "preload.cjs"), contextIsolation: true, nodeIntegration: false, sandbox: false }
   });
   win.setMenu(null);
@@ -120,10 +120,10 @@ function createWindow() {
 
 function createTray() {
   tray = new Tray(nativeImage.createFromPath(asset("tray-setup.png")));
-  tray.setToolTip("Quebec Gold Companion");
+  tray.setToolTip("Guilded Companion");
   tray.on("click", showWindow);
   const rebuild = () => tray.setContextMenu(Menu.buildFromTemplate([
-    { label: "Open Quebec Gold Companion", click: showWindow },
+    { label: "Open Guilded Companion", click: showWindow },
     { type: "separator" },
     { label: "Send my data to Discord now", click: () => engine.uploadNow() },
     { label: "Refresh in-game standings now", click: () => void engine.refreshStandings() },
@@ -193,7 +193,7 @@ ipcMain.handle("test-connection", (_event, next) => engineModules.testConnection
 ipcMain.handle("browse-file", async () => {
   const start = config.watchFile ? path.dirname(config.watchFile) : undefined;
   const result = await dialog.showOpenDialog(win, {
-    title: "Pick QuebecGold.lua (inside WTF > Account > your account > SavedVariables)",
+    title: "Pick Guilded.lua (inside WTF > Account > your account > SavedVariables)",
     ...(start ? { defaultPath: start } : {}),
     properties: ["openFile"], filters: [{ name: "Addon saved data", extensions: ["lua"] }]
   });

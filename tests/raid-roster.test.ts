@@ -34,9 +34,9 @@ describe("next raid roster for the addon", () => {
   it("the companion writes it into Standings.lua, and writes nil without one", () => {
     const base = { updatedAt: "t", baseGp: 0, standings: [], acceptedRunRefs: [], dungeonBoard: null };
     const lua = standingsToLua({ ...base, nextRaid: { id: "r1", title: 'MC "night"', scheduledAt: "2026-10-01T23:00:00.000Z", core: null, players: [{ name: "Amy", role: "TANK" }], maybe: ["Bob"] } });
-    expect(lua).toContain('QuebecGoldNextRaid = { id = "r1", title = "MC \\"night\\"", at = "2026-10-01T23:00:00.000Z", core = "", players = {');
+    expect(lua).toContain('GuildedNextRaid = { id = "r1", title = "MC \\"night\\"", at = "2026-10-01T23:00:00.000Z", core = "", players = {');
     expect(lua).toContain('{ name = "Amy", role = "TANK" },');
     expect(lua).toContain('"Bob",');
-    expect(standingsToLua({ ...base, nextRaid: null })).toContain("QuebecGoldNextRaid = nil");
+    expect(standingsToLua({ ...base, nextRaid: null })).toContain("GuildedNextRaid = nil");
   });
 });

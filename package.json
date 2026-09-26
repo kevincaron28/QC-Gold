@@ -1,8 +1,8 @@
 {
-  "name": "quebec-gold-bot",
+  "name": "guilded-bot",
   "version": "3.0.0",
   "private": true,
-  "description": "Guild management and addon integration bot for Quebec Gold",
+  "description": "Guild management and addon integration bot for Guilded",
   "type": "module",
   "engines": {
     "node": ">=22"

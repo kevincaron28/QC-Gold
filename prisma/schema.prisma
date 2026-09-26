@@ -837,7 +837,7 @@ model WarcraftLogsReport {
   @@index([raidId])
 }
 
-// The latest consumable scan result per character (from /qg consumes in game).
+// The latest consumable scan result per character (from /guilded consumes in game).
 model ConsumableCheck {
   id        String   @id @default(cuid())
   guildId   String

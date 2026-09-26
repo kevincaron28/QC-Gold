@@ -5,7 +5,7 @@ const roles = new Map([
   ["wow", { id: "wow", name: "World of Warcraft" }],
   ["other", { id: "other", name: "Other Game" }]
 ]);
-const guild = { id: "g1", name: "Quebec Gold", memberCount: 42, roles: { cache: roles } };
+const guild = { id: "g1", name: "Guilded", memberCount: 42, roles: { cache: roles } };
 const base = { welcomeMessageTemplate: null, welcomeRoleIds: [] as string[], welcomeRolePrompt: null };
 
 describe("welcome message", () => {

@@ -1,10 +1,10 @@
 -- Roll games: just for fun, played with the game's own /roll. Nothing is
 -- bet, nothing is owed, and it is never you against the guild.
 --
---   /qg games highroll [max]    everyone rolls, the highest roll wins
---   /qg games deathroll [max]   everyone rolls, the lowest is out, again until one is left
---   /qg games duel <player> [max]   two players, classic deathroll: roll the last number, first to roll 1 loses
---   /qg games roll | remind | add <p> | remove <p> | cancel | status
+--   /guilded games highroll [max]    everyone rolls, the highest roll wins
+--   /guilded games deathroll [max]   everyone rolls, the lowest is out, again until one is left
+--   /guilded games duel <player> [max]   two players, classic deathroll: roll the last number, first to roll 1 loses
+--   /guilded games roll | remind | add <p> | remove <p> | cancel | status
 --
 -- Anyone can run a game: your client is the referee. It reads the group's
 -- /roll results and chat, and posts short lines in party/raid chat. Players
@@ -57,7 +57,7 @@ local function flush()
     line = line .. " | " .. table.remove(queue, 1)
   end
   local channel = groupChannel()
-  if channel then sendChat("[QG] " .. line, channel) end
+  if channel then sendChat("[Guilded] " .. line, channel) end
   lastChatAt = clock()
   if #queue > 0 then scheduleFlush() end
 end
@@ -101,7 +101,7 @@ end
 -- ---------------------------------------------------------------------
 
 local function startGroup(game, maxText)
-  if games.session then tell("A game is already open. Roll, or /qg games cancel first."); return end
+  if games.session then tell("A game is already open. Roll, or /guilded games cancel first."); return end
   if not groupChannel() then tell("Form a party or raid first: players must be grouped with you so you can see their rolls."); return end
   local maxRoll = parseMax(maxText)
   games.session = { game = game, host = ns.playerName(), phase = "JOINING", players = {}, rolls = {}, maxRoll = maxRoll, round = 1, eliminated = {} }
@@ -142,8 +142,8 @@ end
 local function beginRolling()
   local session = games.session
   if not session then tell("No game is open."); return end
-  if session.phase ~= "JOINING" then tell("Already rolling. /qg games remind nudges players."); return end
-  if countKeys(session.players) < 2 then tell("Need at least 2 players: they type 1 in chat, or /qg games add <player>."); return end
+  if session.phase ~= "JOINING" then tell("Already rolling. /guilded games remind nudges players."); return end
+  if countKeys(session.players) < 2 then tell("Need at least 2 players: they type 1 in chat, or /guilded games add <player>."); return end
   callRoll()
 end
 
@@ -199,9 +199,9 @@ end
 -- ---------------------------------------------------------------------
 
 local function startDuel(opponent, maxText)
-  if games.duel then tell("A duel is already running. /qg games cancel first."); return end
+  if games.duel then tell("A duel is already running. /guilded games cancel first."); return end
   opponent = ns.normalizeName(opponent)
-  if not opponent then tell("Name your opponent: /qg games duel <player>."); return end
+  if not opponent then tell("Name your opponent: /guilded games duel <player>."); return end
   local me = ns.playerName()
   if opponent == me then tell("You cannot duel yourself."); return end
   if not groupChannel() then tell("Form a party or raid with them first so you can see the rolls."); return end
@@ -248,7 +248,7 @@ local function cancelAll()
 end
 
 local function help()
-  tell("Roll games (just for fun, no gold): /qg games highroll [max] | deathroll [max] | duel <player> [max]")
+  tell("Roll games (just for fun, no gold): /guilded games highroll [max] | deathroll [max] | duel <player> [max]")
   tell("  then: roll (call the roll) | remind | add <player> | remove <player> | cancel | status. Players type 1 in chat to join.")
 end
 
@@ -273,10 +273,10 @@ ns.commandHandlers["games"] = function(args)
 end
 -- The old gold casino was removed: point old habits at the new games.
 ns.commandHandlers["casino"] = function()
-  ns.message("The casino was removed. Fun roll games with no gold at stake: /qg games")
+  ns.message("The casino was removed. Fun roll games with no gold at stake: /guilded games")
 end
 ns.commandHelp = ns.commandHelp or {}
-table.insert(ns.commandHelp, "/qg games - fun roll games: highroll, deathroll, duel (no gold, anyone can run one)")
+table.insert(ns.commandHelp, "/guilded games - fun roll games: highroll, deathroll, duel (no gold, anyone can run one)")
 
 -- ---------------------------------------------------------------------
 -- Events

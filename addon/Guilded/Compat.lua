@@ -4,7 +4,7 @@
 -- patches can move or remove functions. Every call here checks that the
 -- function exists, runs in pcall, ignores "secret" values, and returns nil
 -- (or a safe default) instead of erroring. A failure is logged once per
--- feature to /qg diag, and ns.compat.features() says what works, so one
+-- feature to /guilded diag, and ns.compat.features() says what works, so one
 -- missing API disables one statistic, never the whole system.
 --
 -- If a patch breaks something, fix it here; nothing else should change.
@@ -197,7 +197,7 @@ end
 -- Who this character is, tolerant of how the client names things. Other
 -- Forever addons report that Forever has no real realms and that names can
 -- carry a hyphen, so nothing here assumes a realm exists. Returns the raw
--- values too, so /qg diag can show exactly what this client says.
+-- values too, so /guilded diag can show exactly what this client says.
 function compat.identity()
   local name = exists(UnitName) and try("identity.name", UnitName, "player") or nil
   local realmName = exists(GetRealmName) and try("identity.realm", GetRealmName) or nil

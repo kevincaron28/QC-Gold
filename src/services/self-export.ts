@@ -3,7 +3,7 @@ import { importCharacter, parseCharacterString, type ImportOutcome, type ParsedC
 import { deriveReadinessStatus } from "./readiness.js";
 import { BRAND } from "../brand.js";
 
-// `/qg share` in game produces "QGEXP1:" + base64 of newline-separated lines:
+// `/guilded share` in game produces "QGEXP1:" + base64 of newline-separated lines:
 //   QG1|name|realm|CLASS|race|level|spec|professions   (the character line)
 //   R|STATUS|itemLevel            last gear check
 //   F|code|severity|message       one per finding
@@ -25,9 +25,9 @@ const MAX_LINES = 200;
 
 export function parseSelfExport(input: string): SelfExport {
   const text = input.trim();
-  if (!text.startsWith("QGEXP1:")) throw new Error(`That is not a ${BRAND.name} share code. In game, type /qg share and copy the code it shows.`);
+  if (!text.startsWith("QGEXP1:")) throw new Error(`That is not a ${BRAND.name} share code. In game, type /guilded share and copy the code it shows.`);
   const encoded = text.slice("QGEXP1:".length).replace(/\s+/g, "");
-  if (!/^[A-Za-z0-9+/]*={0,2}$/.test(encoded) || encoded.length < 8) throw new Error("The share code looks damaged. Run /qg share again and copy the whole code.");
+  if (!/^[A-Za-z0-9+/]*={0,2}$/.test(encoded) || encoded.length < 8) throw new Error("The share code looks damaged. Run /guilded share again and copy the whole code.");
   const lines = Buffer.from(encoded, "base64").toString("utf8").split("\n").slice(0, MAX_LINES);
   const first = lines[0];
   if (!first) throw new Error("The share code is empty.");
@@ -69,7 +69,7 @@ export async function applySelfExport(database: PrismaClient, memberId: string, 
       data: {
         characterId: character.id,
         memberId,
-        source: "QuebecGold share",
+        source: "Guilded share",
         status,
         itemLevel: data.itemLevel,
         rawPayload: JSON.parse(JSON.stringify(data)),
@@ -82,8 +82,8 @@ export async function applySelfExport(database: PrismaClient, memberId: string, 
   for (const attunement of data.attunements) {
     await database.characterAttunement.upsert({
       where: { characterId_name: { characterId: character.id, name: attunement.name } },
-      create: { characterId: character.id, name: attunement.name, completed: attunement.completed, source: "QuebecGold share", completedAt: new Date() },
-      update: { completed: attunement.completed, source: "QuebecGold share", completedAt: new Date() }
+      create: { characterId: character.id, name: attunement.name, completed: attunement.completed, source: "Guilded share", completedAt: new Date() },
+      update: { completed: attunement.completed, source: "Guilded share", completedAt: new Date() }
     });
   }
   return { ...outcome, status, attunements: data.attunements.length };
