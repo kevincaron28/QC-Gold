@@ -1,7 +1,7 @@
 -- Minimap button and the Quebec Gold tools window.
 --
 -- Each rank sees only what it can use:
---   officers: Raid, EPGP, Casino, Me, Standings, Tools
+--   officers: Raid, EPGP, Loot, Games, Me, Standings, Dungeons, Tools
 --   members:  Me, Standings, Tools (officer-only tools hidden)
 -- Rank is re-checked every time the window opens, so a promotion shows up
 -- without a reload.
@@ -146,17 +146,6 @@ local function amount()
   local n = tonumber(ui.amountBox and ui.amountBox:GetText() or "")
   if not n or n <= 0 then ns.message("Enter an amount first.") end
   return n and n > 0 and n or nil
-end
-
--- Casino wager from the Gold and Silver boxes, as "10g50s".
-local function wager()
-  local gold = tonumber(ui.goldBox and ui.goldBox:GetText() or "") or 0
-  local silver = tonumber(ui.silverBox and ui.silverBox:GetText() or "") or 0
-  if gold <= 0 and silver <= 0 then
-    ns.message("Enter a wager in the Gold and/or Silver box first.")
-    return nil
-  end
-  return (gold > 0 and (gold .. "g") or "") .. (silver > 0 and (silver .. "s") or "")
 end
 
 local function reasonText()
@@ -383,80 +372,27 @@ local function buildLootPage(page)
   forModule("bidding", at(newLabel(page, "Pugs without the addon bid by whispering you a number.", "GameFontDisableSmall"), page, 116, -283))
 end
 
-local function buildCasinoPage(page)
-  -- Wager: gold and silver.
-  at(newLabel(page, "Wager"), page, 0, -4)
-  ui.goldBox = at(newEdit(page, 44, true), page, 56, 0)
-  at(newLabel(page, "g", "GameFontHighlight"), page, 104, -4)
-  ui.silverBox = at(newEdit(page, 34, true), page, 122, 0)
-  at(newLabel(page, "s", "GameFontHighlight"), page, 160, -4)
-  local x = 178
-  for _, preset in ipairs({ { "1g", 1, 0 }, { "5g", 5, 0 }, { "10g", 10, 0 }, { "50g", 50, 0 }, { "10s", 0, 10 }, { "50s", 0, 50 } }) do
-    at(newButton(page, preset[1], 44, function()
-      ui.goldBox:SetText(preset[2] > 0 and tostring(preset[2]) or "")
-      ui.silverBox:SetText(preset[3] > 0 and tostring(preset[3]) or "")
-    end), page, x, 0)
-    x = x + 46
-  end
-
-  at(newLabel(page, "Group game - players type 1 in party/raid chat to join, then /roll", "GameFontNormalSmall"), page, 0, -32)
-  local function host(game)
-    return function()
-      local w = wager()
-      if w then run("casino " .. game .. " " .. w) end
-    end
-  end
-  at(newButton(page, "Host Pot", 100, host("pot")), page, 0, -48)
-  at(newButton(page, "Host Deathroll", 118, host("deathroll")), page, 104, -48)
-  at(newButton(page, "Host Difference", 124, host("diff")), page, 226, -48)
-  at(newButton(page, "Call the roll", 104, function() run("casino roll") end), page, 0, -76)
-  at(newButton(page, "Remind", 76, function() run("casino remind") end), page, 108, -76)
+local function buildGamesPage(page)
+  at(newLabel(page, "Fun roll games. No gold, nothing owed. Players type 1 in party/raid chat to join, then /roll.", "GameFontNormalSmall"), page, 0, -4)
+  at(newButton(page, "High roll", 100, function() run("games highroll") end), page, 0, -28)
+  at(newButton(page, "Deathroll", 100, function() run("games deathroll") end), page, 104, -28)
+  at(newButton(page, "Call the roll", 110, function() run("games roll") end), page, 208, -28)
+  at(newButton(page, "Remind", 76, function() run("games remind") end), page, 0, -56)
   at(newButton(page, "Add player", 96, function()
     local name = needPlayer()
-    if name then run("casino add " .. name) end
-  end), page, 188, -76)
-  local cancelGroup = at(newButton(page, "Cancel game", 100), page, 288, -76)
-  confirmClick(cancelGroup, "Cancel game", function() run("casino cancel") end)
+    if name then run("games add " .. name) end
+  end), page, 80, -56)
+  local cancelGame = at(newButton(page, "Cancel game", 100), page, 180, -56)
+  confirmClick(cancelGame, "Cancel game", function() run("games cancel") end)
 
-  at(newLabel(page, "One player vs you (the selected Player)", "GameFontNormalSmall"), page, 0, -108)
-  local function house(command)
-    return function()
-      local name, w = needPlayer(), wager()
-      if name and w then run("casino " .. string.format(command, name, w)) end
-    end
-  end
-  at(newButton(page, "Blackjack", 90, house("blackjack %s %s")), page, 0, -124)
-  at(newButton(page, "Stand for them", 112, function()
+  at(newLabel(page, "Duel: you and the selected Player, classic deathroll (roll the last number, first to roll 1 loses)", "GameFontNormalSmall"), page, 0, -92)
+  at(newButton(page, "Start duel", 100, function()
     local name = needPlayer()
-    if name then run("casino stand " .. name) end
-  end), page, 94, -124)
-  at(newButton(page, "Over 50", 80, house("overunder %s over %s")), page, 210, -124)
-  at(newButton(page, "Under 50", 84, house("overunder %s under %s")), page, 294, -124)
-  x = 0
-  for _, bet in ipairs({ "Red", "Black", "Even", "Odd" }) do
-    at(newButton(page, bet, 62, house("roulette %s " .. string.lower(bet) .. " %s")), page, x, -152)
-    x = x + 66
-  end
-  ui.straightBox = at(newEdit(page, 32, true), page, 272, -152)
-  at(newButton(page, "Number", 74, function()
-    local number = tonumber(ui.straightBox:GetText())
-    if not number or number < 1 or number > 36 then ns.message("Type a number from 1 to 36 first."); return end
-    house("roulette %s " .. number .. " %s")()
-  end), page, 310, -152)
-  at(newButton(page, "Cancel their game", 136, function()
-    local name = needPlayer()
-    if name then run("casino cancel " .. name) end
-  end), page, 0, -180)
+    if name then run("games duel " .. name) end
+  end), page, 0, -112)
 
-  at(newButton(page, "Ledger", 80, function() run("casino ledger") end), page, 140, -180)
-  at(newButton(page, "Clear their debt", 124, function()
-    local name = needPlayer()
-    if name then run("casino debt clear " .. name) end
-  end), page, 224, -180)
-
-  ui.casinoStatus = at(newLabel(page, "", "GameFontHighlightSmall"), page, 0, -212)
-  ui.casinoStatus:SetWidth(PANEL_WIDTH - 44)
-  at(newLabel(page, "Gold moves by trade. Trades with you pay down casino debts automatically.", "GameFontDisableSmall"), page, 0, -268)
+  ui.gamesStatus = at(newLabel(page, "", "GameFontHighlightSmall"), page, 0, -150)
+  ui.gamesStatus:SetWidth(PANEL_WIDTH - 44)
 end
 
 local function buildMePage(page)
@@ -506,7 +442,7 @@ local function buildToolsPage(page)
   officerOnly(at(newLabel(page, "Officer", "GameFontNormalSmall"), page, 0, -100))
   officerOnly(at(newButton(page, "Export data", 136, function() run("export") end), page, 0, -116))
   officerOnly(at(newButton(page, "Officer setup", 136, function() run("officer list") end), page, 142, -116))
-  forModule("casino", at(newButton(page, "Casino help", 136, function() run("casino") end), page, 284, -116), true)
+  forModule("games", at(newButton(page, "Games help", 136, function() run("games") end), page, 284, -116), true)
   ui.exportHelp = officerOnly(at(newLabel(page,
     "Export: press it, then /reload so the game saves; the companion uploads it to Discord.", "GameFontHighlightSmall"), page, 0, -142))
   ui.exportHelp:SetWidth(PANEL_WIDTH - 44)
@@ -564,7 +500,7 @@ local TAB_DEFS = {
   { name = "Raid", officer = true, build = buildRaidPage },
   { name = "EPGP", officer = true, build = buildEpgpPage },
   { name = "Loot", officer = true, build = buildLootPage },
-  { name = "Casino", officer = true, module = "casino", build = buildCasinoPage },
+  { name = "Games", module = "games", build = buildGamesPage },
   { name = "Me", build = buildMePage },
   { name = "Standings", build = buildStandingsPage },
   { name = "Dungeons", module = "dungeon", build = buildDungeonPage },
@@ -669,7 +605,7 @@ local function moduleSignature()
   return table.concat(parts)
 end
 
--- Tools tab rows: "Casino - on", your switch, and the guild switch.
+-- Tools tab rows: "Roll games - on", your switch, and the guild switch.
 local function refreshModuleRows()
   local s = ns.getSettings and ns.getSettings() or {}
   for _, row in ipairs(ui.moduleRows or {}) do
@@ -727,7 +663,7 @@ refresh = function()
       ui.epgpInfo:SetText(table.concat(lines, "\n"))
     end
 
-    ui.casinoStatus:SetText(moduleOn("casino") and ns.casino and ns.casino.statusText and ns.casino.statusText() or "")
+    ui.gamesStatus:SetText(moduleOn("games") and ns.games and ns.games.statusText and ns.games.statusText() or "")
     ui.bidStatus:SetText(moduleOn("bidding") and ns.bidding and ns.bidding.statusText and ns.bidding.statusText() or "")
     -- Keep the bid countdown moving while bidding is open.
     local auction = moduleOn("bidding") and ns.bidding and ns.bidding.current
@@ -850,7 +786,7 @@ local function buildPanel()
   ns.onMessage = function(text)
     if ui.status then ui.status:SetText(text) end
   end
-  ns.onCasinoChange = function() refresh() end
+  ns.onGamesChange = function() refresh() end
   ns.onBiddingChange = function() refresh() end
   ns.onDungeonChange = function() refresh() end
   ns.onModulesChange = function() refresh() end

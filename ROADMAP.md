@@ -19,7 +19,7 @@ are grouped below; the progress log at the end of this section is updated
 after each commit so a session that hits a limit can resume from it.
 
 **Already shipped (v1.x, in the repo):** EPGP ledger and bidding, raids with
-waitlist and buttons, loot history, dungeon challenge, casino, module switches,
+waitlist and buttons, loot history, dungeon challenge, module switches,
 `/setup` (7 steps, categories, permissions), character import, raid cores with
 signup priority, dungeon groups with temporary voice, readiness board with
 consumables, Warcraft Logs import, backups, French. See the sections below for
@@ -36,7 +36,7 @@ each item's notes.
 - [x] **A6 (X4)** Versioned addon-message envelope (accepts old, sends new). *(done in a lighter form: protocol rules documented, `/qg peers`; existing messages were already typed KIND|fields)*
 - [x] **A7 (X2)** `QGEXP1:` paste export + `/import code:` for members without the companion. *(done; `/qg share` + `/character sync`, verified Lua-to-TypeScript)*
 - [x] **A8 (ID3)** Attendance snapshot: `/qg snapshot [label]`. *(done; `/qg snapshot [label]`, local only)*
-- [x] **A9 (VG1, VG2)** Casino ban list and session stats. *(done; `/qg casino ban|unban|bans|resetbans|stats`)*
+- [x] **A9 (VG1, VG2)** Casino ban list and session stats. *(built, then removed with the whole casino under N3)*
 
 **Bot (Discord)**
 - [x] **B1 (GO3)** Readiness aggregator: one status per member, sorted most actionable first, enchants and attunement target. *(done; summary line, most actionable first, `/readiness raid attunement:`)*
@@ -86,6 +86,9 @@ each item's notes.
 
 ### Progress log (update after every commit)
 
+- 2026-09-28 N3 done: casino, house games and debt ledger removed; Modules/Games.lua (high roll, deathroll, duel, no gold); addon 2.4.0 pending release notes.
+- 2026-09-28 N2 done: /qg sync and auto-save at safe moments (Modules/SyncNow.lua).
+- 2026-09-28 N1 done: standings message says the real reason; companion refreshes standings every 2 minutes.
 - 2026-09-27 night: the user asked for N1-N7 (table above) and went to sleep; working through them in order N1, N2, N3, N4, N5, N7, N6 (UI last: biggest, least testable).
 
 - 2026-09-26 14:40 A1 done: fengari harness; Consumables.lua and Core.lua (`/qg character`) verified against the mocked game.

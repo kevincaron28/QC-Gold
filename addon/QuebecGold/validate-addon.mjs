@@ -36,7 +36,7 @@ for (const required of ["PLAYER_LOGIN", "GUILD_ROSTER_UPDATE", "CHAT_MSG_LOOT",
 // Since patch 12.0.0 (inherited by WoW Forever) addons cannot register the
 // combat log event; attempting it triggers a "blocked from an action only
 // available to the Blizzard UI" popup on load.
-for (const file of ["Core.lua", "Modules/Casino.lua"]) {
+for (const file of ["Core.lua", "Modules/Games.lua"]) {
   const source = readFileSync(new URL(file, root), "utf8");
   if (/RegisterEvent\(\s*"COMBAT_LOG_EVENT/.test(source)) {
     throw new Error(`${file} registers a combat log event, which addons are blocked from doing`);
@@ -46,15 +46,15 @@ if (!core.includes("QuebecGoldDB")) {
   throw new Error("Core.lua does not reference its SavedVariables database");
 }
 
-const casino = readFileSync(new URL("Modules/Casino.lua", root), "utf8");
-if (!casino.includes("QuebecGoldCasinoDB")) {
-  throw new Error("Casino.lua does not reference its SavedVariables database");
+const games = readFileSync(new URL("Modules/Games.lua", root), "utf8");
+if (!games.includes("commandHandlers")) {
+  throw new Error("Games.lua does not register into Core.lua's command extension point");
 }
-if (!casino.includes("commandHandlers")) {
-  throw new Error("Casino.lua does not register into Core.lua's command extension point");
+if (/QuebecGoldCasino|debt|ledger|wager/i.test(games.replace(/no ledger|no wagers|nothing owed/gi, ""))) {
+  throw new Error("Games.lua must stay free of gold, wagers and ledgers");
 }
 
-const addonFiles = ["Core.lua", "Compat.lua", "Locale.lua", "Standings.lua", "Modules/Casino.lua", "Modules/Sync.lua", "Modules/Sim.lua", "Modules/Bidding.lua", "Modules/Calendar.lua", "Modules/Consumables.lua", "Modules/Digest.lua", "Modules/API.lua", "Modules/Backup.lua", "Modules/SyncNow.lua", "Modules/AutoInvite.lua", "Modules/Dungeon.lua", "Modules/Minimap.lua"];
+const addonFiles = ["Core.lua", "Compat.lua", "Locale.lua", "Standings.lua", "Modules/Games.lua", "Modules/Sync.lua", "Modules/Sim.lua", "Modules/Bidding.lua", "Modules/Calendar.lua", "Modules/Consumables.lua", "Modules/Digest.lua", "Modules/API.lua", "Modules/Backup.lua", "Modules/SyncNow.lua", "Modules/AutoInvite.lua", "Modules/Dungeon.lua", "Modules/Minimap.lua"];
 for (const file of addonFiles) {
   const source = readFileSync(new URL(file, root), "utf8");
   if (/RegisterEvent\(\s*"COMBAT_LOG_EVENT/.test(source)) {

@@ -23,7 +23,7 @@ switched off:
 
 | Module | What it does |
 | --- | --- |
-| `casino` | Officer-hosted /roll games for gold |
+| `games` | Fun /roll games (high roll, deathroll, duel): no gold |
 | `bidding` | In-game GP bidding on loot |
 | `dungeon` | Dungeon run tracking for the Dungeon Challenge |
 | `calendar` | Guild calendar check |
@@ -33,9 +33,9 @@ Raids, attendance, EPGP, loot, the gear check, standings and the version
 check are the core and always run.
 
 - `/qg modules` lists them and whether each is on.
-- `/qg modules off casino` turns one off just for you;
-  `/qg modules on casino` turns it back on.
-- Officers: `/qg modules guild off casino` turns it off for the whole guild.
+- `/qg modules off games` turns one off just for you;
+  `/qg modules on games` turns it back on.
+- Officers: `/qg modules guild off games` turns it off for the whole guild.
   It's shared with everyone online and with members when they next log in;
   a member can't turn a guild-off module back on.
 - The **Tools** tab of the window has the same switches.
@@ -49,15 +49,15 @@ logged in needs a `/reload`.
 A gold coin button sits on the minimap edge. Left-click opens the tools
 window, right-click checks your gear, drag moves it. Each rank sees only
 what it can use: members get Me, Standings, Dungeons, and Tools; officers
-also get Raid, EPGP, Loot, Casino, and the officer tools (rank is re-checked
+also get Raid, EPGP, Loot, and the officer tools (rank is re-checked
 each time the window opens). Tabs for switched-off modules are hidden. A shared **Player** box sits at the top: targeting a
 player fills it in, and **Me** / **Group...** (clickable raid/party list, or
 online guildmates when solo) fill it on demand. Amounts, wagers, and
 attunements have preset buttons; shift-click an item into the EPGP tab's
 Item box to award loot. Whole-group actions and ending a raid need a second
 click to confirm. Every button runs the same `/qg` command you could type,
-so the permission checks are the same. The casino is officer-run from the
-Casino tab; players join from chat (see `Modules/README.md`). `/qg menu` opens the window from chat, and
+so the permission checks are the same. Roll games run from the
+Games tab; players join from chat (see `Modules/README.md`). `/qg menu` opens the window from chat, and
 `/qg minimap show|hide|reset` controls the button.
 
 ## Standings, version check, and attendance
@@ -179,7 +179,6 @@ presence, loot, and dungeon runs. An officer reviews and applies it with
 - **Reason flags.** The guild digest now carries `F:NOFLASK,NOFOOD,ENCH:Chest+Legs` so an officer's export shows *why* someone is PARTIAL.
 - **Login digest** (`/qg digest`): new members, EPGP changes, finished raids and loot since your last login, from saved data only.
 - **`QuebecGoldAPI`** (see `Modules/API.lua`): read-only version 1 for WeakAuras and other addons.
-- **Casino:** `/qg casino ban|unban|bans|resetbans` and `/qg casino stats`.
 - **Player identity.** `/qg diag` now prints what this client returns for name and realm. WoW Forever has no real realms, so the addon never assumes one.
 
 ## Version 2.1 additions
@@ -197,3 +196,9 @@ presence, loot, and dungeon runs. An officer reviews and applies it with
 - **The character line uses semicolons** (`QG2;Ray;Realm;PRIEST;...`). The old `|` line broke in chat because WoW treats `|R` as a colour code and swallowed the start of names beginning with R.
 - **Everyone announces who they are.** The guild gear digest now carries class, race, level and spec, so an officer's export discovers every guildmate running the addon. The bot links them to Discord automatically (see `COMMANDS.md`, "Automatic character sync").
 - **A realm rename keeps your data.** If the guild name is the same and only the realm text changed, the saved data is kept and re-keyed instead of being parked.
+
+## Version 2.4 changes
+
+- **The casino is gone.** No wagers, no house games, no debt ledger, no trade settlement. `/qg games` has fun roll games only (high roll, deathroll, duel). Old casino saved data is ignored.
+- **`/qg sync`** saves now so the companion can upload sooner, and **auto-save** does it by itself at safe moments (out of combat, outside instances, changes quiet for 90 seconds, at most every 10 minutes; on by default for officers, a banner with a button for everyone else).
+- **The standings line says why** it has no number: not arrived yet, the bot has nobody linked yet, or this character is not linked.

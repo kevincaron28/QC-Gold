@@ -9,7 +9,7 @@ Master role, or Administrator), or the specific Discord role named.
 
 **Easiest way: click the gold coin on the minimap** (or type `/qg menu`).
 Each rank only sees what it can use: members get **Me, Standings, Dungeons, Tools**;
-officers also get **Raid, EPGP, Loot, Casino** and the officer tools. A **Player**
+officers also get **Raid, EPGP, Loot** and the officer tools; everyone can open **Games**. A **Player**
 box sits at the top. Target someone and their name fills in automatically, or use
 **Me** or **Group...** (a clickable list of your raid/party). Buttons that
 affect everyone (whole-group EP, end raid) need a second click to confirm.
@@ -47,7 +47,7 @@ typed command. Names are case-insensitive (`bob` = `Bob`).
 | `/qg version` | Your addon version. You're also told automatically when a guildmate has a newer one |
 | `/qg minimap show` / `hide` / `reset` | Control the minimap button |
 | `/qg officer list` | Show which ranks count as officers, and whether you do |
-| `/qg modules` | List the optional parts (casino, bidding, dungeon, calendar, sim) and whether each is on |
+| `/qg modules` | List the optional parts (games, bidding, dungeon, calendar, sim) and whether each is on |
 | `/qg modules off\|on <module>` | Turn one off or back on just for you (also in the Tools tab). Back on after being off at login needs `/reload` |
 
 ### Officers: raid and EPGP
@@ -108,38 +108,18 @@ one for the winner.
 | `/qg officer rank <index> on\|off` | Make a guild rank count as officer (0 = GM, 1 = next rank...) |
 | `/qg officer add\|remove <name>` | Make one person an addon officer |
 
-### Casino (officers run it; anyone in the group can play)
+### Roll games (fun only: no gold, nothing owed)
 
-Officers host from the **Casino** tab (or `/qg casino`). Players, including
-pugs without the addon, just use chat: type **1** in party/raid chat to join
-a group game, **/roll** when told, and **stand** in blackjack. You must be in
-a party or raid with them. Wagers take gold and silver: `10g`, `50s`,
-`1g50s` (a plain number means gold). The addon keeps a ledger of who owes
-whom; gold moves by trade, and **trading with the officer pays debts down
-automatically**.
+Anyone in a party or raid can run one; your client is the referee. Players type `1` in party/raid chat to join and use the game's own `/roll`; they don't need the addon.
 
-Chat stays quiet: one line to open a game, one to call the roll, one result
-(deathroll: one line per round, blackjack: one per card). Joins are not
-announced, and lines that land together are merged into one message.
-
-| Command (officers) | What it does |
+| Command | What it does |
 | --- | --- |
-| `/qg casino pot <wager>` | Pot Sweepstakes: everyone pays the entry to you, highest roll wins the pot (5% guild cut) |
-| `/qg casino deathroll <wager>` | Elimination Deathroll: lowest roll each round is out; every loser pays the survivor |
-| `/qg casino diff <wager>` | Difference Roll: wager is the roll ceiling (`100g` = /roll 100 in gold, `50s` = /roll 50 in silver); lowest pays highest the difference |
-| `/qg casino roll` | Close joining and call the roll |
-| `/qg casino remind` | Re-post who still needs to roll |
-| `/qg casino add <player>` / `remove <player>` | Add or remove someone yourself |
-| `/qg casino cancel` | Cancel the group game, no payouts |
-| `/qg casino blackjack <player> <wager>` | Blackjack vs you. They `/roll 13` per card and type `stand` |
-| `/qg casino overunder <player> <over\|under> <wager>` | They `/roll 100`. Exactly 50 = house wins |
-| `/qg casino roulette <player> <red\|black\|even\|odd\|1-36> <wager>` | They `/roll 38` (37 = 0, 38 = 00). A number pays 35 to 1 |
-| `/qg casino stand <player>` / `cancel <player>` | Stand for them / cancel their game |
-| `/qg casino status` | What's running and who you're waiting on |
-| `/qg casino ledger [player]` | Who owes you, who you owe, the house result |
-| `/qg casino debt clear <player> [owed-to]` | Mark a debt paid by hand |
+| `/qg games highroll [max]` | Everyone rolls, the highest wins (a tie rolls off) |
+| `/qg games deathroll [max]` | Everyone rolls, the lowest is out, again until one is left |
+| `/qg games duel <player> [max]` | Two players, classic deathroll: each rolls the last number, whoever rolls 1 loses |
+| `/qg games roll` / `remind` / `add <p>` / `remove <p>` / `cancel` / `status` | Call the roll, nudge, add or remove a player, stop, see what is running |
 
-Casino games can't be started while you're in combat.
+The gold casino (wagers, house games, the debt ledger) was removed on purpose: gambling gold inside a guild is too risky.
 
 ## Discord bot
 
