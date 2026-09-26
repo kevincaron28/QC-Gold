@@ -33,17 +33,17 @@ Install: copy `addon\Guilded\` (or unzip `dist\Guilded-v3.0.1.zip` after
 
 - [x] (login OK 2026-09-26: Identity Ray / Classic Beta PvP matches the companion realm, no diagnostics, first /reload uploads reached the bot) Login: no error popup, no "blocked action". `/guilded version` says 3.0.1.
       `/guilded diag` first line `Identity: ...` (send it to me once, for the realm check).
-- [ ] **Click the gold coin.** The window has a sidebar (Home, Me, Standings...).
+- [x] **Click the gold coin.** The window has a sidebar (Home, Me, Standings...).
       Nothing overlaps or runs off the window. **Tell me what looks cramped.**
-- [ ] Home page: your name and rank, the standing sentence, the gear check, the sync line.
-- [ ] Officer pages (Raid, EPGP, Loot) show for you; a non-officer alt sees fewer pages.
+- [x] Home page: your name and rank, the standing sentence, the gear check, the sync line.
+- [x] Officer pages (Raid, EPGP, Loot) show for you; a non-officer alt sees fewer pages.
 - [x] (solo version passed 2026-09-26; a second character still to try for the popup and the `/w Officer 30` whisper bid) `/guilded sim start`, open a bid on any item (Loot page), bid from a second
       character or whisper `30`, award it, `/guilded sim end`, `/guilded sim clear`.
       (Party of 2 needed for the bid popup.)
 - [ ] `/guilded games duel <player>` with a friend; `/guilded casino` only says it was removed.
-- [ ] `/guilded backup` then `/guilded restore` (the round trip prints no error).
-- [ ] `/guilded sync` reloads the UI. After it, `/guilded diag` has no red LUA_ERROR lines.
-- [ ] Optional: `/guilded modules off games` hides the Games page; `/guilded modules on games` restores it.
+- [x] `/guilded backup` then `/guilded restore` (the round trip prints no error).
+- [x] `/guilded sync` reloads the UI. After it, `/guilded diag` has no red LUA_ERROR lines.
+- [x] Optional: `/guilded modules off games` hides the Games page; `/guilded modules on games` restores it.
 
 ## D. Discord side (only if you ship the bot to guilds; 45 min)
 
