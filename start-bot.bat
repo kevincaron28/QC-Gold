@@ -22,9 +22,10 @@ if errorlevel 1 (
   exit /b 1
 )
 
-rem Start the companion (sends addon data to the bot) in its own window.
-rem The first time, it asks a few setup questions there.
-start "Guilded Companion" cmd /c "%~dp0start-companion.bat"
+rem Start the companion app (tray coin + window) that sends addon data to the bot.
+rem It has no console window; look for the gold coin near the clock (behind the ^ arrow).
+rem The first time, its Settings page asks where the game saves data.
+call "%~dp0start-companion-app.bat"
 
 rem Restarts the bot automatically if it crashes or its connection drops.
 rem Close this window (or press Ctrl+C, then Y) to stop it for good.

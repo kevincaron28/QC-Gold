@@ -1,4 +1,5 @@
 @echo off
+setlocal
 rem Opens the Guilded Companion desktop app (tray icon + window). No console window stays open.
 rem First time: run  npm install  inside the companion-app folder.
 cd /d "%~dp0companion-app"
