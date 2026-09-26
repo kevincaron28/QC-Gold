@@ -80,3 +80,49 @@ describe("module requests are rate limited", () => {
     expect(s.run(`return SENT`)).toBe("2");
   });
 });
+
+describe("item tooltip data", () => {
+  it("an officer shares it in chunks and another player adopts it", () => {
+    const officer = withSync();
+    officer.run(`
+      NS.isOfficer = function() return true end
+      C_Timer = { After = function(_, fn) fn() end }
+      SENT_ITEMS = {}
+      C_ChatInfo = { RegisterAddonMessagePrefix = function() end, SendAddonMessage = function(_, text) if string.find(text, "^ITEM|") then SENT_ITEMS[#SENT_ITEMS + 1] = text end end }
+      DB.standings = { updatedAt = "2026-09-26T00:00:00Z", baseGp = 0, players = { Amy = { ep = 10, gp = 5, pr = 2 } } }
+      DB.items = { updatedAt = "2026-09-26T00:00:00Z", list = {
+        ["thunderfury blessed blade of the windseeker"] = { gp = 120, n = 3, wn = 5, wish = { { "Amy", 1 }, { "Bob", 2 } } },
+        ["some ring"] = { gp = nil, n = 0, wn = 1, wish = { { "Cy", 3 } } }
+      } }
+      fire_event("PLAYER_ENTERING_WORLD")
+      fire_event("CHAT_MSG_ADDON", "GuildedSync", "STANDREQ|0", "GUILD", "Amy-Realm")
+    `);
+    const count = Number(officer.run(`return #SENT_ITEMS`));
+    expect(count).toBeGreaterThan(0);
+    const messages = JSON.parse(officer.run(`local out = {}; for i, m in ipairs(SENT_ITEMS) do out[i] = string.format("%q", m) end; return "[" .. table.concat(out, ",") .. "]"`)) as string[];
+    officer.close();
+
+    const member = withSync();
+    member.run(`NS.isOfficerName = function() return true end; fire_event("PLAYER_ENTERING_WORLD")`);
+    for (const message of messages) member.run(`fire_event("CHAT_MSG_ADDON", "GuildedSync", ${JSON.stringify(message)}, "GUILD", "Kevin-Realm")`);
+    expect(member.run(`return DB.items.list["some ring"].wish[1][1] .. DB.items.list["some ring"].wish[1][2]`)).toBe("Cy3");
+    expect(member.run(`local i = DB.items.list["thunderfury blessed blade of the windseeker"]; return i.gp .. "/" .. i.n .. "/" .. i.wn .. "/" .. #i.wish`)).toBe("120/3/5/2");
+  });
+
+  it("ignores item data from someone who is not an officer", () => {
+    const s = withSync();
+    s.run(`fire_event("PLAYER_ENTERING_WORLD"); fire_event("CHAT_MSG_ADDON", "GuildedSync", "ITEM|2026-09-26T00:00:00Z|1|1|some ring~~0~1~Cy:3", "GUILD", "Pug-Realm")`);
+    expect(s.run(`return tostring(DB.items)`)).toBe("nil");
+  });
+
+  it("reads the companion-written items file together with the standings", () => {
+    const s = withSync();
+    s.run(`
+      GuildedStandings = { updatedAt = "2026-09-27T00:00:00Z", baseGp = 0, players = { { name = "Amy", ep = 10, gp = 5 } } }
+      GuildedItems = { ["some ring"] = { gp = 40, n = 2, wn = 1, wish = { { "Cy", 3 } } } }
+      fire_event("PLAYER_ENTERING_WORLD")
+    `);
+    expect(s.run(`return NS.getItemInsight("some ring").gp`)).toBe("40");
+    expect(s.run(`return tostring(NS.getItemInsight("nope"))`)).toBe("nil");
+  });
+});

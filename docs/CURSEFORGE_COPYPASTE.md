@@ -1,4 +1,4 @@
-# CurseForge copy-paste sheet: Guilded 3.0.2
+# CurseForge copy-paste sheet: Guilded 3.1.0
 
 Each block below is one field. Copy the block, paste it in.
 
@@ -21,7 +21,7 @@ Raid & Instance (secondary: Guild, Miscellaneous)
 `docs/branding/guilded-logo-400.png` (400x400). Full size: `docs/branding/guilded-logo.png`.
 
 ## File to upload
-`dist/Guilded-v3.0.2.zip` (top folder inside is `Guilded`). Release type: **Beta** for the first day, then **Release**.
+`dist/Guilded-v3.1.0.zip` (top folder inside is `Guilded`). Release type: **Beta** for the first day, then **Release**.
 Game versions: the WoW Forever / Classic entries closest to interface 16001 and 20506.
 
 ## License
@@ -50,6 +50,7 @@ free Discord bot when you want signups and reports outside the game too.
 - **Mass invite:** `/guilded invite raid` invites everyone who signed up on Discord.
 - **A friendly window:** click the gold coin on the minimap. The Home page shows your
   standing, what is going on, and whether your data reached Discord.
+- **Item tooltips:** who wishlisted an item, what it usually costs in GP and your priority, right on the tooltip.
 - **Safe by design:** backups, per-guild saved data, French translation, and every
   module can be switched off.
 
@@ -71,6 +72,16 @@ PolyForm Noncommercial license. Not affiliated with or endorsed by Blizzard Ente
 
 ## Changelog (paste for the file upload)
 ```markdown
+## 3.1.0
+
+**In game**
+- **Item tooltips:** an item wanted by someone on the guild's wishlists (or awarded before) shows who wants it, what it usually costs in GP and your own priority (PR and rank). It comes from the bot and is shared with the guild like the standings; turn it off with `/guilded modules off tooltip`.
+
+**Discord bot**
+
+- **Warcraft Logs, automatic:** `/config wcl-guild guild:<page link>` makes the bot find the guild's new public reports itself, post them in the raid logs channel and attach each to the raid it matches by time.
+- **Officer check** (`/wcl check`, also sent to the officer log for every new report): players in the log but not credited or the reverse, characters not linked to a Discord member, EP not awarded yet, who came to boss pulls without a flask or food, and deaths. No damage or parse numbers.
+
 ## 3.0.2
 
 **In game**

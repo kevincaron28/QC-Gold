@@ -200,6 +200,7 @@ presence, loot, and dungeon runs. An officer reviews and applies it with
 ## Version 2.4 changes
 
 - **The casino is gone.** No wagers, no house games, no debt ledger, no trade settlement. `/guilded games` has fun roll games only (high roll, deathroll, duel). Old casino saved data is ignored.
+- **Item tooltips** (module `tooltip`): hover an item that someone wishlisted in Discord (`/wishlist`) or that was awarded before and you get up to three gold lines: who wants it, what it usually costs in GP, and your own PR and rank. The data comes from the bot with the standings and is shared with the guild the same way; items with no data show nothing. `/guilded modules off tooltip` turns it off.
 - **`/guilded sync`** saves now so the companion can upload sooner, and **auto-save** does it by itself at safe moments (out of combat, outside instances, changes quiet for 90 seconds, at most every 10 minutes). It is **off by default**: nobody is reloaded without asking; officers get a small banner with a button, and logging out also saves. Turn it on with `/guilded sync auto on`.
 - **The standings line says why** it has no number: not arrived yet, the bot has nobody linked yet, or this character is not linked.
 - **A new tools window.** A sidebar with grouped pages (Overview, Raid night, Fun and runs, System) instead of a row of tabs, a **Home** page that answers "what is going on and is my data on Discord?", tooltips saying what each page is for, a page title, the Player field only where it is used, and a permanent **Send to Discord** button.

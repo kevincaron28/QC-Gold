@@ -5,3 +5,5 @@ GuildedStandings = {
   baseGp = 0,
   players = {}
 }
+
+GuildedItems = nil

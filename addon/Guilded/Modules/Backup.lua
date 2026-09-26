@@ -21,7 +21,7 @@ local MAX_CHARS = 4000000
 -- Fields that are not part of a backup (scratch or per-machine data), and
 -- fields that always stay in place.
 local SKIP = {
-  diagnostics = true, peerRoster = true, events = true, exports = true, standings = true,
+  diagnostics = true, peerRoster = true, events = true, exports = true, standings = true, items = true,
   calendarCheck = true, character = true, preRestore = true, snapshots = false
 }
 local KEEP = { version = true, guildKey = true, otherGuilds = true }

@@ -92,6 +92,8 @@ local function encodePlayers(players)
   return entries
 end
 
+local shareItems -- defined below, next to the item tooltip data
+
 local function shareStandings()
   local s = standings()
   if not s or not s.updatedAt then return end
@@ -112,6 +114,76 @@ local function shareStandings()
       send(string.format("STAND|%s|%d|%d|%d|%s", s.updatedAt, s.baseGp or 0, i, #chunks, chunk), "GUILD")
     end)
   end
+  shareItems(#chunks)
+end
+
+-- Item tooltip data (who wishlisted an item, what it usually costs) travels next to the
+-- standings: ITEM|<updatedAt>|<i>|<total>|key~gp~awards~wishTotal~Name:prio,Name:prio;...
+-- The bot keeps keys and names free of the separators.
+local function encodeItems(list)
+  local entries = {}
+  for key, item in pairs(list or {}) do
+    local wish = {}
+    for _, w in ipairs(item.wish or {}) do table.insert(wish, string.format("%s:%d", w[1], w[2] or 2)) end
+    local entry = string.format("%s~%s~%d~%d~%s", key, item.gp and tostring(item.gp) or "", item.n or 0, item.wn or 0, table.concat(wish, ","))
+    if string.len(entry) <= CHUNK_BYTES then table.insert(entries, entry) end
+  end
+  table.sort(entries)
+  return entries
+end
+
+function shareItems(offset)
+  local d = db()
+  local s = standings()
+  if not d or not d.items or not s or not s.updatedAt then return end
+  local chunks, current = {}, ""
+  for _, entry in ipairs(encodeItems(d.items.list)) do
+    if current ~= "" and string.len(current) + string.len(entry) + 1 > CHUNK_BYTES then
+      table.insert(chunks, current)
+      current = ""
+    end
+    current = current == "" and entry or (current .. ";" .. entry)
+  end
+  if current ~= "" then table.insert(chunks, current) end
+  for i, chunk in ipairs(chunks) do
+    after(offset + i - 1, function()
+      send(string.format("ITEM|%s|%d|%d|%s", s.updatedAt, i, #chunks, chunk), "GUILD")
+    end)
+  end
+end
+
+local function decodeItems(text)
+  local list = {}
+  for entry in string.gmatch(text or "", "[^;]+") do
+    local key, gp, awards, wishTotal, wish = string.match(entry, "^([^~]+)~([^~]*)~(%d*)~(%d*)~(.*)$")
+    if key then
+      local item = { gp = tonumber(gp), n = tonumber(awards) or 0, wn = tonumber(wishTotal) or 0, wish = {} }
+      for name, prio in string.gmatch(wish or "", "([^:,]+):(%d)") do table.insert(item.wish, { name, tonumber(prio) }) end
+      list[key] = item
+    end
+  end
+  return list
+end
+
+local incomingItems -- { updatedAt, total, parts, received }
+
+local function receiveItemChunk(text, sender)
+  local updatedAt, index, total, payload = string.match(text, "^ITEM|([^|]+)|(%d+)|(%d+)|(.*)$")
+  index, total = tonumber(index), tonumber(total)
+  if not updatedAt or not index or not total or total < 1 or total > 60 then return end
+  if not ns.isOfficerName(sender) then return end
+  local d = db()
+  if not d or (d.items and d.items.updatedAt and d.items.updatedAt >= updatedAt) then return end
+  if not incomingItems or incomingItems.updatedAt ~= updatedAt then
+    incomingItems = { updatedAt = updatedAt, total = total, parts = {}, received = 0 }
+  end
+  if not incomingItems.parts[index] then
+    incomingItems.parts[index] = payload
+    incomingItems.received = incomingItems.received + 1
+  end
+  if incomingItems.received < incomingItems.total then return end
+  d.items = { updatedAt = updatedAt, list = decodeItems(table.concat(incomingItems.parts, ";")), from = sender }
+  incomingItems = nil
 end
 
 local function receiveChunk(text, sender)
@@ -157,7 +229,23 @@ local function adoptFileStandings()
     end
   end
   d.standings = { updatedAt = file.updatedAt, baseGp = baseGp, players = players, from = "companion" }
+  -- Item tooltip data written next to the standings (none when nobody wishlisted anything yet).
+  local items = {}
+  if type(GuildedItems) == "table" then
+    for key, row in pairs(GuildedItems) do
+      if type(key) == "string" and type(row) == "table" then
+        items[key] = { gp = tonumber(row.gp), n = tonumber(row.n) or 0, wn = tonumber(row.wn) or 0, wish = type(row.wish) == "table" and row.wish or {} }
+      end
+    end
+  end
+  d.items = { updatedAt = file.updatedAt, list = items, from = "companion" }
   return true
+end
+
+-- What the item tooltip shows for an item key (see Tooltip.lua): { gp, n, wn, wish } or nil.
+function ns.getItemInsight(key)
+  local d = db()
+  return d and d.items and d.items.list and d.items.list[key] or nil
 end
 
 -- ---------------------------------------------------------------------
@@ -344,6 +432,8 @@ local function onEvent(_, event, ...)
       if ns.isOfficer() and s and s.updatedAt and s.updatedAt > theirs then shareStandings() end
     elseif kind == "STAND" then
       receiveChunk(text, sender)
+    elseif kind == "ITEM" then
+      receiveItemChunk(text, sender)
     elseif kind == "MODSREQ" then
       local theirs = tonumber(string.match(text, "^MODSREQ|(%d+)$")) or 0
       local g = guildModules()

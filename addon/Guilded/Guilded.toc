@@ -3,7 +3,7 @@
 ## Notes: Manual-first raid attendance, DKP/EPGP ledger, gear checks and fun roll games for WoW Forever
 ## Notes-frFR: Presences de raid, registre EPGP, verification d'equipement et jeux de des pour WoW Forever
 ## Author: Kevin Caron
-## Version: 3.0.2
+## Version: 3.1.0
 ## IconTexture: Interface\Icons\INV_Misc_Coin_01
 ## Category: Raid
 ## X-License: PolyForm-Noncommercial-1.0.0
@@ -25,4 +25,5 @@ Modules\Backup.lua
 Modules\SyncNow.lua
 Modules\AutoInvite.lua
 Modules\Dungeon.lua
+Modules\Tooltip.lua
 Modules\Minimap.lua

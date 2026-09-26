@@ -60,3 +60,19 @@ describe("guild standings", () => {
     ]);
   });
 });
+
+describe("item tooltip data in the standings file", () => {
+  it("writes valid Lua for items, even with awkward names and no GP history", () => {
+    const lua = standingsToLua({
+      updatedAt: "2026-09-24T00:00:00.000Z", standings: [],
+      items: [
+        { key: "thunderfury blessed blade", gp: 120.4, awards: 3, wishTotal: 5, wish: [{ name: "Amy", priority: 1 }, { name: "Bad\"Name", priority: 3 }] },
+        { key: "some ring", gp: null, awards: 0, wishTotal: 1, wish: [{ name: "Cy", priority: 2 }] }
+      ]
+    });
+    expect(() => luaparse.parse(lua)).not.toThrow();
+    expect(lua).toContain('["thunderfury blessed blade"] = { gp = 120, n = 3, wn = 5, wish = { { "Amy", 1 }, { "Bad\\"Name", 3 } } },');
+    expect(lua).toContain('["some ring"] = { gp = nil, n = 0, wn = 1, wish = { { "Cy", 2 } } },');
+    expect(standingsToLua({ updatedAt: "x", standings: [] })).toContain("GuildedItems = nil");
+  });
+});

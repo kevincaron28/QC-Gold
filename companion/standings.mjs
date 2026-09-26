@@ -44,6 +44,13 @@ export function standingsToLua(data) {
       "} }"
     ] : ["GuildedDungeonBoard = nil"]),
     "",
+    "-- Item tooltips: who wishlisted an item and what it usually costs (key = lowercase item name).",
+    ...((data.items ?? []).length ? [
+      "GuildedItems = {",
+      ...data.items.map((item) => `  [${luaString(item.key)}] = { gp = ${item.gp === null || item.gp === undefined ? "nil" : Math.trunc(item.gp)}, n = ${Math.trunc(item.awards ?? 0)}, wn = ${Math.trunc(item.wishTotal ?? 0)}, wish = { ${(item.wish ?? []).map((w) => `{ ${luaString(w.name)}, ${Math.trunc(w.priority)} }`).join(", ")} } },`),
+      "}"
+    ] : ["GuildedItems = nil"]),
+    "",
     "-- The next raid's signed-up players (main characters), for /guilded invite raid.",
     ...(data.nextRaid ? [
       `GuildedNextRaid = { id = ${luaString(data.nextRaid.id)}, title = ${luaString(data.nextRaid.title)}, at = ${luaString(data.nextRaid.scheduledAt)}, core = ${luaString(data.nextRaid.core ?? "")}, players = {`,
