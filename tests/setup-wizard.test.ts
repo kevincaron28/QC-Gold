@@ -70,3 +70,42 @@ describe("setup wizard screens", () => {
     expect(text).toContain("✅ Announcements channel (#announcements)");
   });
 });
+
+describe("setup wizard in French", () => {
+  it("every step is French, within Discord's limits, and the language picker is on the first screen", async () => {
+    settings.language = "fr";
+    try {
+      for (let step = 0; step <= 8; step++) {
+        const screen = await renderStep(step, guild as never, "g1", "");
+        const embed = screen.embeds[0]!.toJSON();
+        expect((embed.description ?? "").length).toBeLessThanOrEqual(4096);
+        expect(embed.title).toContain("Configuration de Guilded");
+        for (const row of screen.components) {
+          for (const component of row.toJSON().components) {
+            const c = component as { label?: string; placeholder?: string; options?: { label: string }[] };
+            expect((c.label ?? "").length).toBeLessThanOrEqual(80);
+            expect((c.placeholder ?? "").length).toBeLessThanOrEqual(150);
+            for (const option of c.options ?? []) expect(option.label.length).toBeLessThanOrEqual(100);
+          }
+        }
+      }
+      const first = await renderStep(0, guild as never, "g1", "");
+      const labels = first.components.flatMap((row) => row.toJSON().components.map((c) => (c as { label?: string }).label));
+      expect(labels).toEqual(expect.arrayContaining(["English", "Français", "Commencer ▶"]));
+      const roles = (await renderStep(1, guild as never, "g1", "")).embeds[0]!.toJSON().description ?? "";
+      expect(roles).toContain("Maître de guilde");
+      expect(roles).toContain("(facultatif)");
+      const checklist = (await renderStep(8, guild as never, "g1", "")).embeds[0]!.toJSON().description ?? "";
+      expect(checklist).toContain("❌ Salon des inscriptions aux raids");
+      expect(checklist).toContain("Lancez /setup, étape 2 (Salons).");
+    } finally {
+      settings.language = "en";
+    }
+  });
+
+  it("in English the first screen also offers the language buttons", async () => {
+    const first = await renderStep(0, guild as never, "g1", "");
+    const labels = first.components.flatMap((row) => row.toJSON().components.map((c) => (c as { label?: string }).label));
+    expect(labels).toEqual(expect.arrayContaining(["English", "Français", "Start ▶"]));
+  });
+});
