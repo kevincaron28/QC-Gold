@@ -72,6 +72,7 @@ each item's notes.
 
 - 2026-09-26 14:40 A1 done: fengari harness; Consumables.lua and Core.lua (`/qg character`) verified against the mocked game.
 - 2026-09-26 16:10 A2-A9 done (addon side complete, 60 Lua tests through the harness). Next: bot items B1-B9, then release.
+- 2026-09-27 21:00 v2.3: character line fixed (QG2, semicolons), realm rename keeps guild data, recurring recruitment post removed, automatic character discovery and auto-link by Discord name, `/character claim|link|unclaimed|autolink`, `/config auto-import`, companion API host setting and failed-login throttle, Oracle deployment kit (`docs/DEPLOY_ORACLE.md`, `deploy/`). Still open: real ownership verification (IR3) instead of trusting the Discord name.
 - 2026-09-27 06:00 v2.2: auto-invite by whisper (GK1) and Anniversary interface number (G11), addon 2.2.0.
 - 2026-09-27 05:00 v2.1: per-core point rules and pools (GO1), one saved-data set per WoW guild (G10), `/qg backup` and `/qg restore` (GO9), addon 2.1.0, 249 tests. Not built as asked: in-game polls (dropped by you).
 - 2026-09-27 01:30 B1-B9 and R1 done. **v2.0.0 is complete: addon 2.0.0 zip in `dist/`, 232 tests green, migrations applied to the live database through `20260927010000_polls`.** Next: the user runs checklist sections 0-13, then push and release.

@@ -341,3 +341,11 @@ committing or pushing — do this by hand.
 
 `dist/` is gitignored — the zip itself never goes into the repo, only the
 release asset.
+
+## When the game's realm name changes (beta to release)
+
+The addon keys its saved data by guild name plus realm. If only the realm text changes (for example "Classic Beta PvP" becomes something else), the addon **keeps your data** and just renames the key (it says so in chat). The bot matches characters by name, so a different realm spelling still matches when the name is unique. The only place to update by hand is `companion/companion.config.json`: change `"realm"` (and `"wowGuild"` if you set it) to the new realm text shown by `/qg diag`.
+
+## Running the bot in the cloud
+
+See `docs/DEPLOY_ORACLE.md` (Oracle Cloud Always Free, with a systemd unit, Caddy HTTPS and a setup script in `deploy/`). The companion stays on an officer's PC (`scripts/install-companion-autostart.bat` starts it with Windows) and uploads to the cloud bot.

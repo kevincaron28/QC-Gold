@@ -191,3 +191,9 @@ presence, loot, and dungeon runs. An officer reviews and applies it with
 
 - **`/qg autoinvite`** (officers): players whisper a phrase (default `ginv`) and get a guild invite. Off by default, rate limited (one invite per name per hour, 15 per hour), never in combat, skips known guild members.
 - **TBC Anniversary:** the TOC now lists interface `20506` next to Forever's `16001`, so the same download loads on both. Anniversary-specific behaviour is untested.
+
+## Version 2.3 additions
+
+- **The character line uses semicolons** (`QG2;Ray;Realm;PRIEST;...`). The old `|` line broke in chat because WoW treats `|R` as a colour code and swallowed the start of names beginning with R.
+- **Everyone announces who they are.** The guild gear digest now carries class, race, level and spec, so an officer's export discovers every guildmate running the addon. The bot links them to Discord automatically (see `COMMANDS.md`, "Automatic character sync").
+- **A realm rename keeps your data.** If the guild name is the same and only the realm text changed, the saved data is kept and re-keyed instead of being parked.

@@ -157,6 +157,7 @@ messages follow the language chosen in `/setup` (English or French).
 | `/profile` | Your profile: characters (race, class, professions, last seen), EP/GP/PR |
 | `/who <character>` | Look anyone up: main and alts, professions, EP/GP/PR, 30-day attendance, last seen |
 | `/character add <name> <realm> <class> <main> [spec] [level] [race]` / `/character list` | Link your WoW characters (needed before imports can match you) |
+| `/character claim <name>` | Link a character your addon already reported (pick it from the list; nothing to type or paste). Most people never need it: characters whose name matches the Discord nickname are linked automatically |
 | `/character import <code> [main]` | Link or refresh a character from the line `/qg character` shows in game (name, realm, class, race, level, spec, professions), no typing |
 | `/wcl list` | The latest Warcraft Logs reports the officers pulled in |
 | `/apply` | Submit a guild application |
@@ -251,6 +252,8 @@ Approve, and a raid can never be paid twice.
 | `/poll create <question> <option1> <option2> [option3-5] [closes]` / `/poll close <poll>` | Poll answered with buttons; one vote each, changeable; the result bars update live |
 | `/loot award <item> <player> [gp] [boss] [raid]` | Give an item straight to a player (loot council or manual); GP is charged only if you give a price; lands in `/loot history` |
 | `/config loot-mode <EPGP\|Council>` | Council mode turns `/loot auction` and `/loot bid` off; officers decide with `/loot award` |
+| `/character unclaimed` / `link <name> <player>` / `autolink` | Characters the addons reported that nobody has linked: list them, link one by hand, or link every one whose name matches a Discord member |
+| `/config auto-import <true/false>` | Apply what the companion uploads by itself (ledger, attendance, loot, dungeon runs, gear checks, discovered characters) with no `/import-apply`. Also a button in `/setup` step 7 |
 | `/setup` | **Start here.** Guided setup: roles, channels (core, dungeon, extras; one button makes the whole WoW section under a "Quebec Gold" category), welcome, EPGP values. `/setup status:true` shows the checklist |
 | `/wcl report <url> [raid] [post]` | Pull a Warcraft Logs report (link or code): zone, duration, boss kills and wipes, player list. Saved, posted to the raid logs channel, and linked to a Discord raid if you give its id. Needs `WCL_CLIENT_ID` / `WCL_CLIENT_SECRET` in `.env.local` |
 | `/testraid start [raiders] [starts_in] [realm]` | Fake `[TEST]` raid with fake raiders signed up (hits role caps, Maybe, waitlist) |
@@ -328,3 +331,13 @@ A **raid core** is a named roster (e.g. "Tuesday MC core"); a guild can have sev
 ### Point pools
 
 By default everyone has **one guild pool** of EP/GP, whatever raid core they raid with. A core can opt into **its own pool** (`/core rules pool:separate`): from then on its raids pay attendance and boss EP into that pool, GP from its loot auctions and `/loot award` is charged to it, and its standings are separate. Use the `core:` option on `/epgp balance`, `history`, `leaderboard`, `award-ep`, `award-gp` and `decay` to work on a pool; without it you get the guild pool (`/epgp balance` also lists your standing in every separate pool). Decay uses the core's own percentage when set. The in-game standings (`/qg standings`, Standings.lua) show the **guild pool** only. A core that has points in its own pool can't be deleted or switched back to the shared pool.
+
+## Automatic character sync
+
+1. Every addon tells the guild who it is (name, class, race, level, spec, professions) in its normal gear digest, so an officer's upload (the companion) carries everyone who was online.
+2. The bot remembers new names as *unclaimed* characters and refreshes the linked ones.
+3. A character is linked to a Discord member **automatically when the Discord name contains the character name** (`Ray`, `[GOLD] Ray`, `Ray | Priest`; exactly one member must fit). The first character becomes the main.
+4. Anyone left over picks their character with `/character claim` (a dropdown, no code), or an officer uses `/character link`.
+5. With `/config auto-import true` steps 1-3 happen right after each upload, with no officer action.
+
+The addon's `/qg character` and `/qg share` codes still work as a fallback. Linking trusts the Discord name or the person's own pick (small, trusted guild); officers can see and fix links with `/character unclaimed` and `/character link`. Discord does not let a bot see a member's Battle.net connection without a separate login page, and Blizzard has no character list for Forever, so "linked WoW account" cannot be used.

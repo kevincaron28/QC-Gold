@@ -3,7 +3,7 @@
 --
 --   local api = _G.QuebecGoldAPI
 --   api.GetAPIVersion()          -> 1
---   api.GetAddonVersion()        -> "2.2.0"
+--   api.GetAddonVersion()        -> "2.3.0"
 --   api.IsReady()                -> true once saved data is loaded
 --   api.GetStanding(name)        -> { ep, gp, pr } from the Discord standings, or nil
 --   api.GetStandingsUpdatedAt()  -> ISO time string or nil
