@@ -1,6 +1,6 @@
 {
   "name": "quebec-gold-bot",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "private": true,
   "description": "Guild management and addon integration bot for Quebec Gold",
   "type": "module",

@@ -3,7 +3,7 @@
 ## Notes: Manual-first raid attendance, DKP/EPGP ledger, gear checks and fun roll games for WoW Forever
 ## Notes-frFR: Presences de raid, registre EPGP, verification d'equipement et jeux de des pour WoW Forever
 ## Author: Quebec Gold
-## Version: 2.3.0
+## Version: 2.4.0
 ## SavedVariables: QuebecGoldDB
 
 Core.lua

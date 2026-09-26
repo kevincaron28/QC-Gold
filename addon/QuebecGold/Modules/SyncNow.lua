@@ -138,6 +138,18 @@ function module.tick()
   end
 end
 
+-- One plain-language sentence for the Home page.
+function module.statusLine()
+  local s = state()
+  local auto = s and autoEnabled()
+  if dirtyAt then
+    local minutes = math.floor((clock() - dirtyAt) / 60)
+    return string.format("Changes are waiting (%s). %s", minutes <= 0 and "just now" or (minutes .. " min"),
+      auto and "The addon will save them by itself at a safe moment; or press Send to Discord now." or "Press Send to Discord now: it saves and the companion uploads.")
+  end
+  return "Everything is saved. " .. (auto and "New changes are saved automatically at safe moments." or "After changes, press Send to Discord now.")
+end
+
 local frame = CreateFrame("Frame")
 frame:RegisterEvent("PLAYER_LOGIN")
 frame:SetScript("OnEvent", function()

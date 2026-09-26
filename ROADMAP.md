@@ -86,6 +86,7 @@ each item's notes.
 
 ### Progress log (update after every commit)
 
+- 2026-09-28 N6 done: tools window rebuilt with a grouped sidebar, Home page, page titles and tooltips, Player field only where used, permanent Send to Discord button; the real window code is built and exercised in the Lua tests (tests/lua/window.test.ts), but how it LOOKS has not been seen. Addon 2.4.0.
 - 2026-09-28 N7 done: craft board is a forum (post per request, status and profession tags, buttons, "Request a craft" form, DMs, auto-close); old text channel still works.
 - 2026-09-28 N5 done: `/core setup` guided wizard (name form, member menus per role, rules buttons, EP form), pointer in `/setup` and `/help`.
 - 2026-09-28 N4 done: dropdowns for class and profession, suggestions for spec, race, own characters, attunements, items, tags, raid titles and times, reasons and auction length; `/loot auction` needs only the item; realm optional on `/character add`; tests/commands-shape.test.ts checks every command against Discord's rules.
@@ -681,7 +682,7 @@ none is started.
   keeps every known recipe. Needs a trade-skill window scan (guard
   `C_TradeSkillUI` in `Compat.lua`) and `/craft request` autocomplete from it.
   Ties into #19 cooldown tracking.
-- **G6. [ ] M/L — Sortable roster panel** in game (level, class, ilvl,
+- **G6. [~] M/L — Sortable roster panel** in game (level, class, ilvl,
   professions, attunements, attendance, last seen; search; online toggle).
   Our Standings tab shows EPGP only. Highest-visibility feature if the addon
   is ever listed publicly.

@@ -1,0 +1,106 @@
+import { afterEach, describe, expect, it } from "vitest";
+import { newLuaSession, type LuaSession } from "./harness.js";
+
+// Builds the real tools window (Modules/Minimap.lua) against frames that answer
+// with plausible values, to catch errors in the layout code and check who
+// sees which tab and what the Home page says.
+let session: LuaSession | undefined;
+afterEach(() => { session?.close(); session = undefined; });
+
+const RICH_FRAMES = String.raw`
+  local numbers = { GetWidth = 100, GetHeight = 100, GetEffectiveScale = 1, GetFrameLevel = 1, GetLeft = 0, GetTop = 0, GetRight = 100, GetBottom = 0, GetStringWidth = 50 }
+  function CreateFrame()
+    local f = { scripts = {}, shown = false, text = "" }
+    setmetatable(f, { __index = function(_, k)
+      if numbers[k] then return function() return numbers[k] end end
+      if k == "GetText" then return function(self) return self.text end end
+      if k == "SetText" then return function(self, v) self.text = v or "" end end
+      if k == "Show" then return function(self) self.shown = true end end
+      if k == "Hide" then return function(self) self.shown = false end end
+      if k == "IsShown" then return function(self) return self.shown end end
+      if k == "HasFocus" or k == "GetChecked" or k == "IsVisible" then return function() return false end end
+      if k == "GetCenter" then return function() return 0, 0 end end
+      if k == "CreateFontString" or k == "CreateTexture" then return function() return CreateFrame() end end
+      return function(self) return self end
+    end })
+    f.SetScript = function(self, name, fn) self.scripts[name] = fn end
+    f.GetScript = function(self, name) return self.scripts[name] end
+    f.HookScript = function(self, name, fn) self.scripts[name] = self.scripts[name] or fn end
+    FRAMES[#FRAMES + 1] = f
+    return f
+  end
+  Minimap = CreateFrame()
+  UIParent = CreateFrame()
+  GameTooltip = CreateFrame()
+  UISpecialFrames = {}
+  function UnitIsPlayer() return true end
+`;
+
+function openWindow(rank: number): LuaSession {
+  session = newLuaSession();
+  session.run(RICH_FRAMES);
+  session.run(String.raw`
+    QuebecGoldDB = nil; NS = {}
+    MOCK_UNITS = { player = { name = "Kev", buffs = {} } }
+    function GetGuildInfo() return "Alpha", "Rank", ${rank} end
+  `);
+  for (const file of ["Core.lua", "Compat.lua", "Modules/Sync.lua", "Modules/SyncNow.lua", "Modules/Games.lua", "Modules/Minimap.lua"]) session.load(file);
+  session.run(`fire_event("PLAYER_LOGIN"); fire_event("PLAYER_ENTERING_WORLD"); NS.commandHandlers["menu"]()`);
+  return session;
+}
+
+const visibleTabs = (s: LuaSession) => s.run(`local n = {}; for _, t in ipairs(NS.windowState().tabs) do if t.visible then n[#n + 1] = t.name end end; return table.concat(n, ",")`);
+const homeText = (s: LuaSession, field: string) => s.run(`return NS.windowState().${field}.text`);
+
+describe("the tools window (sidebar and Home page)", () => {
+  it("opens without errors and starts on Home", () => {
+    const s = openWindow(1);
+    expect(s.chat().join("\n")).not.toContain("failed");
+    expect(s.run(`return NS.windowState().tabs[NS.windowState().currentTab].name`)).toBe("Home");
+  });
+
+  it("officers see every group in order; members only what they can use", () => {
+    expect(visibleTabs(openWindow(1))).toBe("Home,Me,Standings,Raid,EPGP,Loot,Dungeons,Games,Tools");
+    session?.close();
+    expect(visibleTabs(openWindow(5))).toBe("Home,Me,Standings,Dungeons,Games,Tools");
+  });
+
+  it("Home says who you are, what is running, and why there is no standing yet", () => {
+    const s = openWindow(1);
+    expect(homeText(s, "homeGreeting")).toContain("Kev");
+    expect(homeText(s, "homeGreeting")).toContain("Officer");
+    expect(homeText(s, "homeNow")).toContain("No raid is running");
+    expect(homeText(s, "homeStanding")).toContain("have not arrived yet");
+    expect(homeText(s, "homeGear")).toContain("No gear check yet");
+    expect(homeText(s, "homeSync")).toContain("Everything is saved");
+  });
+
+  it("Home shows the standing when Discord has sent it, and unsent changes when something happened", () => {
+    const s = openWindow(1);
+    s.run(`
+      QuebecGoldDB.standings = { updatedAt = "2026-09-28T00:00:00Z", baseGp = 0, players = { Kev = { ep = 120, gp = 40, pr = 3 } } }
+      NS.syncNow.mark()
+      SlashCmdList["QUEBECGOLD"]("menu"); SlashCmdList["QUEBECGOLD"]("menu")
+    `);
+    expect(homeText(s, "homeStanding")).toBe("EP 120    GP 40    PR 3.00");
+    expect(homeText(s, "homeSync")).toContain("Changes are waiting");
+    expect(s.run(`return NS.windowState().sidebarSync.text`)).toBe("Unsent changes");
+  });
+
+  it("the Player field appears only on pages that act on a player", () => {
+    const s = openWindow(1);
+    const shown = () => s.run(`return tostring(NS.windowState().playerBox.shown)`);
+    expect(shown()).toBe("false");                       // Home
+    s.run(`NS.windowState().selectTabByName("Raid")`);
+    expect(shown()).toBe("true");
+    s.run(`NS.windowState().selectTabByName("Tools")`);
+    expect(shown()).toBe("false");
+  });
+
+  it("titles each page with what it is for", () => {
+    const s = openWindow(1);
+    expect(s.run(`return NS.windowState().pageTitle.text`)).toContain("Home");
+    s.run(`NS.windowState().selectTabByName("EPGP")`);
+    expect(s.run(`return NS.windowState().pageTitle.text`)).toContain("award EP and GP");
+  });
+});

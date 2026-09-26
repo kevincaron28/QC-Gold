@@ -8,13 +8,14 @@ Master role, or Administrator), or the specific Discord role named.
 ## In game: `/qg`
 
 **Easiest way: click the gold coin on the minimap** (or type `/qg menu`).
-Each rank only sees what it can use: members get **Me, Standings, Dungeons, Tools**;
-officers also get **Raid, EPGP, Loot** and the officer tools; everyone can open **Games**. A **Player**
-box sits at the top. Target someone and their name fills in automatically, or use
-**Me** or **Group...** (a clickable list of your raid/party). Buttons that
-affect everyone (whole-group EP, end raid) need a second click to confirm.
-Right-click the coin to check your gear. Everything below also works as a
-typed command. Names are case-insensitive (`bob` = `Bob`).
+The window has a **sidebar** on the left with the pages grouped under headings:
+
+- **Overview:** **Home** (what is going on right now, your standing from Discord, your gear check, and whether your data has reached Discord, with big buttons for the common things), **Me**, **Standings**
+- **Raid night** (officers): **Raid**, **EPGP**, **Loot**
+- **Fun and runs:** **Dungeons**, **Games**
+- **System:** **Tools** (switch optional parts on or off, diagnostics)
+
+Hover a page name for what it is for. The **Player** box (target someone, or **Me** / **Group...**) only appears on pages that act on a player. **Send to Discord** at the bottom of the sidebar saves your data (a UI reload) so the companion can upload it, and the label above it says whether anything is waiting. Buttons that affect everyone (whole-group EP, end raid) need a second click to confirm. Right-click the coin to check your gear. Everything also works as a typed command. Names are case-insensitive (`bob` = `Bob`).
 
 ### Everyone
 

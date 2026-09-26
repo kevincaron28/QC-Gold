@@ -22,8 +22,12 @@ ns = ns or {}
 local ICON = "Interface\\Icons\\INV_Misc_Coin_01"
 local DEFAULT_ANGLE = math.rad(220)
 local RADIUS_PAD = 5
-local PANEL_WIDTH = 620
-local PANEL_HEIGHT = 480
+local PANEL_WIDTH = 790
+local PANEL_HEIGHT = 540
+-- A sidebar of tabs on the left (grouped, like most modern addons), the page on the right.
+local SIDEBAR_WIDTH = 160
+local CONTENT_X = SIDEBAR_WIDTH + 26
+local PAGE_WIDTH = PANEL_WIDTH - CONTENT_X - 22
 local ATTUNEMENT_PRESETS = { "Molten Core", "Onyxia", "Blackwing Lair", "Naxxramas" }
 
 local button, panel
@@ -32,6 +36,8 @@ local button, panel
 local function L(text) return ns.L and ns.L(text) or text end
 local built = false
 local ui = { tabs = {}, officerOnly = {}, currentTab = nil }
+-- Read-only view of the window state, for tests (tests/lua/window.test.ts).
+ns.windowState = function() return ui end
 
 local function settings()
   return ns.getSettings and ns.getSettings()
@@ -47,10 +53,10 @@ local function at(widget, parent, x, y)
   return widget
 end
 
-local function newButton(parent, text, width, onClick)
+local function newButton(parent, text, width, onClick, height)
   local b = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
   b:SetWidth(width or 110)
-  b:SetHeight(22)
+  b:SetHeight(height or 22)
   b:SetText(text)
   if onClick then b:SetScript("OnClick", onClick) end
   return b
@@ -357,7 +363,7 @@ local function buildLootPage(page)
   confirmClick(cancel, "Cancel", function() run("bid cancel") end)
 
   ui.bidStatus = forModule("bidding", at(newLabel(page, "", "GameFontHighlightSmall"), page, 0, -146))
-  ui.bidStatus:SetWidth(PANEL_WIDTH - 44)
+  ui.bidStatus:SetWidth(PAGE_WIDTH)
 
   at(newLabel(page, "No bidding: give it to the selected Player for Min GP", "GameFontNormalSmall"), page, 0, -262)
   at(newButton(page, "Give directly", 110, function()
@@ -392,13 +398,13 @@ local function buildGamesPage(page)
   end), page, 0, -112)
 
   ui.gamesStatus = at(newLabel(page, "", "GameFontHighlightSmall"), page, 0, -150)
-  ui.gamesStatus:SetWidth(PANEL_WIDTH - 44)
+  ui.gamesStatus:SetWidth(PAGE_WIDTH)
 end
 
 local function buildMePage(page)
   at(newButton(page, L("Check my gear"), 180, function() run("inspect") end), page, 0, 0)
   ui.gearInfo = at(newLabel(page, "", "GameFontHighlightSmall"), page, 0, -30)
-  ui.gearInfo:SetWidth(PANEL_WIDTH - 44)
+  ui.gearInfo:SetWidth(PAGE_WIDTH)
 
   at(newLabel(page, L("Attunements")), page, 0, -100)
   local x = 0
@@ -420,14 +426,14 @@ local function buildMePage(page)
   at(newButton(page, L("Mark done"), 90, function() attune(false) end), page, 214, -152)
   at(newButton(page, L("Clear"), 70, function() attune(true) end), page, 308, -152)
   ui.attuneInfo = at(newLabel(page, "", "GameFontHighlightSmall"), page, 0, -184)
-  ui.attuneInfo:SetWidth(PANEL_WIDTH - 44)
+  ui.attuneInfo:SetWidth(PAGE_WIDTH)
 end
 
 local function buildStandingsPage(page)
   ui.standingsPlayer = at(newLabel(page, "", "GameFontHighlight"), page, 0, 0)
-  ui.standingsPlayer:SetWidth(PANEL_WIDTH - 44)
+  ui.standingsPlayer:SetWidth(PAGE_WIDTH)
   ui.standingsList = at(newLabel(page, "", "GameFontHighlightSmall"), page, 0, -28)
-  ui.standingsList:SetWidth(PANEL_WIDTH - 44)
+  ui.standingsList:SetWidth(PAGE_WIDTH)
 end
 
 local function buildToolsPage(page)
@@ -445,7 +451,7 @@ local function buildToolsPage(page)
   forModule("games", at(newButton(page, "Games help", 136, function() run("games") end), page, 284, -116), true)
   ui.exportHelp = officerOnly(at(newLabel(page,
     "Export: press it, then /reload so the game saves; the companion uploads it to Discord.", "GameFontHighlightSmall"), page, 0, -142))
-  ui.exportHelp:SetWidth(PANEL_WIDTH - 44)
+  ui.exportHelp:SetWidth(PAGE_WIDTH)
 
   -- Optional modules: your own switch, and (officers) the guild-wide one.
   at(newLabel(page, L("Modules"), "GameFontNormal"), page, 0, -164)
@@ -471,7 +477,7 @@ local function buildToolsPage(page)
   local help = at(newLabel(page,
     L("Minimap button hidden? /qg minimap show. Problem? Press Diagnostics and send a screenshot to an officer."),
     "GameFontHighlightSmall"), page, 0, -300)
-  help:SetWidth(PANEL_WIDTH - 44)
+  help:SetWidth(PAGE_WIDTH)
 end
 
 -- Dungeon challenge: the run being recorded, recent runs, and the
@@ -479,7 +485,7 @@ end
 -- permissions themselves (group leader, officer, or solo).
 local function buildDungeonPage(page)
   ui.dgnCurrent = at(newLabel(page, "", "GameFontHighlight"), page, 0, 0)
-  ui.dgnCurrent:SetWidth(PANEL_WIDTH - 44)
+  ui.dgnCurrent:SetWidth(PAGE_WIDTH)
   at(newButton(page, L("Status"), 90, function() run("dungeon status") end), page, 0, -44)
   at(newButton(page, L("Start now"), 90, function() run("dungeon start") end), page, 94, -44)
   local complete = at(newButton(page, L("Complete"), 90), page, 188, -44)
@@ -490,21 +496,60 @@ local function buildDungeonPage(page)
 
   at(newLabel(page, L("Recent runs"), "GameFontNormal"), page, 0, -80)
   ui.dgnRuns = at(newLabel(page, "", "GameFontHighlightSmall"), page, 0, -98)
-  ui.dgnRuns:SetWidth(PANEL_WIDTH - 44)
+  ui.dgnRuns:SetWidth(PAGE_WIDTH)
   ui.dgnBoardTitle = at(newLabel(page, "", "GameFontNormal"), page, 0, -196)
   ui.dgnBoard = at(newLabel(page, "", "GameFontHighlightSmall"), page, 0, -214)
-  ui.dgnBoard:SetWidth(PANEL_WIDTH - 44)
+  ui.dgnBoard:SetWidth(PAGE_WIDTH)
 end
 
+-- The Home page: what is going on right now, your standing and gear, whether
+-- your data has reached Discord, and the few things worth pressing first.
+local function heading(page, text, y)
+  return at(newLabel(page, text, "GameFontNormal"), page, 0, y)
+end
+
+local function buildHomePage(page)
+  ui.homeGreeting = at(newLabel(page, "", "GameFontNormalLarge"), page, 0, 0)
+  ui.homeGreeting:SetWidth(PAGE_WIDTH)
+
+  heading(page, L("Right now"), -36)
+  ui.homeNow = at(newLabel(page, "", "GameFontHighlight"), page, 0, -54)
+  ui.homeNow:SetWidth(PAGE_WIDTH)
+
+  heading(page, L("Your standing (from Discord)"), -112)
+  ui.homeStanding = at(newLabel(page, "", "GameFontHighlight"), page, 0, -130)
+  ui.homeStanding:SetWidth(PAGE_WIDTH)
+
+  heading(page, L("Your gear check"), -184)
+  ui.homeGear = at(newLabel(page, "", "GameFontHighlight"), page, 0, -202)
+  ui.homeGear:SetWidth(PAGE_WIDTH)
+
+  heading(page, L("Sending your data to Discord"), -260)
+  ui.homeSync = at(newLabel(page, "", "GameFontHighlight"), page, 0, -278)
+  ui.homeSync:SetWidth(PAGE_WIDTH)
+
+  at(newButton(page, L("Check my gear"), 170, function() run("inspect") end, 30), page, 0, -322)
+  at(newButton(page, L("Send to Discord now"), 190, function()
+    if ns.syncNow and ns.syncNow.reloadNow then ns.syncNow.reloadNow() else run("sync") end
+  end, 30), page, 178, -322)
+  at(newButton(page, L("Standings"), 130, function() ui.selectTabByName("Standings") end, 30), page, 376, -322)
+  officerOnly(at(newButton(page, L("Run a raid"), 170, function() ui.selectTabByName("Raid") end, 30), page, 0, -360))
+  officerOnly(at(newButton(page, L("Give loot"), 190, function() ui.selectTabByName("Loot") end, 30), page, 178, -360))
+  at(newLabel(page, L("Everything here is also a chat command: /qg help lists them."), "GameFontDisableSmall"), page, 0, -402)
+end
+
+-- Sidebar order: pages are grouped under these headings.
+local GROUPS = { "Overview", "Raid night", "Fun and runs", "System" }
 local TAB_DEFS = {
-  { name = "Raid", officer = true, build = buildRaidPage },
-  { name = "EPGP", officer = true, build = buildEpgpPage },
-  { name = "Loot", officer = true, build = buildLootPage },
-  { name = "Games", module = "games", build = buildGamesPage },
-  { name = "Me", build = buildMePage },
-  { name = "Standings", build = buildStandingsPage },
-  { name = "Dungeons", module = "dungeon", build = buildDungeonPage },
-  { name = "Tools", build = buildToolsPage }
+  { name = "Home", hint = "what is going on, and your data", group = "Overview", build = buildHomePage },
+  { name = "Me", hint = "your gear check and attunements", group = "Overview", usesPlayer = true, build = buildMePage },
+  { name = "Standings", hint = "EP, GP and PR from Discord", group = "Overview", usesPlayer = true, build = buildStandingsPage },
+  { name = "Raid", hint = "run a raid: start, bosses, attendance", group = "Raid night", officer = true, usesPlayer = true, build = buildRaidPage },
+  { name = "EPGP", hint = "award EP and GP", group = "Raid night", officer = true, usesPlayer = true, build = buildEpgpPage },
+  { name = "Loot", hint = "bids and loot", group = "Raid night", officer = true, usesPlayer = true, build = buildLootPage },
+  { name = "Dungeons", hint = "the run being recorded, points", group = "Fun and runs", module = "dungeon", build = buildDungeonPage },
+  { name = "Games", hint = "fun roll games", group = "Fun and runs", module = "games", usesPlayer = true, build = buildGamesPage },
+  { name = "Tools", hint = "switch parts on or off, diagnostics", group = "System", build = buildToolsPage }
 }
 
 -- ---------------------------------------------------------------------
@@ -580,19 +625,41 @@ local function refreshDungeons(db)
 end
 
 local function layoutTabs(officer)
-  local x = 18
+  local y = -62
   local firstVisible
-  for i, tab in ipairs(ui.tabs) do
-    local visible = (officer or not tab.officer) and (not tab.module or moduleOn(tab.module))
-    tab.visible = visible
-    if visible then
-      at(tab.button, panel, x, -40)
-      tab.button:Show()
-      x = x + 74
-      firstVisible = firstVisible or i
-    else
-      tab.button:Hide()
-      tab.page:Hide()
+  ui.groupLabels = ui.groupLabels or {}
+  for _, label in pairs(ui.groupLabels) do label:Hide() end
+  for _, group in ipairs(GROUPS) do
+    local any = false
+    for _, tab in ipairs(ui.tabs) do
+      if tab.group == group and (officer or not tab.officer) and (not tab.module or moduleOn(tab.module)) then any = true end
+    end
+    if any then
+      local label = ui.groupLabels[group]
+      if not label then
+        label = newLabel(panel, "", "GameFontNormalSmall")
+        ui.groupLabels[group] = label
+      end
+      label:SetText(string.upper(L(group)))
+      at(label, panel, 24, y)
+      label:Show()
+      y = y - 16
+      for i, tab in ipairs(ui.tabs) do
+        if tab.group == group then
+          local visible = (officer or not tab.officer) and (not tab.module or moduleOn(tab.module))
+          tab.visible = visible
+          if visible then
+            at(tab.button, panel, 20, y)
+            tab.button:Show()
+            y = y - 28
+            firstVisible = firstVisible or i
+          else
+            tab.button:Hide()
+            tab.page:Hide()
+          end
+        end
+      end
+      y = y - 8
     end
   end
   local current = ui.tabs[ui.currentTab or 0]
@@ -622,6 +689,44 @@ local function refreshModuleRows()
   end
 end
 
+-- Home page text: plain-language state, and the Discord-sync line.
+local function refreshHome(db, officer, me)
+  if not ui.homeGreeting then return end
+  ui.homeGreeting:SetText(string.format("%s   |cff999999%s|r", me, officer and L("Officer") or L("Member")))
+
+  local now = {}
+  local raid = ns.getActiveRaid and ns.getActiveRaid()
+  table.insert(now, raid and string.format(L("Raid running: %s (%d seen in your group)"), raid.title, ns.getPresenceCount and ns.getPresenceCount() or 0)
+    or L("No raid is running."))
+  local run = db.dungeon and db.dungeon.current
+  if run then table.insert(now, string.format(L("Dungeon run: %s (%s)"), run.name or "?", string.lower(run.state or "?"))) end
+  local gameText = moduleOn("games") and ns.games and ns.games.statusText and ns.games.statusText() or ""
+  if gameText ~= "" and gameText ~= "No games running." then table.insert(now, gameText) end
+  local bidText = moduleOn("bidding") and ns.bidding and ns.bidding.statusText and ns.bidding.statusText() or ""
+  if bidText ~= "" then table.insert(now, bidText) end
+  ui.homeNow:SetText(table.concat(now, "\n"))
+
+  local row = ns.getStanding and ns.getStanding(me)
+  ui.homeStanding:SetText(row and string.format("EP %d    GP %d    PR %.2f", row.ep, row.gp, row.pr)
+    or (ns.standingProblemText and ns.standingProblemText(me)) or L("No standing yet."))
+
+  local snapshot = db.readiness and db.readiness[me]
+  if snapshot then
+    local problems = 0
+    for _, finding in ipairs(snapshot.findings or {}) do if finding.severity ~= "INFO" then problems = problems + 1 end end
+    ui.homeGear:SetText(problems == 0 and string.format(L("%s: nothing missing."), snapshot.status or "?")
+      or string.format(L("%s: %d thing(s) to fix (see Me)."), snapshot.status or "?", problems))
+  else
+    ui.homeGear:SetText(L("No gear check yet. Press Check my gear."))
+  end
+
+  ui.homeSync:SetText(ns.syncNow and ns.syncNow.statusLine and ns.syncNow.statusLine()
+    or L("Your data reaches Discord after you /reload or log out (an officer's companion sends it)."))
+  if ui.sidebarSync then
+    ui.sidebarSync:SetText(ns.syncNow and ns.syncNow.isDirty and ns.syncNow.isDirty() and L("Unsent changes") or L("All saved"))
+  end
+end
+
 refresh = function()
   if not panel or not panel:IsShown() then return end
   local db = ns.getDb and ns.getDb()
@@ -643,6 +748,7 @@ refresh = function()
 
   local me = ns.playerName()
   local name = selectedPlayer()
+  refreshHome(db, officer, me)
 
   if officer then
     local raid = ns.getActiveRaid and ns.getActiveRaid()
@@ -724,6 +830,13 @@ selectTab = function(index)
   for i, tab in ipairs(ui.tabs) do
     if i == index then tab.page:Show(); tab.button:LockHighlight() else tab.page:Hide(); tab.button:UnlockHighlight() end
   end
+  if ui.pageTitle then
+    ui.pageTitle:SetText(L(ui.tabs[index].name) .. (ui.tabs[index].hint and ("   |cff999999" .. L(ui.tabs[index].hint) .. "|r") or ""))
+  end
+  -- The Player field only matters on pages that act on a player.
+  for _, widget in ipairs(ui.playerRow or {}) do
+    if ui.tabs[index].usesPlayer then widget:Show() else widget:Hide() end
+  end
   local s = settings()
   if s then s.panelTab = ui.tabs[index].name end
   if picker then picker:Hide() end
@@ -755,33 +868,61 @@ local function buildPanel()
     })
   end
 
+  -- Which page this is, and what it is for.
+  ui.pageTitle = newLabel(panel, "", "GameFontNormal")
+  ui.pageTitle:SetPoint("TOPLEFT", panel, "TOPLEFT", CONTENT_X, -16)
+
+  -- Sidebar background, title and rank line.
+  local sidebar = panel:CreateTexture(nil, "BACKGROUND")
+  sidebar:SetPoint("TOPLEFT", panel, "TOPLEFT", 14, -14)
+  sidebar:SetPoint("BOTTOMLEFT", panel, "BOTTOMLEFT", 14, 14)
+  sidebar:SetWidth(SIDEBAR_WIDTH)
+  if sidebar.SetColorTexture then sidebar:SetColorTexture(0, 0, 0, 0.35) end
   local title = newLabel(panel, "Quebec Gold", "GameFontNormalLarge")
-  title:SetPoint("TOP", panel, "TOP", 0, -16)
+  title:SetPoint("TOPLEFT", panel, "TOPLEFT", 24, -20)
   local close = CreateFrame("Button", nil, panel, "UIPanelCloseButton")
   close:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -4, -4)
 
-  -- Shared player field.
-  at(newLabel(panel, L("Player")), panel, 22, -76)
-  ui.playerBox = at(newEdit(panel, 130), panel, 76, -72)
+  -- Sidebar footer: one button that gets your data to Discord, and whether anything is waiting.
+  ui.sidebarSync = newLabel(panel, "", "GameFontHighlightSmall")
+  ui.sidebarSync:SetPoint("BOTTOMLEFT", panel, "BOTTOMLEFT", 24, 70)
+  local sendButton = newButton(panel, L("Send to Discord"), 132, function()
+    if ns.syncNow and ns.syncNow.reloadNow then ns.syncNow.reloadNow() else run("sync") end
+  end, 26)
+  sendButton:SetPoint("BOTTOMLEFT", panel, "BOTTOMLEFT", 22, 40)
+
+  -- Shared player field (shown only on pages that act on a player).
+  ui.playerRow = {}
+  local function playerWidget(widget) table.insert(ui.playerRow, widget) return widget end
+  playerWidget(at(newLabel(panel, L("Player")), panel, CONTENT_X, -32))
+  ui.playerBox = playerWidget(at(newEdit(panel, 150), panel, CONTENT_X + 54, -28))
   ui.playerBox:SetScript("OnTextChanged", function() refresh() end)
-  at(newButton(panel, L("Target"), 70, fillFromTarget), panel, 214, -72)
-  at(newButton(panel, L("Me"), 50, function() setPlayer(ns.playerName()) end), panel, 288, -72)
-  at(newButton(panel, L("Group..."), 84, showPicker), panel, 342, -72)
+  playerWidget(at(newButton(panel, L("Target"), 70, fillFromTarget), panel, CONTENT_X + 212, -28))
+  playerWidget(at(newButton(panel, L("Me"), 50, function() setPlayer(ns.playerName()) end), panel, CONTENT_X + 286, -28))
+  playerWidget(at(newButton(panel, L("Group..."), 84, showPicker), panel, CONTENT_X + 340, -28))
 
   for i, def in ipairs(TAB_DEFS) do
     local page = CreateFrame("Frame", nil, panel)
-    page:SetPoint("TOPLEFT", panel, "TOPLEFT", 22, -110)
-    page:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -18, 40)
+    page:SetPoint("TOPLEFT", panel, "TOPLEFT", CONTENT_X, -66)
+    page:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -22, 44)
     def.build(page)
     page:Hide()
-    local tabButton = newButton(panel, L(def.name), 72, function() selectTab(i) end)
-    ui.tabs[i] = { name = def.name, officer = def.officer, module = def.module, page = page, button = tabButton }
+    local tabButton = newButton(panel, L(def.name), 132, function() selectTab(i) end, 24)
+    ui.tabs[i] = { name = def.name, hint = def.hint, group = def.group, officer = def.officer, module = def.module, usesPlayer = def.usesPlayer, page = page, button = tabButton }
+    tabButton:SetScript("OnEnter", function(self)
+      if not GameTooltip then return end
+      GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+      GameTooltip:AddLine(L(def.name))
+      if def.hint then GameTooltip:AddLine(L(def.hint), 1, 1, 1) end
+      GameTooltip:Show()
+    end)
+    tabButton:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
   end
 
   -- Latest addon message, so results show here instead of only in chat.
   ui.status = newLabel(panel, "", "GameFontHighlightSmall")
-  ui.status:SetPoint("BOTTOMLEFT", panel, "BOTTOMLEFT", 22, 18)
-  ui.status:SetWidth(PANEL_WIDTH - 44)
+  ui.status:SetPoint("BOTTOMLEFT", panel, "BOTTOMLEFT", CONTENT_X, 18)
+  ui.status:SetWidth(PAGE_WIDTH)
   ui.status:SetHeight(24)
   ns.onMessage = function(text)
     if ui.status then ui.status:SetText(text) end
@@ -821,10 +962,17 @@ local function buildPanel()
   if UISpecialFrames then table.insert(UISpecialFrames, "QuebecGoldPanel") end
 
   local s = settings()
+  ui.currentTab = 1
   for i, tab in ipairs(ui.tabs) do
     if s and s.panelTab == tab.name then ui.currentTab = i end
   end
   panel:Hide()
+end
+
+function ui.selectTabByName(name)
+  for i, tab in ipairs(ui.tabs) do
+    if tab.name == name and tab.visible then selectTab(i) return end
+  end
 end
 
 local function togglePanel()
