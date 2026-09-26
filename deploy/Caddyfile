@@ -1,0 +1,11 @@
+# Caddy: HTTPS in front of the bot's companion API (installed by deploy/setup-server.sh,
+# which replaces YOUR_HOSTNAME). Caddy gets and renews the certificate by itself.
+YOUR_HOSTNAME {
+	request_body {
+		max_size 2MB
+	}
+	# Only the paths the companion uses.
+	@api path /health /api/v1/*
+	reverse_proxy @api 127.0.0.1:8787
+	respond "Not found" 404
+}

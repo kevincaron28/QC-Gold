@@ -1,0 +1,22 @@
+# systemd unit for the Quebec Gold Discord bot (installed by deploy/setup-server.sh)
+[Unit]
+Description=Quebec Gold Discord bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=quebecgold
+WorkingDirectory=/opt/quebec-gold
+EnvironmentFile=/opt/quebec-gold/.env.local
+# Apply database migrations and regenerate the client before every start.
+ExecStartPre=/usr/bin/npm run db:update
+ExecStart=/usr/bin/npm run start:local
+Restart=always
+RestartSec=10
+# Keep memory bounded on a 1 GB machine.
+MemoryMax=700M
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

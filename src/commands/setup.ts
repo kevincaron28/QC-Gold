@@ -310,7 +310,7 @@ export async function renderStep(step: number, guild: DiscordGuild, guildId: str
       `• Weekly decay: **${Math.round(settings.epgpDecayPercent * 100)}%**`,
       "**Recommended:** 10 attendance / 5 late / 5 per boss / 10 full clear / base GP 100 / 10% decay. Fine-tune later with `/config set`.",
       "",
-      `⏰ **Raid reminders:** ${settings.raidReminderMinutes > 0 ? `on (${settings.raidReminderMinutes} min before start)` : "off"}   📊 **Weekly report:** ${settings.weeklyReportEnabled ? "on" : "off"}`,
+      `⏰ **Raid reminders:** ${settings.raidReminderMinutes > 0 ? `on (${settings.raidReminderMinutes} min before start)` : "off"}   📊 **Weekly report:** ${settings.weeklyReportEnabled ? "on" : "off"}   🤖 **Auto-apply uploads:** ${settings.autoApplyImports ? "on" : "off"}`,
       `🕗 **Timezone** (for typing raid times like "friday 8pm"): **${tzLabel}**`,
       `🗣️ **Language** for member messages: **${settings.language === "fr" ? "Français" : "English"}**`
     ].join("\n"));
@@ -318,7 +318,8 @@ export async function renderStep(step: number, guild: DiscordGuild, guildId: str
       new ActionRowBuilder<ButtonBuilder>().addComponents(
         button("epgp-recommended", "Use recommended values", ButtonStyle.Success),
         button("reminders", settings.raidReminderMinutes > 0 ? "Turn reminders off" : "Turn reminders on (60 min)"),
-        button("weekly", settings.weeklyReportEnabled ? "Turn weekly report off" : "Turn weekly report on")
+        button("weekly", settings.weeklyReportEnabled ? "Turn weekly report off" : "Turn weekly report on"),
+        button("auto-import", settings.autoApplyImports ? "Auto-apply uploads: on" : "Auto-apply uploads: off", settings.autoApplyImports ? ButtonStyle.Success : ButtonStyle.Secondary)
       ),
       new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(new StringSelectMenuBuilder().setCustomId("setup:tz")
         .setPlaceholder("🕗 Pick your timezone")
@@ -624,6 +625,12 @@ export async function executeSetup(interaction: ChatInputCommandInteraction): Pr
           const on = (settings?.raidReminderMinutes ?? 0) > 0;
           await guildService.updateSettings(guildId, { raidReminderMinutes: on ? 0 : 60 });
           note = on ? "Raid reminders off." : "Raid reminders on: signed-up players get pinged 60 minutes before start.";
+        } else if (action === "auto-import") {
+          const current = await guildService.getSettings(guildId);
+          await guildService.updateSettings(guildId, { autoApplyImports: !current?.autoApplyImports });
+          note = current?.autoApplyImports
+            ? "Auto-apply is off: officers apply uploads with /import-apply."
+            : "Auto-apply is on: what the companion uploads is applied and announced right away.";
         } else if (action === "weekly") {
           const settings = await guildService.getSettings(guildId);
           await guildService.updateSettings(guildId, { weeklyReportEnabled: !settings?.weeklyReportEnabled });

@@ -438,6 +438,8 @@ model GuildSettings {
   coreChannelId            String?
   // "EPGP" (bids decide) or "COUNCIL" (officers decide with /loot award; bids are off).
   lootMode                 String    @default("EPGP")
+  // true: an addon upload from the companion is applied right away, with no /import-apply.
+  autoApplyImports         Boolean   @default(false)
   createdAt                DateTime  @default(now())
   updatedAt                DateTime  @updatedAt
   guild                    Guild     @relation(fields: [guildId], references: [id], onDelete: Cascade)

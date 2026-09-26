@@ -1,11 +1,7 @@
 import { SlashCommandBuilder, type ChatInputCommandInteraction } from "discord.js";
 import { createAddonImportService } from "../services/addon-import.js";
 import { createAuditService } from "../services/audit.js";
-import { notifications, notify, notifyDungeon } from "../services/notify.js";
-import { updateDungeonLeaderboard } from "../services/dungeon-leaderboard.js";
-import { postReadinessBoard } from "../services/readiness-board.js";
-import { autoLinkUnclaimed } from "../services/character-autolink.js";
-import { dungeonAnnouncement } from "../services/dungeon-announce.js";
+import { followUpImport } from "../services/import-followup.js";
 import type { RaidImportSummary } from "../services/raid-import.js";
 import type { DungeonImportSummary } from "../services/dungeon-import.js";
 import { formatDuration } from "../services/dungeon-rules.js";
@@ -75,10 +71,7 @@ export async function executeImportApply(interaction: ChatInputCommandInteractio
       skippedAlreadyImported: result.skipped
     }
   });
-  // Newly discovered characters: link the ones whose owner is recognisable by Discord name.
-  const autoLinked = interaction.guild && result.discovery.discovered > 0
-    ? await autoLinkUnclaimed(interaction.guild, prisma, context.guildId).catch(() => [])
-    : [];
+  const { autoLinked } = await followUpImport(interaction.guild, context.guildId, result);
   await interaction.reply({
     content: `Applied import \`${importId}\`: ${result.transactions.length} DKP transaction(s), `
       + (result.consumables ? `${result.consumables} consumable check(s), ` : "")
@@ -92,12 +85,4 @@ export async function executeImportApply(interaction: ChatInputCommandInteractio
       + dungeonReport(result.dungeons),
     ephemeral: true
   });
-  const matchedRaids = result.raids.filter((raid) => raid.matchedRaidTitle).length;
-  if (result.epgpTransactions.length > 0 || matchedRaids > 0) {
-    await notify(interaction.guild, notifications.importApplied(result.epgpTransactions.length, matchedRaids));
-  }
-  const dungeonPost = dungeonAnnouncement(result.dungeons, "en");
-  if (dungeonPost) await notifyDungeon(interaction.guild, (lang) => dungeonAnnouncement(result.dungeons, lang) ?? dungeonPost);
-  if (dungeonPost) await updateDungeonLeaderboard(interaction.guild);
-  if (result.readinessSnapshots.length > 0 || result.consumables > 0) await postReadinessBoard(interaction.guild, context.guildId, "updated after an addon import");
 }

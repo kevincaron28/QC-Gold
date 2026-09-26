@@ -56,7 +56,7 @@ import { handleMemberJoin, handleMemberLeave, handleWelcomeRoleButton, WELCOME_R
 // application under "Server Members Intent" in the Discord Developer Portal,
 // or login will fail with "Used disallowed intents".
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers] });
-startCompanionApi();
+startCompanionApi(client);
 const handlers = new Collection<string, (interaction: ChatInputCommandInteraction) => Promise<void>>();
 handlers.set("health", executeHealth);
 handlers.set("profile", executeProfile);

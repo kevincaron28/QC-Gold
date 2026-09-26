@@ -5,6 +5,9 @@ import { prisma } from "./database.js";
 import { createAddonImportService } from "./services/addon-import.js";
 import { createEpgpService } from "./services/epgp.js";
 import { addonDungeonBoard } from "./services/dungeon-stats.js";
+import { createAuditService } from "./services/audit.js";
+import { followUpImport } from "./services/import-followup.js";
+import type { Client } from "discord.js";
 
 const importService = createAddonImportService(prisma);
 const epgpService = createEpgpService(prisma);
@@ -12,6 +15,34 @@ const epgpService = createEpgpService(prisma);
 function json(response: ServerResponse, status: number, body: unknown): void {
   response.writeHead(status, { "content-type": "application/json; charset=utf-8" });
   response.end(JSON.stringify(body));
+}
+
+// Failed-login throttle, because on a server this API is reachable from the
+// internet: 10 bad tokens from one address in 10 minutes locks it out for
+// the rest of that window. `x-forwarded-for` is the client address when a
+// reverse proxy (Caddy) sits in front.
+const FAILURE_WINDOW_MS = 10 * 60_000;
+const MAX_FAILURES = 10;
+const failures = new Map<string, number[]>();
+
+export function clientAddress(request: IncomingMessage): string {
+  const forwarded = request.headers["x-forwarded-for"];
+  const first = (Array.isArray(forwarded) ? forwarded[0] : forwarded)?.split(",")[0]?.trim();
+  return first || request.socket.remoteAddress || "unknown";
+}
+
+export function isLockedOut(address: string, now = Date.now()): boolean {
+  const recent = (failures.get(address) ?? []).filter((at) => now - at < FAILURE_WINDOW_MS);
+  failures.set(address, recent);
+  return recent.length >= MAX_FAILURES;
+}
+
+export function recordFailure(address: string, now = Date.now()): void {
+  failures.set(address, [...(failures.get(address) ?? []).filter((at) => now - at < FAILURE_WINDOW_MS), now]);
+}
+
+export function resetFailures(): void {
+  failures.clear();
 }
 
 function authorized(request: IncomingMessage): boolean {
@@ -31,7 +62,10 @@ async function readBody(request: IncomingMessage): Promise<unknown> {
   return JSON.parse(body);
 }
 
-export function startCompanionApi(): ReturnType<typeof createServer> {
+const auditService = createAuditService(prisma);
+
+// `client` lets an upload be applied and announced by the bot itself (auto-apply).
+export function startCompanionApi(client?: Client): ReturnType<typeof createServer> {
   const server = createServer(async (request, response) => {
     try {
       if (request.method === "GET" && request.url === "/health") {
@@ -45,7 +79,13 @@ export function startCompanionApi(): ReturnType<typeof createServer> {
         json(response, 404, { error: "Not found" });
         return;
       }
+      const address = clientAddress(request);
+      if (isLockedOut(address)) {
+        json(response, 429, { error: "Too many failed attempts. Try again in a few minutes." });
+        return;
+      }
       if (!authorized(request)) {
+        recordFailure(address);
         json(response, 401, { error: "Unauthorized" });
         return;
       }
@@ -92,7 +132,26 @@ export function startCompanionApi(): ReturnType<typeof createServer> {
         return;
       }
       const record = await importService.record(guild.id, preview.snapshot, preview.checksum, createdBy);
+      // Auto-apply (a guild opt-in: /config auto-import): apply now and follow up, no /import-apply.
+      const settings = await prisma.guildSettings.findUnique({ where: { guildId: guild.id } });
+      let autoApplied: { epgp: number; discovered: number } | null = null;
+      if (settings?.autoApplyImports) {
+        try {
+          const result = await importService.apply(guild.id, record.id, "companion-auto");
+          await auditService.record({
+            guildId: guild.id, actorId: "companion-auto", action: "IMPORT_APPLIED", entityId: record.id,
+            metadata: { auto: true, epgpTransactionCount: result.epgpTransactions.length, readinessSnapshotCount: result.readinessSnapshots.length, discovered: result.discovery.discovered }
+          });
+          const discordGuild = client ? await client.guilds.fetch(guild.discordId).catch(() => null) : null;
+          await followUpImport(discordGuild, guild.id, result);
+          autoApplied = { epgp: result.epgpTransactions.length, discovered: result.discovery.discovered };
+        } catch (error) {
+          // Left as a normal pending import: an officer can still /import-apply it.
+          console.error("Auto-apply of an addon import failed", error);
+        }
+      }
       json(response, 201, {
+        autoApplied,
         importId: record.id,
         checksum: preview.checksum,
         source: preview.snapshot.source,
@@ -104,8 +163,8 @@ export function startCompanionApi(): ReturnType<typeof createServer> {
       json(response, 400, { error: error instanceof Error ? error.message : "Invalid request" });
     }
   });
-  server.listen(config.COMPANION_API_PORT, "127.0.0.1", () => {
-    console.info(`Companion API listening on http://127.0.0.1:${config.COMPANION_API_PORT}`);
+  server.listen(config.COMPANION_API_PORT, config.COMPANION_API_HOST, () => {
+    console.info(`Companion API listening on http://${config.COMPANION_API_HOST}:${config.COMPANION_API_PORT}`);
   });
   return server;
 }

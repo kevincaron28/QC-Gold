@@ -87,6 +87,8 @@ export const configCommand = new SlashCommandBuilder()
     .addChannelOption((o) => o.setName("channel").setDescription("Readiness channel (make it visible to officers and raid leaders only)")
       .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
     .addBooleanOption((o) => o.setName("disable").setDescription("Stop posting readiness to a channel")))
+  .addSubcommand((sub) => sub.setName("auto-import").setDescription("Apply addon uploads from the companion by itself (no /import-apply).")
+    .addBooleanOption((o) => o.setName("enabled").setDescription("Apply uploads automatically").setRequired(true)))
   .addSubcommand((sub) => sub.setName("loot-mode").setDescription("How loot is decided: EPGP bids, or loot council (officers decide, bidding off).")
     .addStringOption((o) => o.setName("mode").setDescription("Loot mode").setRequired(true).addChoices(
       { name: "EPGP (GP bids decide)", value: "EPGP" }, { name: "Loot council (officers decide)", value: "COUNCIL" })))
@@ -128,6 +130,7 @@ export async function executeConfig(interaction: ChatInputCommandInteraction): P
         `Dungeon posts: ${settings.dungeonChannelId ? `<#${settings.dungeonChannelId}>` : "notify channel"}`,
         `Raid logs: ${settings.raidLogChannelId ? `<#${settings.raidLogChannelId}>` : "notify channel"}`,
         `Loot and EP log: ${settings.lootChannelId ? `<#${settings.lootChannelId}>` : "notify channel"}`,
+        `Auto-apply addon uploads: ${settings.autoApplyImports ? "on" : "off (officers run /import-apply)"}`,
         `Loot mode: ${settings.lootMode === "COUNCIL" ? "loot council" : "EPGP bids"}`,
         `Raid roster channel: ${settings.coreChannelId ? `<#${settings.coreChannelId}>` : "not set"}`,
         `Readiness channel: ${settings.readinessChannelId ? `<#${settings.readinessChannelId}>` : "not set"}`,
@@ -293,6 +296,18 @@ export async function executeConfig(interaction: ChatInputCommandInteraction): P
     if (channelSetting.field === "dungeonLeaderboardChannelId") await updateDungeonLeaderboard(interaction.guild);
     if (channelSetting.field === "coreChannelId") await syncAllCoreRosters(interaction.guild, prisma, context.guildId);
     await interaction.reply({ content: `${channelSetting.label} will use <#${channel.id}>.`, ephemeral: true });
+    return;
+  }
+
+  if (subcommand === "auto-import") {
+    const enabled = interaction.options.getBoolean("enabled", true);
+    await guildService.updateSettings(context.guildId, { autoApplyImports: enabled });
+    await interaction.reply({
+      content: enabled
+        ? "Auto-apply is on: whatever the companion uploads (EPGP ledger, attendance, loot, dungeon runs, gear checks, discovered characters) is applied right away and announced. Duplicates are still skipped. Turn it off to review uploads with `/import-apply` again."
+        : "Auto-apply is off: uploads wait for an officer's `/import-apply`.",
+      ephemeral: true
+    });
     return;
   }
 
