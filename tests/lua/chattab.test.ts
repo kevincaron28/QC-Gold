@@ -1,0 +1,67 @@
+import { afterEach, describe, expect, it } from "vitest";
+import { newLuaSession, type LuaSession } from "./harness.js";
+
+let session: LuaSession | undefined;
+afterEach(() => { session?.close(); session = undefined; });
+
+function withChatTab(hasWindowApi = true): LuaSession {
+  session = newLuaSession();
+  session.run(String.raw`
+    LINES = { main = {}, tab = {} }
+    DEFAULT_CHAT_FRAME = { AddMessage = function(_, text) LINES.main[#LINES.main + 1] = text end }
+    NUM_CHAT_WINDOWS = 3
+    ChatFrame1 = DEFAULT_CHAT_FRAME
+    ChatFrame3 = { AddMessage = function(_, text) LINES.tab[#LINES.tab + 1] = text end }
+    WINDOW_NAMES = { "General", "Log", nil }
+    GetChatWindowInfo = function(i) return WINDOW_NAMES[i] end
+    ${hasWindowApi ? `FCF_OpenNewWindow = function(name) WINDOW_NAMES[3] = name; return ChatFrame3 end` : ""}
+    SETTINGS = {}
+    NS = { getSettings = function() return SETTINGS end, commandHandlers = {}, commandHelp = {} }
+  `);
+  session.load("Modules/ChatTab.lua");
+  return session;
+}
+
+const chat = (s: LuaSession, arg: string) => s.run(`NS.commandHandlers["chat"]({ ${JSON.stringify(arg)} })`);
+
+describe("ChatTab.lua", () => {
+  it("does nothing until turned on: the main chat stays in use", () => {
+    const s = withChatTab();
+    expect(s.run(`return tostring(NS.chatFrame())`)).toBe("nil");
+  });
+
+  it("/guilded chat tab opens the tab and routes lines to it; off goes back", () => {
+    const s = withChatTab();
+    chat(s, "tab");
+    expect(s.run(`return tostring(SETTINGS.chatTab)`)).toBe("true");
+    expect(s.run(`return WINDOW_NAMES[3]`)).toBe("Guilded");
+    expect(s.run(`return tostring(NS.chatFrame() == ChatFrame3)`)).toBe("true");
+    expect(s.run(`return LINES.main[1]`)).toContain("Guilded chat tab");   // the confirmation shows in the main chat
+    expect(s.run(`return LINES.tab[1]`)).toContain("This tab shows Guilded");
+    chat(s, "off");
+    expect(s.run(`return tostring(NS.chatFrame())`)).toBe("nil");
+    expect(s.run(`return tostring(SETTINGS.chatTab)`)).toBe("false");
+  });
+
+  it("uses an existing tab named Guilded instead of opening another", () => {
+    const s = withChatTab();
+    s.run(`WINDOW_NAMES[3] = "Guilded"; OPENED = 0; FCF_OpenNewWindow = function() OPENED = OPENED + 1 end`);
+    chat(s, "tab");
+    expect(s.run(`return OPENED`)).toBe("0");
+    expect(s.run(`return tostring(NS.chatFrame() == ChatFrame3)`)).toBe("true");
+  });
+
+  it("explains itself when the client cannot open a window", () => {
+    const s = withChatTab(false);
+    chat(s, "tab");
+    expect(s.run(`return tostring(SETTINGS.chatTab)`)).toBe("nil");
+    expect(s.run(`return LINES.main[1]`)).toContain("cannot open a chat tab");
+  });
+
+  it("falls back to the main chat when the tab was closed", () => {
+    const s = withChatTab();
+    chat(s, "tab");
+    s.run(`WINDOW_NAMES[3] = nil`);
+    expect(s.run(`return tostring(NS.chatFrame())`)).toBe("nil");
+  });
+});

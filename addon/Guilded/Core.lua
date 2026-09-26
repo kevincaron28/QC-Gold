@@ -26,7 +26,10 @@ local function playerName()
 end
 
 local function message(text)
-  DEFAULT_CHAT_FRAME:AddMessage("|cffd4af37[Guilded]|r " .. tostring(text))
+  -- The optional Guilded chat tab (Modules/ChatTab.lua), otherwise the main chat window.
+  local tab = ns.chatFrame and select(2, pcall(ns.chatFrame)) or nil
+  local frame = (type(tab) == "table" and tab.AddMessage) and tab or DEFAULT_CHAT_FRAME
+  frame:AddMessage("|cffd4af37[Guilded]|r " .. tostring(text))
   -- Lets the tools panel show the latest result without reading chat.
   if ns.onMessage then pcall(ns.onMessage, tostring(text)) end
 end
@@ -935,6 +938,7 @@ ns.MODULES = {
   { key = "autoinvite", name = "Auto-invite", desc = "guild invite when someone whispers a phrase", commands = { "autoinvite", "invite" } },
   { key = "backup", name = "Backup and restore", desc = "copy this guild's saved data as one code", commands = { "backup", "restore" } },
   { key = "digest", name = "Login digest", desc = "what changed since your last login", commands = { "digest" } },
+  { key = "chattab", name = "Guilded chat tab", desc = "Guilded's own lines in a separate chat tab", commands = { "chat" } },
   { key = "tooltip", name = "Item tooltips", desc = "who wants an item and what it costs, on item tooltips", commands = {} },
   { key = "consumables", name = "Consumable scan", desc = "who is missing a flask or food", commands = { "consumes" } },
   { key = "sim", name = "Test tools", desc = "fake raid and dungeon runs for officers", commands = { "sim" } }

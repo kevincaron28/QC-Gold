@@ -68,3 +68,19 @@ describe("Tooltip.lua", () => {
     expect(s.run(`return #ADDED`)).toBe("0");
   });
 });
+
+describe("Tooltip.lua in French", () => {
+  it("uses the player's language through Locale", () => {
+    const s = withTooltip();
+    s.run(`
+      local FR = { ["Wanted by"] = "Voulu par", ["high"] = "haute", ["medium"] = "moyenne", ["more"] = "de plus",
+        ["Usually costs about %d GP (%d awards)"] = "Coute environ %d GP (%d attributions)", ["Your PR is %.2f"] = "Votre PR est de %.2f", [" (#%d of %d)"] = " (no %d sur %d)" }
+      NS.L = function(text) return FR[text] or text end
+    `);
+    expect(lines(s, "Thunderfury, Blessed Blade of the Windseeker")).toEqual([
+      "Voulu par Amy (haute), Bob (moyenne) +3 de plus",
+      "Coute environ 120 GP (3 attributions)",
+      "Votre PR est de 3.00 (no 2 sur 3)"
+    ]);
+  });
+});

@@ -1,6 +1,12 @@
 # Changelog
 
-## Unreleased (bot)
+## 3.2.0
+
+**In game**
+- **Guilded chat tab** (optional): `/guilded chat tab` opens a chat tab named Guilded and sends the addon's own lines there (bid results, sync status, command answers), keeping raid chat readable. `/guilded chat off` goes back. Messages to the raid, party and whispers are not affected.
+- Item tooltips speak French on a French client.
+
+**Discord bot**
 
 **Français / French**
 - `/setup` now starts with a language choice (English / Français). In French the whole setup guide and its checklist are French, and it creates a French server: categories (Guilde, Raids, Donjons, Artisanat, Officiers), channels (`guilded-annonces`, `inscriptions-raid`, `cores-de-raid`, `rapports-raid`, `butin`, `inscriptions-donjon`, `classement-donjons`, `donjons-termines`, `tableau-artisanat`, `journal-officiers`, `preparation-raid`) with French topics, and French permission roles (Maître de guilde, Officier, Chef de raid, Officier DKP, Chef du butin, Chef de classe). Both spellings of a role or channel are recognized, so an existing English server keeps working and can be mixed.

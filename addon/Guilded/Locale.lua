@@ -7,6 +7,15 @@ local addonName, ns = ...
 ns = ns or {}
 
 local FR = {
+  ["Wanted by"] = "Voulu par",
+  ["more"] = "de plus",
+  ["high"] = "haute",
+  ["medium"] = "moyenne",
+  ["low"] = "basse",
+  ["Usually costs about %d GP (%d award)"] = "Co\195\187te habituellement environ %d GP (%d attribution)",
+  ["Usually costs about %d GP (%d awards)"] = "Co\195\187te habituellement environ %d GP (%d attributions)",
+  ["Your PR is %.2f"] = "Votre PR est de %.2f",
+  [" (#%d of %d)"] = " (n\194\176%d sur %d)",
   ["Me"] = "Moi",
   ["Standings"] = "Classement",
   ["Dungeons"] = "Donjons",

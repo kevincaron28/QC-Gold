@@ -10,6 +10,9 @@ local module = {}
 ns.tooltip = module
 
 local PRIORITY_WORD = { [1] = "high", [2] = "medium", [3] = "low" }
+
+-- Text in the player's language (Locale.lua), English when there is no translation.
+local function L(text) return ns.L and ns.L(text) or text end
 local GOLD_R, GOLD_G, GOLD_B = 0.83, 0.69, 0.22
 
 -- Same rule as the bot's item keys: lower case, separators and control characters become
@@ -48,20 +51,20 @@ function module.lines(itemName)
   if #wish > 0 then
     local parts = {}
     for _, entry in ipairs(wish) do
-      table.insert(parts, string.format("%s (%s)", tostring(entry[1]), PRIORITY_WORD[entry[2]] or "?"))
+      table.insert(parts, string.format("%s (%s)", tostring(entry[1]), L(PRIORITY_WORD[entry[2]] or "?")))
     end
     local more = (info.wn or #wish) - #wish
-    table.insert(lines, "Wanted by " .. table.concat(parts, ", ") .. (more > 0 and (" +" .. more .. " more") or ""))
+    table.insert(lines, L("Wanted by") .. " " .. table.concat(parts, ", ") .. (more > 0 and (" +" .. more .. " " .. L("more")) or ""))
   end
   if info.gp then
     local awards = info.n or 1
-    table.insert(lines, string.format("Usually costs about %d GP (%d award%s)", info.gp, awards, awards == 1 and "" or "s"))
+    table.insert(lines, string.format(awards == 1 and L("Usually costs about %d GP (%d award)") or L("Usually costs about %d GP (%d awards)"), info.gp, awards))
   end
   local me = ns.playerName and ns.playerName()
   local mine = me and ns.getStanding and ns.getStanding(me)
   if mine and #lines > 0 then
     local rank, count = rankOf(mine)
-    table.insert(lines, string.format("Your PR is %.2f%s", mine.pr or 0, rank and string.format(" (#%d of %d)", rank, count) or ""))
+    table.insert(lines, string.format(L("Your PR is %.2f"), mine.pr or 0) .. (rank and string.format(L(" (#%d of %d)"), rank, count) or ""))
   end
   return lines
 end

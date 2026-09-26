@@ -1,4 +1,4 @@
-# CurseForge copy-paste sheet: Guilded 3.1.0
+# CurseForge copy-paste sheet: Guilded 3.2.0
 
 Each block below is one field. Copy the block, paste it in.
 
@@ -21,7 +21,7 @@ Raid & Instance (secondary: Guild, Miscellaneous)
 `docs/branding/guilded-logo-400.png` (400x400). Full size: `docs/branding/guilded-logo.png`.
 
 ## File to upload
-`dist/Guilded-v3.1.0.zip` (top folder inside is `Guilded`). Release type: **Beta** for the first day, then **Release**.
+`dist/Guilded-v3.2.0.zip` (top folder inside is `Guilded`). Release type: **Beta** for the first day, then **Release**.
 Game versions: the WoW Forever / Classic entries closest to interface 16001 and 20506.
 
 ## License
@@ -51,6 +51,7 @@ free Discord bot when you want signups and reports outside the game too.
 - **A friendly window:** click the gold coin on the minimap. The Home page shows your
   standing, what is going on, and whether your data reached Discord.
 - **Item tooltips:** who wishlisted an item, what it usually costs in GP and your priority, right on the tooltip.
+- **A Guilded chat tab** (optional) keeps the addon's messages out of raid chat.
 - **Safe by design:** backups, per-guild saved data, French translation, and every
   module can be switched off.
 
@@ -72,6 +73,19 @@ PolyForm Noncommercial license. Not affiliated with or endorsed by Blizzard Ente
 
 ## Changelog (paste for the file upload)
 ```markdown
+## 3.2.0
+
+**In game**
+- **Guilded chat tab** (optional): `/guilded chat tab` opens a chat tab named Guilded and sends the addon's own lines there (bid results, sync status, command answers), keeping raid chat readable. `/guilded chat off` goes back. Messages to the raid, party and whispers are not affected.
+- Item tooltips speak French on a French client.
+
+**Discord bot**
+
+**Français / French**
+- `/setup` now starts with a language choice (English / Français). In French the whole setup guide and its checklist are French, and it creates a French server: categories (Guilde, Raids, Donjons, Artisanat, Officiers), channels (`guilded-annonces`, `inscriptions-raid`, `cores-de-raid`, `rapports-raid`, `butin`, `inscriptions-donjon`, `classement-donjons`, `donjons-termines`, `tableau-artisanat`, `journal-officiers`, `preparation-raid`) with French topics, and French permission roles (Maître de guilde, Officier, Chef de raid, Officier DKP, Chef du butin, Chef de classe). Both spellings of a role or channel are recognized, so an existing English server keeps working and can be mixed.
+- French for what members see in channels: the raid signup post, the core roster, the craft board (tags, posts, buttons, forms, direct messages), dungeon groups, polls and the Warcraft Logs card, plus the announcements and reminders that were already translated.
+- Still English for now: officers' own screens and replies (core wizard and editor, EP proposals, readiness board, most command replies), and the slash command descriptions.
+
 ## 3.1.0
 
 **In game**

@@ -4,7 +4,7 @@ Where Guilded stands and what could come next. The full idea backlog, the code a
 other addons are kept in [docs/archive/ROADMAP-history.md](docs/archive/ROADMAP-history.md).
 What is left before publishing is in [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
 
-## Status (2026-09-26): version 3.1.0, ready to publish as a Beta
+## Status (2026-09-26): version 3.2.0, ready to publish as a Beta
 
 Built and tested (314 automated tests, the addon validator passes):
 
@@ -28,7 +28,7 @@ versus member views. They are listed in the release checklist.
 1. **Test with a second player** (see the checklist). Fix whatever it finds. This comes before any feature.
 2. ~~Item tooltips~~ **built** (3.1.0): wishlist, usual GP and your PR on item tooltips; needs a look in the real game (the tooltip hooks are the untested part).
 3. ~~Warcraft Logs, next level~~ **built** (`/config wcl-guild`, `/wcl check`); needs a try on a real guild page and a raid that was run through the bot.
-4. **Chat tab for addon messages:** an optional "Guilded" chat tab so bid results and status lines stay out of raid chat.
+4. ~~Chat tab for addon messages~~ **built** (3.2.0, `/guilded chat tab`); needs a look in the real game (opening a chat window is the untested part).
 5. **Loot response voting** (BiS / upgrade / off-spec) for loot council guilds.
 6. **Imports** from SoftRes, That's My BiS and Guild Roster Manager. Needs sample files from a real export.
 7. **Guild calendar sync:** in-game events to Discord and back. Half built (the check command exists).
