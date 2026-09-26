@@ -19,7 +19,8 @@ export async function followUpImport(discordGuild: DiscordGuild | null, guildId:
     : [];
   const matchedRaids = result.raids.filter((raid) => raid.matchedRaidTitle).length;
   if (result.epgpTransactions.length > 0 || matchedRaids > 0) {
-    await notify(discordGuild, notifications.importApplied(result.epgpTransactions.length, matchedRaids));
+    // Housekeeping for officers, not news for members: the private officer log.
+    await notify(discordGuild, notifications.importApplied(result.epgpTransactions.length, matchedRaids), "officer");
   }
   const dungeonPost = dungeonAnnouncement(result.dungeons, "en");
   if (dungeonPost) {
