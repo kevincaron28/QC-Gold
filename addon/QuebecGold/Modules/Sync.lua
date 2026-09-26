@@ -164,10 +164,37 @@ end
 -- /qg standings [player]
 -- ---------------------------------------------------------------------
 
+-- Why there is no standing for `name`: the three real cases, in words.
+--   "none"    the standings have not arrived yet
+--   "empty"   they arrived but the bot has no linked characters at all yet
+--   "missing" they arrived and this character is not among them
+-- Returns nil when the character has a standing.
+local function standingProblem(name)
+  local s = standings()
+  if not s or not s.updatedAt then return "none" end
+  local any = false
+  for _ in pairs(s.players or {}) do any = true break end
+  if not any then return "empty" end
+  if not lookup(name) then return "missing" end
+  return nil
+end
+ns.standingProblem = standingProblem
+
+local PROBLEM_TEXT = {
+  none = "Discord standings have not arrived yet. The companion on an officer's PC sends them within a couple of minutes; /reload loads the newest.",
+  empty = "The bot has no linked characters yet. In Discord, everyone links theirs once: /character claim (or /setup > /config auto-import does it for you).",
+  missing = "%s is not linked to a Discord member yet. In Discord run /character claim and pick it (or have an officer /character link it)."
+}
+function ns.standingProblemText(name)
+  local problem = standingProblem(name)
+  if not problem then return nil end
+  return string.format(PROBLEM_TEXT[problem], name or "?")
+end
+
 local function showStandings(args)
   local s = standings()
   if not s or not s.updatedAt then
-    ns.message("No Discord standings yet. They arrive from an officer running the companion.")
+    ns.message(PROBLEM_TEXT.none)
     return
   end
   if args[1] then
@@ -175,7 +202,7 @@ local function showStandings(args)
     if row then
       ns.message(string.format("%s: EP %d, GP %d, PR %.2f (Discord, %s)", ns.normalizeName(args[1]), row.ep, row.gp, row.pr, s.updatedAt))
     else
-      ns.message(ns.normalizeName(args[1]) .. " has no Discord standings (character not linked with /character add?).")
+      ns.message(ns.standingProblemText(ns.normalizeName(args[1])) or "No standing.")
     end
     return
   end

@@ -770,6 +770,7 @@ refresh = function()
   else
     local row = name and ns.getStanding and ns.getStanding(name)
     ui.standingsPlayer:SetText(row and string.format("%s:  EP %d   GP %d   PR %.2f", name, row.ep, row.gp, row.pr)
+      or (ns.standingProblemText and ns.standingProblemText(name))
       or string.format(L("%s: no standings (character not linked on Discord?)"), name or "?"))
     local lines = { string.format(L("Top by PR (from Discord, %s):"), updatedAt) }
     local rows = standingsRows()

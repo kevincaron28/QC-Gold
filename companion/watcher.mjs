@@ -33,7 +33,11 @@ async function upload() {
   });
   const body = await response.json();
   if (response.ok) {
-    console.log(`Uploaded ${body.transactionCount} ledger entries. Apply on Discord with: /import-apply id:${body.importId}`);
+    console.log(body.autoApplied
+      ? `Uploaded and applied automatically (${body.autoApplied.epgp} ledger entries, ${body.autoApplied.discovered} new characters).`
+      : `Uploaded ${body.transactionCount} ledger entries. Apply on Discord with: /import-apply id:${body.importId}`);
+    // The bot may have just linked characters or changed points: refresh the in-game standings soon.
+    setTimeout(() => void refreshStandings(), 5000);
   } else if (response.status === 409) {
     console.log("Nothing new since the last upload.");
   } else {
@@ -55,14 +59,16 @@ watch(dirname(config.watchFile), (_event, filename) => {
 console.log(`Watching ${config.watchFile}`);
 
 // Keep the addon's Standings.lua in step with the bot. The game only reads
-// it on login or /reload, so every 15 minutes is plenty.
+// it on login or /reload, so this makes the newest numbers ready for the next
+// reload: every 2 minutes (standingsIntervalMinutes in the config), and right
+// after each upload. The file is only rewritten when something changed.
 async function refreshStandings() {
   try {
-    const { path, count } = await writeStandings(config);
-    console.log(`Wrote EPGP standings for ${count} character(s) to ${path}.`);
+    const { path, count, unchanged } = await writeStandings(config);
+    if (!unchanged) console.log(`Wrote EPGP standings for ${count} character(s) to ${path}.`);
   } catch (error) {
     console.error("Standings update failed:", error instanceof Error ? error.message : error);
   }
 }
 await refreshStandings();
-setInterval(refreshStandings, 15 * 60 * 1000);
+setInterval(refreshStandings, Math.max(1, Number(config.standingsIntervalMinutes) || 2) * 60 * 1000);

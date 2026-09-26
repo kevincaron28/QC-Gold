@@ -1,4 +1,4 @@
-import { writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { join, sep } from "node:path";
 
 // SavedVariables live at <game>\WTF\Account\<acct>\SavedVariables\QuebecGold.lua,
@@ -55,6 +55,12 @@ export async function writeStandings(config) {
   const response = await fetch(url, { headers: { authorization: `Bearer ${config.uploadToken}` } });
   const body = await response.json();
   if (!response.ok) throw new Error(`Standings request failed (${response.status}): ${body.error}`);
-  await writeFile(path, standingsToLua(body), "utf8");
-  return { path, count: body.standings.length };
+  const text = standingsToLua(body);
+  // The timestamp changes every call; compare the rest so an unchanged table
+  // does not rewrite the file (the game only reads it on reload anyway).
+  const body2 = (value) => value.replace(/updatedAt = "[^"]*",/, "");
+  let unchanged = false;
+  try { unchanged = body2(await readFile(path, "utf8")) === body2(text); } catch { unchanged = false; }
+  if (!unchanged) await writeFile(path, text, "utf8");
+  return { path, count: body.standings.length, unchanged };
 }

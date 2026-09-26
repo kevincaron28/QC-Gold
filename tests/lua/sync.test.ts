@@ -45,3 +45,22 @@ describe("Sync.lua", () => {
     expect(s.chat().join("\n")).toContain("No guildmate with the addon has announced a version");
   });
 });
+
+describe("why there is no standing", () => {
+  it("names the real reason instead of always blaming the link", () => {
+    const s = withSync();
+    s.run(`fire_event("PLAYER_ENTERING_WORLD")`);
+    // Nothing arrived yet.
+    expect(s.run(`return NS.standingProblem("Ray")`)).toBe("none");
+    expect(s.run(`return NS.standingProblemText("Ray")`)).toContain("have not arrived yet");
+    // Arrived, but the bot had nobody linked when it wrote them.
+    s.run(`DB.standings = { updatedAt = "2026-09-26T00:00:00Z", baseGp = 0, players = {} }`);
+    expect(s.run(`return NS.standingProblem("Ray")`)).toBe("empty");
+    expect(s.run(`return NS.standingProblemText("Ray")`)).toContain("no linked characters yet");
+    // Arrived with others, but not this character.
+    s.run(`DB.standings.players = { Amy = { ep = 10, gp = 0, pr = 1 } }`);
+    expect(s.run(`return NS.standingProblem("Ray")`)).toBe("missing");
+    expect(s.run(`return NS.standingProblemText("Ray")`)).toContain("Ray is not linked to a Discord member yet");
+    expect(s.run(`return tostring(NS.standingProblem("Amy"))`)).toBe("nil");
+  });
+});
