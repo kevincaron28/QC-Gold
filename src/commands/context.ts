@@ -29,6 +29,11 @@ export async function replyWithCommandError(
   interaction: ChatInputCommandInteraction,
   error: unknown
 ): Promise<void> {
+  // Discord gave up on the interaction (took over 3 s): nothing can be sent back.
+  if (typeof error === "object" && error !== null && (error as { code?: number }).code === 10062) {
+    console.warn("Command answered too late; Discord already dropped it. Try again.");
+    return;
+  }
   console.error("Command failed", error);
   const content = error instanceof Error && error.message.length < 200
     ? error.message

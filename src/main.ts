@@ -105,6 +105,10 @@ client.once(Events.ClientReady, (readyClient) => {
     .catch((error: unknown) => console.warn(`Backup skipped, will retry in an hour: ${error instanceof Error ? error.message : String(error)}`));
   void backup();
   setInterval(() => void backup(), 60 * 60 * 1000);
+  // A free hosted database goes to sleep when idle and the first command after
+  // that takes over Discord's 3 second limit ("Unknown interaction"). A tiny
+  // query every 2 minutes keeps it awake.
+  setInterval(() => void prisma.$queryRaw`SELECT 1`.catch(() => undefined), 2 * 60 * 1000);
   // Raid reminders: checked every 5 minutes so a "60 minutes before" ping
   // lands within a few minutes of that mark.
   setInterval(() => {
