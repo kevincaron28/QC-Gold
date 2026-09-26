@@ -37,6 +37,10 @@ versus member views. They are listed in the release checklist.
 10. **Hosting:** the free Oracle Cloud setup is written ([docs/DEPLOY_ORACLE.md](docs/DEPLOY_ORACLE.md)); a hosted
    multi-guild bot is a bigger step and only worth it if other guilds ask.
 
+## Also done
+
+- **French option** (setup language choice, French server and posts). Left for a later pass: officers' own screens and replies, and Discord's slash-command description translations.
+
 ## Decided against
 
 - **Casino games and gold wagers:** removed in 2.4 (debts and disputes, no value for a guild).

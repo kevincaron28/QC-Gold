@@ -33,7 +33,7 @@ the addon alone; the bot and the companion are optional.
 
 ## 4. Set up the Discord server
 
-Run **`/setup`** (you need Administrator). It is a click-through guide in seven steps. Choose
+Run **`/setup`** (you need Administrator). The first screen asks for the language, **English or Français**: pick Français and the guide, the roles, the channels and the posts members see are French. It is a click-through guide in seven steps. Choose
 **Create the whole WoW section** to make the channels, sorted into categories with the right permissions
 (members read announcements and use buttons; the officer log and readiness board are private).
 Finish with `/setup status:true`: nothing should be red.

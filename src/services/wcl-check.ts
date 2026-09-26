@@ -3,6 +3,8 @@ import type { Prisma, PrismaClient } from "@prisma/client";
 import { config } from "../config.js";
 import { createWclClient, type ReportRef, type WclReport, type WclReportStub } from "../integrations/warcraftlogs.js";
 import { wclEmbed } from "../commands/wcl.js";
+import { asLang } from "../i18n.js";
+import { createGuildService } from "./guild.js";
 import { notify, notifyEmbed } from "./notify.js";
 import { reportUrl, saveReport } from "./wcl.js";
 import { buildDetails, compareAttendance, formatOfficerCheck, type AttendanceCheck, type WclDetails } from "./wcl-analysis.js";
@@ -94,7 +96,7 @@ async function processReport(
 
   const check = await checkReport(database, client, { guildId: input.guildId, report, ref, raidId: raid?.id ?? null });
   if (discordGuild) {
-    await notifyEmbed(discordGuild, wclEmbed(report.title, reportUrl(input.baseUrl, report.code), report.zone?.name ?? null, summary, raid?.title), "raidLog");
+    await notifyEmbed(discordGuild, wclEmbed(report.title, reportUrl(input.baseUrl, report.code), report.zone?.name ?? null, summary, raid?.title, asLang((await createGuildService(database).getSettings(input.guildId))?.language)), "raidLog");
     await notify(discordGuild, check.text, "officer");
   }
   return true;

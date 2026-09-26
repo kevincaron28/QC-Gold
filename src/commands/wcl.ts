@@ -6,7 +6,8 @@ import { hasPermission } from "../permissions.js";
 import { notifyEmbed } from "../services/notify.js";
 import { reportUrl, saveReport, summarizeReport, type WclSummary } from "../services/wcl.js";
 import { checkReport } from "../services/wcl-check.js";
-import { requireGuildContext } from "./context.js";
+import { asLang, tx, type Lang } from "../i18n.js";
+import { guildService, requireGuildContext } from "./context.js";
 
 export const wclCommand = new SlashCommandBuilder()
   .setName("wcl")
@@ -20,21 +21,22 @@ export const wclCommand = new SlashCommandBuilder()
     .addStringOption((o) => o.setName("url").setDescription("Or a report link or code")))
   .addSubcommand((sub) => sub.setName("list").setDescription("The most recent Warcraft Logs reports pulled in."));
 
-export function wclEmbed(title: string, url: string, zone: string | null, summary: WclSummary, raidTitle?: string): EmbedBuilder {
+export function wclEmbed(title: string, url: string, zone: string | null, summary: WclSummary, raidTitle?: string, lang: Lang = "en"): EmbedBuilder {
+  const T = (english: string, vars: Record<string, string | number> = {}) => tx(lang, english, vars);
   const bossLines = summary.bosses.map((boss) =>
-    `${boss.kills > 0 ? "✅" : "❌"} **${boss.name}**${boss.wipes ? ` — ${boss.wipes} wipe${boss.wipes === 1 ? "" : "s"}` : ""}${boss.bestKillSec !== null ? ` · ${Math.floor(boss.bestKillSec / 60)}:${String(boss.bestKillSec % 60).padStart(2, "0")}` : ""}`);
+    `${boss.kills > 0 ? "✅" : "❌"} **${boss.name}**${boss.wipes ? ` — ${T(boss.wipes === 1 ? "{n} wipe" : "{n} wipes", { n: boss.wipes })}` : ""}${boss.bestKillSec !== null ? ` · ${Math.floor(boss.bestKillSec / 60)}:${String(boss.bestKillSec % 60).padStart(2, "0")}` : ""}`);
   const embed = new EmbedBuilder()
     .setColor(0xf5a623)
     .setTitle(`📜 ${title}`.slice(0, 250))
     .setURL(url)
-    .setDescription(bossLines.length ? bossLines.join("\n").slice(0, 3900) : "No boss fights in this log.")
+    .setDescription(bossLines.length ? bossLines.join("\n").slice(0, 3900) : T("No boss fights in this log."))
     .addFields(
-      { name: "Zone", value: zone ?? "Unknown", inline: true },
-      { name: "Duration", value: `${Math.floor(summary.durationMinutes / 60)}h ${summary.durationMinutes % 60}m`, inline: true },
-      { name: "Bosses", value: `${summary.bossesKilled}/${summary.bosses.length} killed · ${summary.totalWipes} wipe${summary.totalWipes === 1 ? "" : "s"}`, inline: true },
-      { name: "Players", value: String(summary.players.length), inline: true }
+      { name: T("Zone"), value: zone ?? T("Unknown"), inline: true },
+      { name: T("Duration"), value: `${Math.floor(summary.durationMinutes / 60)}h ${summary.durationMinutes % 60}m`, inline: true },
+      { name: T("Bosses"), value: `${T("{killed}/{total} killed", { killed: summary.bossesKilled, total: summary.bosses.length })} · ${T(summary.totalWipes === 1 ? "{n} wipe" : "{n} wipes", { n: summary.totalWipes })}`, inline: true },
+      { name: T("Players"), value: String(summary.players.length), inline: true }
     )
-    .setFooter({ text: raidTitle ? `Linked to raid: ${raidTitle}` : "Warcraft Logs" });
+    .setFooter({ text: raidTitle ? T("Linked to raid: {raid}", { raid: raidTitle }) : "Warcraft Logs" });
   return embed;
 }
 
@@ -89,7 +91,7 @@ export async function executeWcl(interaction: ChatInputCommandInteraction): Prom
   const client = createWclClient({ clientId: config.WCL_CLIENT_ID, clientSecret: config.WCL_CLIENT_SECRET });
   const report = await client.fetchReport(ref);
   const { summary } = await saveReport(prisma, { guildId: context.guildId, report, baseUrl: ref.baseUrl, raidId: raid?.id ?? null, createdBy: interaction.user.id });
-  const embed = wclEmbed(report.title, reportUrl(ref.baseUrl, report.code), report.zone?.name ?? null, summary, raid?.title);
+  const embed = wclEmbed(report.title, reportUrl(ref.baseUrl, report.code), report.zone?.name ?? null, summary, raid?.title, asLang((await guildService.getSettings(context.guildId))?.language));
 
   const wantsPost = interaction.options.getBoolean("post") ?? true;
   const posted = wantsPost ? await notifyEmbed(interaction.guild, embed, "raidLog") : false;

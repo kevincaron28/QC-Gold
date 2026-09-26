@@ -7,6 +7,7 @@ import { hasPermission } from "../permissions.js";
 import { cleanOptions, createPollService, resultBar } from "../services/poll.js";
 import { parseRaidTime } from "../services/raid-time.js";
 import { guildService, requireGuildContext } from "./context.js";
+import { asLang, tx, type Lang } from "../i18n.js";
 
 const service = createPollService(prisma);
 export const POLL_PREFIX = "poll:";
@@ -28,6 +29,8 @@ export const pollCommand = new SlashCommandBuilder()
 
 async function pollEmbed(pollId: string): Promise<EmbedBuilder> {
   const { poll, counts, total } = await service.results(pollId);
+  const lang = asLang((await guildService.getSettings(poll.guildId))?.language);
+  const T = (english: string, vars: Record<string, string | number> = {}) => tx(lang, english, vars);
   const expired = !!poll.closesAt && poll.closesAt.getTime() <= Date.now();
   const closed = poll.closed || expired;
   return new EmbedBuilder()
@@ -35,10 +38,10 @@ async function pollEmbed(pollId: string): Promise<EmbedBuilder> {
     .setTitle(`📊 ${poll.question}`)
     .setDescription(poll.options.map((option, index) => `**${option}**\n${resultBar(counts[index] ?? 0, total)}`).join("\n\n"))
     .addFields(
-      { name: "Votes", value: String(total), inline: true },
-      { name: "Status", value: closed ? "Closed" : poll.closesAt ? `Open until <t:${Math.floor(poll.closesAt.getTime() / 1000)}:f>` : "Open", inline: true }
+      { name: T("Votes"), value: String(total), inline: true },
+      { name: T("Status"), value: closed ? T("Closed") : poll.closesAt ? T("Open until <t:{time}:f>", { time: Math.floor(poll.closesAt.getTime() / 1000) }) : T("Open"), inline: true }
     )
-    .setFooter({ text: `Poll ${poll.id} · one vote each, you can change it` });
+    .setFooter({ text: T("Poll {id} · one vote each, you can change it", { id: poll.id }) });
 }
 
 function pollButtons(pollId: string, options: string[], closed: boolean) {
@@ -98,7 +101,8 @@ export async function handlePollButton(interaction: ButtonInteraction): Promise<
   const member = await guildService.ensureMember(guild.id, interaction.user.id, (interaction.member as GuildMember | null)?.displayName ?? interaction.user.username);
   try {
     const poll = await service.vote(pollId, guild.id, member.id, Number(optionText));
-    await interaction.reply({ content: `Your vote for **${poll.options[Number(optionText)]}** is recorded. Click another option to change it.`, ephemeral: true });
+    const lang: Lang = asLang((await guildService.getSettings(guild.id))?.language);
+    await interaction.reply({ content: tx(lang, "Your vote for **{option}** is recorded. Click another option to change it.", { option: poll.options[Number(optionText)] ?? "" }), ephemeral: true });
     await syncPoll(interaction.guild, pollId);
   } catch (error) {
     await interaction.reply({ content: error instanceof Error ? error.message : "Could not record your vote.", ephemeral: true }).catch(() => undefined);

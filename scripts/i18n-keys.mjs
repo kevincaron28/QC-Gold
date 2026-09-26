@@ -4,7 +4,10 @@ import { readFileSync, writeFileSync } from "node:fs";
 // constant tables), so a translator (or a test) can see what needs a French entry in src/i18n-fr.ts.
 //   node scripts/i18n-keys.mjs            prints the texts that have no French yet
 //   node scripts/i18n-keys.mjs --all      prints every text
-export const SOURCES = ["src/commands/setup.ts", "src/services/setup-status.ts", "src/commands/craft-board.ts"];
+export const SOURCES = [
+  "src/commands/setup.ts", "src/services/setup-status.ts", "src/commands/craft-board.ts", "src/commands/dungeon-group.ts",
+  "src/commands/poll.ts", "src/services/raid-core.ts", "src/commands/wcl.ts"
+];
 
 const CALL = /\b(?:T|tx)\(\s*(?:\w+\s*,\s*)?("(?:[^"\\]|\\.)*")/g;
 

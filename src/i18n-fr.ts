@@ -269,5 +269,60 @@ export const FR_TEXT: Record<string, string> = {
   "Details (materials, deadline)": "Détails (matériaux, échéance)",
   "I have the herbs": "J'ai les herbes",
   "Posted: <#{id}>. You'll get a DM when a crafter takes it.": "Publié : <#{id}>. Vous recevrez un MP quand un artisan le prendra.",
-  "Request saved (ID `{id}`), but I couldn't post it to the board: check my permissions on the craft forum.": "Demande enregistrée (ID `{id}`), mais je n'ai pas pu la publier sur le tableau : vérifiez mes permissions sur le forum d'artisanat."
+  "Request saved (ID `{id}`), but I couldn't post it to the board: check my permissions on the craft forum.": "Demande enregistrée (ID `{id}`), mais je n'ai pas pu la publier sur le tableau : vérifiez mes permissions sur le forum d'artisanat.",
+
+  // --- dungeon groups
+  "Open — {count}/{size}": "Ouvert — {count}/{size}",
+  "Started": "Commencé",
+  "Closed": "Fermé",
+  "Leader": "Chef",
+  "Group {id}": "Groupe {id}",
+  "Waitlist": "Liste d'attente",
+  "Voice": "Vocal",
+  "<#{id}> (private to the group; deleted when empty)": "<#{id}> (privé au groupe ; supprimé quand il est vide)",
+  "Healer": "Soigneur",
+  "Leave": "Quitter",
+  "Start now (voice)": "Commencer (vocal)",
+  "Close group": "Fermer le groupe",
+  "Posted your dungeon group in <#{id}>. You're the leader: pick your role with the buttons, and press **Start now** when ready (or it starts by itself at 5 players).": "Votre groupe de donjon est publié dans <#{id}>. Vous êtes le chef : choisissez votre rôle avec les boutons, et appuyez sur **Commencer** quand vous êtes prêts (ou il démarre tout seul à 5 joueurs).",
+  "That group is closed.": "Ce groupe est fermé.",
+  "You're in as {role}.": "Vous êtes inscrit comme {role}.",
+  "{role} is full: you're on the waitlist and will move up if a slot opens.": "{role} est complet : vous êtes sur la liste d'attente et passerez en tête si une place se libère.",
+  "Voice: <#{id}>": "Vocal : <#{id}>",
+  "You left the group.": "Vous avez quitté le groupe.",
+  "A {role} slot opened in **{title}**: you're in.": "Une place de {role} s'est libérée dans **{title}** : vous y êtes.",
+  "Only the group leader or a raid leader can start the group.": "Seul le chef du groupe ou un chef de raid peut démarrer le groupe.",
+  "This group has already started.": "Ce groupe a déjà commencé.",
+  "Started. Voice channel: <#{id}> (private, deleted when empty).": "Commencé. Salon vocal : <#{id}> (privé, supprimé quand il est vide).",
+  "Started, but I couldn't create a voice channel (I need the Manage Channels permission).": "Commencé, mais je n'ai pas pu créer de salon vocal (il me faut la permission Gérer les salons).",
+  "Only the group leader or a raid leader can close the group.": "Seul le chef du groupe ou un chef de raid peut fermer le groupe.",
+  "Group closed.": "Groupe fermé.",
+  "Done.": "Fait.",
+  "The group is full: I created its voice channel. Check the post.": "Le groupe est complet : j'ai créé son salon vocal. Regardez le message.",
+
+  // --- polls
+  "Votes": "Votes",
+  "Open until <t:{time}:f>": "Ouvert jusqu'au <t:{time}:f>",
+  "Open": "Ouvert",
+  "Poll {id} · one vote each, you can change it": "Sondage {id} · un vote chacun, vous pouvez le changer",
+  "Your vote for **{option}** is recorded. Click another option to change it.": "Votre vote pour **{option}** est enregistré. Cliquez sur une autre option pour le changer.",
+
+  // --- core roster
+  "Bench": "Banc",
+  "{count} core member": "{count} membre du core",
+  "{count} core members": "{count} membres du core",
+  "core members get priority at this core's raid signups": "les membres du core ont la priorité aux inscriptions des raids de ce core",
+  " + {n} on the bench": " + {n} sur le banc",
+
+  // --- Warcraft Logs card
+  "{n} wipe": "{n} échec",
+  "{n} wipes": "{n} échecs",
+  "No boss fights in this log.": "Aucun combat de boss dans ce journal.",
+  "Zone": "Zone",
+  "Unknown": "Inconnue",
+  "Duration": "Durée",
+  "Bosses": "Boss",
+  "{killed}/{total} killed": "{killed}/{total} tués",
+  "Players": "Joueurs",
+  "Linked to raid: {raid}": "Lié au raid : {raid}"
 };

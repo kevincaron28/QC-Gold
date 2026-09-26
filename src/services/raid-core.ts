@@ -1,6 +1,7 @@
 import { EmbedBuilder, type Guild as DiscordGuild } from "discord.js";
 import type { PrismaClient, RaidRole } from "@prisma/client";
 import { createGuildService } from "./guild.js";
+import { asLang, tx, type Lang } from "../i18n.js";
 
 // A raid core is a named roster (e.g. "Tuesday MC core"). A guild can have
 // several. Core members get priority at signups for raids created for that
@@ -8,7 +9,14 @@ import { createGuildService } from "./guild.js";
 // the roster channel.
 
 const ROLE_ORDER: RaidRole[] = ["TANK", "HEALER", "DPS"];
-const ROLE_LABEL: Record<RaidRole, string> = { TANK: "🛡️ Tanks", HEALER: "💚 Healers", DPS: "⚔️ DPS" };
+const ROLE_LABELS: Record<Lang, Record<RaidRole, string>> = {
+  en: { TANK: "🛡️ Tanks", HEALER: "💚 Healers", DPS: "⚔️ DPS" },
+  fr: { TANK: "🛡️ Tanks", HEALER: "💚 Soigneurs", DPS: "⚔️ DPS" }
+};
+const ROLE_WORD: Record<Lang, Record<RaidRole, string>> = {
+  en: { TANK: "Tank", HEALER: "Healer", DPS: "DPS" },
+  fr: { TANK: "Tank", HEALER: "Soigneur", DPS: "DPS" }
+};
 
 type Db = PrismaClient;
 
@@ -85,7 +93,8 @@ type CoreForEmbed = {
   members: { role: RaidRole; bench: boolean; member: { displayName: string } }[];
 };
 
-export function coreRosterEmbed(core: CoreForEmbed): EmbedBuilder {
+export function coreRosterEmbed(core: CoreForEmbed, lang: Lang = "en"): EmbedBuilder {
+  const ROLE_LABEL = ROLE_LABELS[lang];
   const embed = new EmbedBuilder().setColor(0xd4af37).setTitle(`⚜️ ${core.name}`);
   if (core.description) embed.setDescription(core.description);
   for (const role of ROLE_ORDER) {
@@ -93,11 +102,12 @@ export function coreRosterEmbed(core: CoreForEmbed): EmbedBuilder {
     embed.addFields({ name: `${ROLE_LABEL[role]} (${names.length})`, value: names.length ? names.join("\n").slice(0, 1000) : "—", inline: true });
   }
   const bench = core.members.filter((entry) => entry.bench)
-    .map((entry) => `${entry.member.displayName} (${entry.role === "TANK" ? "Tank" : entry.role === "HEALER" ? "Healer" : "DPS"})`)
+    .map((entry) => `${entry.member.displayName} (${ROLE_WORD[lang][entry.role]})`)
     .sort((a, b) => a.localeCompare(b));
-  if (bench.length) embed.addFields({ name: `🪑 Bench (${bench.length})`, value: bench.join("\n").slice(0, 1000), inline: false });
+  if (bench.length) embed.addFields({ name: `🪑 ${tx(lang, "Bench")} (${bench.length})`, value: bench.join("\n").slice(0, 1000), inline: false });
   const mains = core.members.length - bench.length;
-  embed.setFooter({ text: `${mains} core member${mains === 1 ? "" : "s"}${bench.length ? ` + ${bench.length} on the bench` : ""} · core members get priority at this core's raid signups` });
+  const people = mains === 1 ? tx(lang, "{count} core member", { count: mains }) : tx(lang, "{count} core members", { count: mains });
+  embed.setFooter({ text: `${people}${bench.length ? tx(lang, " + {n} on the bench", { n: bench.length }) : ""} · ${tx(lang, "core members get priority at this core's raid signups")}` });
   return embed;
 }
 
@@ -113,7 +123,7 @@ export async function syncCoreRoster(discordGuild: DiscordGuild | null, database
     if (!channel?.isTextBased()) return false;
     const core = await database.raidCore.findFirst({ where: { id: coreId, guildId }, include: { members: { include: { member: true } } } });
     if (!core) return false;
-    const payload = { embeds: [coreRosterEmbed(core)], allowedMentions: { parse: [] as never[] } };
+    const payload = { embeds: [coreRosterEmbed(core, asLang(settings.language))], allowedMentions: { parse: [] as never[] } };
     const existing = core.rosterMessageId ? await channel.messages.fetch(core.rosterMessageId).catch(() => null) : null;
     if (existing?.editable) {
       await existing.edit(payload);

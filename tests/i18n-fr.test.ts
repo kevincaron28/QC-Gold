@@ -64,3 +64,43 @@ describe("French server names", () => {
     expect(permissionRoleNames("guildMaster")).toEqual(["Guild Master", "Maître de guilde"]);
   });
 });
+
+describe("French posts", () => {
+  it("renders the craft request, the core roster and the signup post in French", async () => {
+    const { craftEmbed, ensureBoardTags, boardTagNames } = await import("../src/commands/craft-board.js");
+    const { coreRosterEmbed } = await import("../src/services/raid-core.js");
+    const { buildSignupEmbed } = await import("../src/services/signup-embed.js");
+    const request = {
+      id: "r1", item: "Flacon des Titans", quantity: 2, profession: "Alchemy", note: null, materialsProvided: true, status: "CLAIMED" as const,
+      createdAt: new Date(0), requester: { discordUserId: "u1", displayName: "Amy" }, crafter: { discordUserId: "u2", displayName: "Bob" }
+    };
+    const craft = craftEmbed(request, ["Bob (300)"], "fr").toJSON();
+    expect(craft.fields?.map((f) => f.name)).toEqual(["Statut", "Demandé par", "Artisan", "Métier", "Matériaux", "Artisans de la guilde (Alchimie)"]);
+    expect(craft.fields?.[0]?.value).toBe("🟡 Pris en charge");
+
+    const roster = coreRosterEmbed({ name: "Mardi", description: null, members: [{ role: "HEALER", bench: true, member: { displayName: "Cy" } }, { role: "TANK", bench: false, member: { displayName: "Dee" } }] }, "fr").toJSON();
+    expect(roster.fields?.map((f) => f.name)).toEqual(["🛡️ Tanks (1)", "💚 Soigneurs (0)", "⚔️ DPS (0)", "🪑 Banc (1)"]);
+    expect(roster.fields?.[3]?.value).toBe("Cy (Soigneur)");
+    expect(roster.footer?.text).toBe("1 membre du core + 1 sur le banc · les membres du core ont la priorité aux inscriptions des raids de ce core");
+
+    const signup = buildSignupEmbed({
+      lang: "fr",
+      raid: { id: "x", title: "MC", description: null, status: "PLANNED", scheduledAt: new Date(0), tankLimit: 1, healerLimit: null, dpsLimit: null },
+      signups: [{ memberId: "a", displayName: "Amy", role: "TANK", status: "SIGNED_UP" }],
+      core: { name: "Mardi", members: [{ memberId: "m", displayName: "Manque", role: "DPS", bench: false }] }
+    }).toJSON();
+    const names = signup.fields?.map((f) => f.name) ?? [];
+    expect(names).toContain("🛡️ Tank 1/1 · COMPLET");
+    expect(names).toContain("Membres du core pas encore inscrits (1)");
+
+    // A forum made in English is recognized in French: no duplicate tags are added.
+    const added: string[][] = [];
+    await ensureBoardTags({ availableTags: boardTagNames("en").map((name, i) => ({ id: String(i), name })), setAvailableTags: async (tags: { name: string }[]) => { added.push(tags.map((t) => t.name)); } } as never, "fr");
+    expect(added).toEqual([]);
+  });
+
+  it("has the singular and plural log texts", () => {
+    expect(FR_TEXT["{n} wipe"]).toBe("{n} échec");
+    expect(FR_TEXT["{n} wipes"]).toBe("{n} échecs");
+  });
+});
