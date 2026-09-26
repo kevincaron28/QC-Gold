@@ -52,6 +52,22 @@ each item's notes.
 **Release**
 - [x] **R1** Addon 2.0.0 (TOC, zip), README/COMMANDS, launch checklist sections for everything new, roadmap final status. *(done; addon and package 2.0.0, `dist/QuebecGold-v2.0.0.zip`, docs, checklist sections 12-13)*
 
+### v2.4 request list (2026-09-27 night; built in this order, log below)
+
+| # | Request | Plan |
+| --- | --- | --- |
+| N1 | In game, the standings line always says "character not linked with Discord" | Find why (the companion wrote Standings.lua while nobody was linked, and only refreshes every 15 min, the game only reads it at login or reload). Say the *actual* reason in the UI: "standings not synced yet" vs "not linked: /character claim"; companion refreshes standings every 2 minutes and right after each upload. |
+| N2 | The `/reload` that sends data to the bot is too slow: send more often, more consistently | The game only writes the saved file on reload/logout, so the addon gets a **Sync to Discord** button (a click may reload the UI), a "data waiting" banner on a timer, and an opt-in **auto reload at safe moments** (out of combat, not in an instance, at most every N minutes). The companion uploads within seconds of the file changing. |
+| N3 | Remove the casino games and the debt ledger completely; keep only 1v1 or chat games like deathroll, nothing against the guild | Replace the Casino module with a small **Roll games** module: 1v1 deathroll, group deathroll (last one standing), high-roll-off. No gold, no wagers, no ledger, no debts, no trade settlement, no house games. Old casino saved data is ignored. |
+| N4 | Discord commands: pick from lists instead of typing | Class / race / profession as dropdowns, spec by class, realm defaults to the guild's, `/loot auction` needs only the item (minimum, increment and time default from the guild's settings), time suggestions on `/raid create`, quick reasons on EPGP awards, attunement suggestions. |
+| N5 | A clear way to create a raid core in Discord | `/core setup`: a guided message (name in a form, then pick tanks / healers / DPS from member menus, then rules), plus a pointer in `/setup` and `/help`. |
+| N6 | Rework the in-game UI so it is much easier to navigate, using other addons as the example | A **Home** page (what is going on right now, your standing, next raid, sync status), tabs grouped in a left sidebar (Home, Raid, Loot, Guild, Games, Tools), one consistent layout, big primary buttons, plain-language labels. Uses the same ideas as GuildOS (dashboard + feature panels), Guild Paragon (sections) and ElvUI-style sidebars. |
+| N7 | Crafting: a craft board where open orders and important info are easy to see and people can interact | A **forum channel** (`craft-board`): every request is a forum post with tags (profession, Open / Claimed / Done) and Claim / Done / Cancel buttons inside the post; the post title and tag follow the state; finished posts close. A pinned guide post explains it. Works with `/craft request` too, and falls back to the old text channel if a forum can't be made. |
+
+**Progress log for this batch (newest first):**
+
+- (see "Progress log" at the top of this file)
+
 ### Not in v2 (why)
 
 | Item | Why it waits |
@@ -69,6 +85,8 @@ each item's notes.
 | LR1, LR2 roster events/permissions, GK1 auto invite, GP1/GP2 event log and DNI list | need live guild-log behaviour on Forever |
 
 ### Progress log (update after every commit)
+
+- 2026-09-27 night: the user asked for N1-N7 (table above) and went to sleep; working through them in order N1, N2, N3, N4, N5, N7, N6 (UI last: biggest, least testable).
 
 - 2026-09-26 14:40 A1 done: fengari harness; Consumables.lua and Core.lua (`/qg character`) verified against the mocked game.
 - 2026-09-26 16:10 A2-A9 done (addon side complete, 60 Lua tests through the harness). Next: bot items B1-B9, then release.
