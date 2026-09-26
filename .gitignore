@@ -8,3 +8,5 @@ coverage/
 .neon
 companion/companion.config.json
 backups/
+companion-app/node_modules/
+companion-app/assets/

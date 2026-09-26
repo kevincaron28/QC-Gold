@@ -92,6 +92,7 @@ each item's notes.
 
 ### Progress log (update after every commit)
 
+- 2026-09-26 Companion desktop app: `companion-app/` (Electron: window with Status/Settings/Activity, tray icon with status colours and menu, start with Windows, auto-detect the WoW file, connection test). Shared `companion/engine.mjs`; the command-line watcher now uses it. Screenshots of the window checked; the tray and installer build (`npm run dist`) not verified because the disk was full.
 - 2026-09-28 Small items done: weekly raids (`/raid create weekly:true`; ending one creates the next, migration raid_repeat_weekly), module-request rate limit (GP9), slow-handler timings in `/qg diag` (IR6). 298 tests.
 - 2026-09-28 RF1 done: `/qg invite raid|missing` mass-invites the next raid's Discord signups (bot API -> companion -> Standings.lua -> addon). #40 (automatic character linking) is done in effect: see "Automatic character sync".
 - 2026-09-28 N6 done: tools window rebuilt with a grouped sidebar, Home page, page titles and tooltips, Player field only where used, permanent Send to Discord button; the real window code is built and exercised in the Lua tests (tests/lua/window.test.ts), but how it LOOKS has not been seen. Addon 2.4.0.

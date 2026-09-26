@@ -1,5 +1,17 @@
 # Quebec Gold Companion
 
+**Easiest: the desktop app** (`companion-app/`): a window with status, settings
+and an activity log, plus a tray icon (green = running, red = a problem, amber =
+setup needed). Closing the window keeps it running in the tray; it can start
+with Windows. Double-click `start-companion-app.bat` (first run installs it),
+or run `npm run companion:app`. Settings are stored in the app's own folder; the
+first run picks up an existing `companion.config.json`. To build a normal
+Windows installer: `cd companion-app`, `npm install`, `npm run dist` (needs
+about 1 GB free disk; the installer lands in `dist/companion/`).
+
+The command-line watcher below does the same job without a window; both use
+`companion/engine.mjs`.
+
 This lightweight companion watches a normalized addon export file and sends new exports to the bot. It runs on the same Windows computer as WoW and the bot.
 
 ## One-time setup

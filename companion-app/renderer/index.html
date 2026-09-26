@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self'">
+  <title>Quebec Gold Companion</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand"><img src="../assets/icon.png" alt=""><div><strong>Quebec Gold</strong><span>Companion</span></div></div>
+    <nav>
+      <button class="nav active" data-page="status">Status</button>
+      <button class="nav" data-page="settings">Settings <span id="setupBadge" class="badge" hidden>!</span></button>
+      <button class="nav" data-page="activity">Activity</button>
+    </nav>
+    <div class="side-foot"><span id="version"></span><br>Closing the window keeps it running in the tray.</div>
+  </aside>
+
+  <main>
+    <section id="page-status" class="page">
+      <h1>Status</h1>
+      <div id="banner" class="banner"><span id="bannerDot" class="dot"></span><div><strong id="bannerTitle"></strong><div id="bannerText"></div></div></div>
+      <div class="tiles">
+        <div class="tile"><span class="label">Last upload to Discord</span><strong id="tileUpload">Nothing yet</strong><span id="tileUploadNote"></span></div>
+        <div class="tile"><span class="label">In-game standings</span><strong id="tileStandings">Not written yet</strong><span id="tileStandingsNote"></span></div>
+        <div class="tile"><span class="label">Uploads this session</span><strong id="tileCount">0</strong><span>Every /reload or logout in game</span></div>
+        <div class="tile wide"><span class="label">Watching</span><strong id="tileWatch" class="path">Nothing</strong></div>
+      </div>
+      <div class="actions">
+        <button id="btnUpload" class="primary">Send my data now</button>
+        <button id="btnStandings">Refresh in-game standings</button>
+        <button id="btnFolder">Show Standings.lua</button>
+      </div>
+      <div class="how">
+        <h2>How it works</h2>
+        <ol>
+          <li>In game, your addon saves its data when you <b>/reload</b> or log out (<b>/qg sync</b> does it for you).</li>
+          <li>This app notices the change and sends it to the Discord bot within seconds.</li>
+          <li>The bot answers with the newest standings, and this app writes them where the addon reads them.</li>
+        </ol>
+      </div>
+    </section>
+
+    <section id="page-settings" class="page" hidden>
+      <h1>Settings</h1>
+      <p id="setupHint" class="hint" hidden>Fill in the three things below and press <b>Save and start</b>. Your officer can give you the bot address and token.</p>
+      <form id="form" autocomplete="off">
+        <label>Bot address
+          <input id="uploadUrl" placeholder="https://your-bot.duckdns.org/api/v1/addon-imports">
+          <small>Where the bot listens. On the officer's own PC this is http://127.0.0.1:8787/api/v1/addon-imports.</small>
+        </label>
+        <label>Upload token
+          <div class="row"><input id="uploadToken" type="password" placeholder="At least 32 characters"><button type="button" id="btnShow" class="small">Show</button></div>
+          <small>The secret shared with the bot (COMPANION_UPLOAD_TOKEN).</small>
+        </label>
+        <label>Discord server ID
+          <input id="guildDiscordId" placeholder="e.g. 123456789012345678">
+          <small>Discord: Settings, Advanced, turn on Developer Mode, then right-click your server and Copy Server ID.</small>
+        </label>
+        <label>Addon saved data file (QuebecGold.lua)
+          <div class="row"><input id="watchFile" placeholder="...\WTF\Account\YOURACCOUNT\SavedVariables\QuebecGold.lua"><button type="button" id="btnDetect" class="small">Find it</button><button type="button" id="btnBrowse" class="small">Browse...</button></div>
+          <small id="detectNote">Press Find it and the app looks in the usual game folders.</small>
+        </label>
+        <details>
+          <summary>Advanced</summary>
+          <label>Realm name <input id="realm"><small>Must match the realm the addon reports. Change it here if the realm changes.</small></label>
+          <label>Only send this WoW guild <input id="wowGuild" placeholder="(any)"><small>Stops an alt in another guild from sending data to this Discord.</small></label>
+          <label>Refresh standings every (minutes) <input id="standingsIntervalMinutes" type="number" min="1" max="60"></label>
+        </details>
+        <label class="check"><input id="autostart" type="checkbox"> Start with Windows (in the tray, no window)</label>
+        <div class="actions">
+          <button type="submit" class="primary">Save and start</button>
+          <button type="button" id="btnTest">Test connection</button>
+          <span id="formResult" class="result"></span>
+        </div>
+      </form>
+    </section>
+
+    <section id="page-activity" class="page" hidden>
+      <h1>Activity</h1>
+      <div id="log" class="log"></div>
+    </section>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>

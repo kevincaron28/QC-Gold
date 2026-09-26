@@ -11,6 +11,7 @@
     "build": "tsc --noEmit",
     "dev": "tsx src/main.ts",
     "start:local": "tsx src/main.ts",
+    "companion:app": "npm --prefix companion-app start",
     "companion:watch": "node companion/watcher.mjs",
     "addon:zip": "node scripts/build-addon-zip.mjs",
     "lint": "eslint .",
