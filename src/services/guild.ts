@@ -95,6 +95,8 @@ export function createGuildService(database: PrismaClient) {
       coreChannelId?: string | null;
       lootMode?: string;
       autoApplyImports?: boolean;
+      wclGuildId?: number | null;
+      wclBaseUrl?: string | null;
       weeklyReportEnabled?: boolean;
       timezone?: string;
       language?: string;

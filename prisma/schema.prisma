@@ -439,6 +439,9 @@ model GuildSettings {
   // "EPGP" (bids decide) or "COUNCIL" (officers decide with /loot award; bids are off).
   lootMode                 String    @default("EPGP")
   // true: an addon upload from the companion is applied right away, with no /import-apply.
+  // Warcraft Logs guild whose new reports are found automatically (set with /config wcl-guild).
+  wclGuildId               Int?
+  wclBaseUrl               String?
   autoApplyImports         Boolean   @default(false)
   createdAt                DateTime  @default(now())
   updatedAt                DateTime  @updatedAt
@@ -826,6 +829,8 @@ model WarcraftLogsReport {
   startedAt DateTime
   endedAt   DateTime
   summary   Json
+  // Officer-only extras (consumables at each pull, deaths); never shown in public posts.
+  details   Json?
   // The Discord raid this log belongs to, when the officer linked one.
   raidId    String?
   createdBy String

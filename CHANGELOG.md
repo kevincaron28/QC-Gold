@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased (bot only)
+
+- **Warcraft Logs, automatic:** `/config wcl-guild guild:<page link>` makes the bot find the guild's new public reports itself, post them in the raid logs channel and attach each to the raid it matches by time.
+- **Officer check** (`/wcl check`, also sent to the officer log for every new report): players in the log but not credited or the reverse, characters not linked to a Discord member, EP not awarded yet, who came to boss pulls without a flask or food, and deaths. No damage or parse numbers.
+
 ## 3.0.2
 
 **In game**

@@ -5,6 +5,7 @@ import { createWclClient, parseReportRef } from "../integrations/warcraftlogs.js
 import { hasPermission } from "../permissions.js";
 import { notifyEmbed } from "../services/notify.js";
 import { reportUrl, saveReport, summarizeReport, type WclSummary } from "../services/wcl.js";
+import { checkReport } from "../services/wcl-check.js";
 import { requireGuildContext } from "./context.js";
 
 export const wclCommand = new SlashCommandBuilder()
@@ -14,6 +15,9 @@ export const wclCommand = new SlashCommandBuilder()
     .addStringOption((o) => o.setName("url").setDescription("Report link or code").setRequired(true))
     .addStringOption((o) => o.setName("raid").setDescription("Link it to a Discord raid (raid id from /raid status)"))
     .addBooleanOption((o) => o.setName("post").setDescription("Also post it in the raid logs channel (default: yes)")))
+  .addSubcommand((sub) => sub.setName("check").setDescription("Officers only: attendance against the log, flasks, food and deaths for a raid's log.")
+    .addStringOption((o) => o.setName("raid").setDescription("The raid (raid id from /raid status); uses the log linked to it"))
+    .addStringOption((o) => o.setName("url").setDescription("Or a report link or code")))
   .addSubcommand((sub) => sub.setName("list").setDescription("The most recent Warcraft Logs reports pulled in."));
 
 export function wclEmbed(title: string, url: string, zone: string | null, summary: WclSummary, raidTitle?: string): EmbedBuilder {
@@ -63,6 +67,20 @@ export async function executeWcl(interaction: ChatInputCommandInteraction): Prom
   }
 
   await interaction.deferReply({ ephemeral: true });
+  if (subcommand === "check") {
+    const raidArg = interaction.options.getString("raid");
+    const urlArg = interaction.options.getString("url");
+    if (!raidArg && !urlArg) throw new Error("Give a raid id or a report link.");
+    const linked = raidArg ? await prisma.warcraftLogsReport.findFirst({ where: { guildId: context.guildId, raidId: raidArg }, orderBy: { startedAt: "desc" } }) : null;
+    if (raidArg && !linked && !urlArg) throw new Error("No Warcraft Logs report is linked to that raid yet. Use /wcl report url:<link> raid:<id> first.");
+    const target = parseReportRef(urlArg ?? linked?.code ?? "", linked ? new URL(linked.url).origin : config.WCL_BASE_URL);
+    const known = linked ?? await prisma.warcraftLogsReport.findUnique({ where: { guildId_code: { guildId: context.guildId, code: target.code } } });
+    const checkClient = createWclClient({ clientId: config.WCL_CLIENT_ID, clientSecret: config.WCL_CLIENT_SECRET });
+    const fetched = await checkClient.fetchReport(target);
+    const result = await checkReport(prisma, checkClient, { guildId: context.guildId, report: fetched, ref: target, raidId: raidArg ?? known?.raidId ?? null });
+    await interaction.editReply({ content: result.text });
+    return;
+  }
   const ref = parseReportRef(interaction.options.getString("url", true), config.WCL_BASE_URL);
   const raidId = interaction.options.getString("raid");
   const raid = raidId ? await prisma.raid.findFirst({ where: { id: raidId, guildId: context.guildId }, select: { id: true, title: true } }) : null;
@@ -75,10 +93,10 @@ export async function executeWcl(interaction: ChatInputCommandInteraction): Prom
 
   const wantsPost = interaction.options.getBoolean("post") ?? true;
   const posted = wantsPost ? await notifyEmbed(interaction.guild, embed, "raidLog") : false;
-  await interaction.editReply({
-    content: wantsPost && !posted ? "Saved. (No raid logs or announcements channel is set, so nothing was posted.)" : posted ? "Saved and posted in the raid logs channel." : "Saved.",
-    embeds: [embed]
-  });
+  // The officer-only part (attendance against the log, flasks, food, deaths) is shown only to the officer who asked.
+  const check = await checkReport(prisma, client, { guildId: context.guildId, report, ref, raidId: raid?.id ?? null }).catch(() => null);
+  const status = wantsPost && !posted ? "Saved. (No raid logs or announcements channel is set, so nothing was posted.)" : posted ? "Saved and posted in the raid logs channel." : "Saved.";
+  await interaction.editReply({ content: `${status}${check ? `\n\n${check.text}` : ""}`.slice(0, 2000), embeds: [embed] });
 }
 
 export { summarizeReport };

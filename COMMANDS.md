@@ -141,6 +141,7 @@ messages follow the language chosen in `/setup` (English or French).
 | `/character add <name> <realm> <class> <main> [spec] [level] [race]` / `/character list` | Link your WoW characters (needed before imports can match you) |
 | `/character claim <name>` | Link a character your addon already reported (pick it from the list; nothing to type or paste). Most people never need it: characters whose name matches the Discord nickname are linked automatically |
 | `/character import <code> [main]` | Link or refresh a character from the line `/guilded character` shows in game (name, realm, class, race, level, spec, professions), no typing |
+| `/wcl check [raid] [url]` | Officers: the private check of a raid's log: who is in the log but not credited (or the reverse), characters not linked to anyone, EP not yet awarded, who came to boss pulls without a flask or food, and deaths. No damage or parse numbers |
 | `/wcl list` | The latest Warcraft Logs reports the officers pulled in |
 | `/apply` | Submit a guild application |
 | `/raid signup <raid> <role> [availability]` | Sign up (Tank, Healer, DPS). `availability:Maybe` doesn't take a slot. If your role is full you go on the **waitlist** and get a DM when a slot opens |
@@ -266,6 +267,7 @@ Approve, and a raid can never be paid twice.
 | `/config roles` | Auto-assigned applicant/member roles |
 | `/config raid-channel` | Where raid signup embeds and raid reminders go |
 | `/config log-channel` | Where join/leave/moderation logs go |
+| `/config wcl-guild [guild] [off]` | Set the guild's Warcraft Logs page link; from then on the bot finds new public reports by itself every 10 minutes (last 3 days), posts each in the raid logs channel, matches it to the raid by time and sends the officer check to the officer log |
 | `/config raid-log-channel` | Where raid summaries (raid reports, Warcraft Logs) go; default: the notify channel |
 | `/config loot-channel` | Where loot awards and EP/GP changes go; default: the notify channel |
 | `/config core-channel` | Channel showing each raid core's roster as one live message |

@@ -7,6 +7,8 @@ import { guildService, requireGuildContext } from "./context.js";
 import { sendWelcome, welcomeDelivery } from "../services/housekeeping.js";
 import { isValidTimeZone } from "../services/raid-time.js";
 import { BRAND } from "../brand.js";
+import { config } from "../config.js";
+import { createWclClient, parseGuildRef } from "../integrations/warcraftlogs.js";
 
 export const configCommand = new SlashCommandBuilder()
   .setName("config")
@@ -89,6 +91,9 @@ export const configCommand = new SlashCommandBuilder()
     .addBooleanOption((o) => o.setName("disable").setDescription("Stop posting readiness to a channel")))
   .addSubcommand((sub) => sub.setName("auto-import").setDescription("Apply addon uploads from the companion by itself (no /import-apply).")
     .addBooleanOption((o) => o.setName("enabled").setDescription("Apply uploads automatically").setRequired(true)))
+  .addSubcommand((sub) => sub.setName("wcl-guild").setDescription("Warcraft Logs: find the guild's new reports by itself and check them against attendance.")
+    .addStringOption((o) => o.setName("guild").setDescription("The guild's page link on warcraftlogs.com (.../guild/id/12345) or its number"))
+    .addBooleanOption((o) => o.setName("off").setDescription("Stop looking for new reports")))
   .addSubcommand((sub) => sub.setName("loot-mode").setDescription("How loot is decided: EPGP bids, or loot council (officers decide, bidding off).")
     .addStringOption((o) => o.setName("mode").setDescription("Loot mode").setRequired(true).addChoices(
       { name: "EPGP (GP bids decide)", value: "EPGP" }, { name: "Loot council (officers decide)", value: "COUNCIL" })))
@@ -308,6 +313,32 @@ export async function executeConfig(interaction: ChatInputCommandInteraction): P
         : "Auto-apply is off: uploads wait for an officer's `/import-apply`.",
       ephemeral: true
     });
+    return;
+  }
+
+  if (subcommand === "wcl-guild") {
+    if (interaction.options.getBoolean("off")) {
+      await guildService.updateSettings(context.guildId, { wclGuildId: null, wclBaseUrl: null });
+      await interaction.reply({ content: "Warcraft Logs: no longer looking for new reports. `/wcl report` still works by hand.", ephemeral: true });
+      return;
+    }
+    const input = interaction.options.getString("guild");
+    const settings = await guildService.getSettings(context.guildId);
+    if (!input) {
+      await interaction.reply({
+        content: settings?.wclGuildId
+          ? `Warcraft Logs guild #${settings.wclGuildId} is watched. New public reports are posted in the raid logs channel and checked against attendance (details go to the officer log). Turn it off with off:true.`
+          : "No Warcraft Logs guild is set. Open your guild's page on warcraftlogs.com and run `/config wcl-guild guild:<that link>`.",
+        ephemeral: true
+      });
+      return;
+    }
+    if (!config.WCL_CLIENT_ID || !config.WCL_CLIENT_SECRET) throw new Error("Warcraft Logs isn't set up: put WCL_CLIENT_ID and WCL_CLIENT_SECRET in .env.local and restart the bot.");
+    await interaction.deferReply({ ephemeral: true });
+    const ref = parseGuildRef(input, config.WCL_BASE_URL);
+    const found = await createWclClient({ clientId: config.WCL_CLIENT_ID, clientSecret: config.WCL_CLIENT_SECRET }).findGuild(ref);
+    await guildService.updateSettings(context.guildId, { wclGuildId: found.id, wclBaseUrl: ref.baseUrl });
+    await interaction.editReply(`Watching **${found.name}**${found.server ? ` (${found.server})` : ""} on Warcraft Logs. Every few minutes the bot looks for new public reports from the last 3 days, posts each in the raid logs channel, matches it to the raid by time, and sends an officer-only check (attendance, flasks, food, deaths) to the officer log.`);
     return;
   }
 
