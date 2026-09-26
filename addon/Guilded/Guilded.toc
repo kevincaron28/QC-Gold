@@ -18,6 +18,7 @@ Modules\Sync.lua
 Modules\Sim.lua
 Modules\Bidding.lua
 Modules\Calendar.lua
+Modules\ConsumableData.lua
 Modules\Consumables.lua
 Modules\Digest.lua
 Modules\API.lua
@@ -27,5 +28,6 @@ Modules\AutoInvite.lua
 Modules\Dungeon.lua
 Modules\Tooltip.lua
 Modules\ChatTab.lua
+Modules\Attunements.lua
 Modules\Ready.lua
 Modules\Minimap.lua

@@ -35,11 +35,21 @@ describe("slash command definitions follow Discord's rules", () => {
     expect(all.length).toBeLessThanOrEqual(100);
   });
 
+  // Discord caps the text of one command (names, descriptions, choices) at 4000 characters.
+  it("keeps every command under Discord's size limit", () => {
+    const size = (node: { name?: string; description?: string; value?: unknown; options?: unknown[]; choices?: unknown[] }): number =>
+      (node.name?.length ?? 0) + (node.description?.length ?? 0) + (typeof node.value === "string" ? node.value.length : 0)
+      + [...(node.options ?? []), ...(node.choices ?? [])].reduce<number>((sum, child) => sum + size(child as never), 0);
+    const tooBig = all.filter((command) => size(command as never) > 4000).map((command) => command.name);
+    expect(tooBig).toEqual([]);
+    for (const command of all) expect(command.options?.length ?? 0).toBeLessThanOrEqual(25);
+  });
+
   it("offers dropdowns for class and profession", () => {
-    const find = (command: string, sub: string, option: string) =>
-      all.find((entry) => entry.name === command)?.options?.find((entry) => entry.name === sub)?.options?.find((entry) => entry.name === option);
+    const find = (command: string, ...path: string[]) =>
+      path.reduce<Option | undefined>((node, name) => node?.options?.find((entry) => entry.name === name), all.find((entry) => entry.name === command));
     expect(find("character", "add", "class")?.choices).toHaveLength(CLASSES.length);
-    expect(find("profession", "set", "profession")?.choices).toHaveLength(PROFESSIONS.length);
+    expect(find("character", "profession", "set", "profession")?.choices).toHaveLength(PROFESSIONS.length);
     expect(find("character", "add", "spec")?.autocomplete).toBe(true);
     expect(find("character", "add", "realm")?.required).toBeFalsy();
     // /loot auction needs only the item.

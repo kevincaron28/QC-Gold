@@ -45,7 +45,7 @@ function openWindow(rank: number, extraLua = ""): LuaSession {
     function GetGuildInfo() return "Alpha", "Rank", ${rank} end
     ${extraLua}
   `);
-  for (const file of ["Core.lua", "Compat.lua", "Modules/Sync.lua", "Modules/SyncNow.lua", "Modules/Games.lua", "Modules/Consumables.lua", "Modules/Ready.lua", "Modules/Minimap.lua"]) session.load(file);
+  for (const file of ["Core.lua", "Compat.lua", "Modules/Sync.lua", "Modules/SyncNow.lua", "Modules/Games.lua", "Modules/ConsumableData.lua", "Modules/Consumables.lua", "Modules/Ready.lua", "Modules/Minimap.lua"]) session.load(file);
   session.run(`fire_event("PLAYER_LOGIN"); fire_event("PLAYER_ENTERING_WORLD"); NS.commandHandlers["menu"]()`);
   return session;
 }
@@ -115,6 +115,20 @@ describe("the Ready page", () => {
     const text = readyText(s);
     expect(text).toContain("Not in a group: showing only you.");
     expect(text).toContain("Kev");
+  });
+
+  it("draws one icon per check for each player, and none for empty rows", () => {
+    const s = openWindow(1);
+    s.run(`NS.windowState().selectTabByName("Ready")`);
+    // Solo: your row is there, and every check says "unknown" (a question mark) until a raid needs them.
+    expect(s.run(`local r = NS.windowState().readyRows; return tostring(r[1].cells.flask.shown) .. tostring(r[1].cells.buffs.shown) .. tostring(r[2].cells.flask.shown)`)).toBe("truetruefalse");
+    expect(s.run(`return #NS.windowState().readyHeaders`)).toBe("7");
+  });
+
+  it("shows how the latest ready check went", () => {
+    const s = openWindow(1);
+    s.run(`NS.ready.onReadyCheck("player", 30); NS.windowState().selectTabByName("Ready")`);
+    expect(s.run(`return NS.windowState().readySummary.text`)).toContain("Ready check in progress: 1 ready, 0 not ready, 0 no answer");
   });
 
   it("officers and group leaders see the page; other members do not", () => {

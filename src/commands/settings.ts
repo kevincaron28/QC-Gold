@@ -53,43 +53,27 @@ export const configCommand = new SlashCommandBuilder()
   .addSubcommand((sub) => sub.setName("roles").setDescription("Configure automatic role assignment.")
     .addRoleOption((o) => o.setName("applicant").setDescription("Role auto-assigned when someone joins the Discord server"))
     .addRoleOption((o) => o.setName("member").setDescription("Role assigned automatically when an application is approved")))
-  .addSubcommand((sub) => sub.setName("raid-channel").setDescription("Set the channel raid signup embeds are posted and updated in.")
-    .addChannelOption((o) => o.setName("channel").setDescription("Raid signup channel")
-      .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
-    .addBooleanOption((o) => o.setName("disable").setDescription("Stop posting raid signup embeds")))
-  .addSubcommand((sub) => sub.setName("log-channel").setDescription("Set the channel that receives member join/leave and moderation logs.")
-    .addChannelOption((o) => o.setName("channel").setDescription("Log channel")
-      .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
-    .addBooleanOption((o) => o.setName("disable").setDescription("Stop logging")))
+  .addSubcommand((sub) => sub.setName("channel").setDescription("Choose where the bot posts: announcements, raids, loot, logs, rosters, dungeons, crafts.")
+    .addStringOption((o) => o.setName("which").setDescription("Which channel to set").setRequired(true).addChoices(
+      { name: "Announcements (raids, bosses, loot, EPGP)", value: "notify-channel" },
+      { name: "Raid signups and reminders", value: "raid-channel" },
+      { name: "Raid summaries / Warcraft Logs", value: "raid-log-channel" },
+      { name: "Loot and EP/GP log", value: "loot-channel" },
+      { name: "Officer log (joins, leaves, moderation)", value: "log-channel" },
+      { name: "Raid core rosters", value: "core-channel" },
+      { name: "Raid readiness (private)", value: "readiness-channel" },
+      { name: "Craft board", value: "craft-channel" },
+      { name: "Dungeon runs and records", value: "dungeon-channel" },
+      { name: "Dungeon leaderboard", value: "dungeon-leaderboard-channel" },
+      { name: "Dungeon signups", value: "dungeon-signup-channel" }))
+    .addChannelOption((o) => o.setName("channel").setDescription("The channel (a forum works for the craft board)")
+      .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement, ChannelType.GuildForum))
+    .addBooleanOption((o) => o.setName("disable").setDescription("Clear this setting")))
   .addSubcommand((sub) => sub.setName("timezone").setDescription("Timezone for typing raid times (e.g. America/Toronto). /setup has a picker too.")
     .addStringOption((o) => o.setName("zone").setDescription("IANA name, e.g. America/Toronto, Europe/Paris").setRequired(true)))
   .addSubcommand((sub) => sub.setName("weekly-report").setDescription("Post a weekly guild activity report in the notify channel.")
     .addBooleanOption((o) => o.setName("enabled").setDescription("Turn the weekly report on or off").setRequired(true)))
-  .addSubcommand((sub) => sub.setName("notify-channel").setDescription("Channel for raid started/ended, boss kills, loot awards, and EPGP changes.")
-    .addChannelOption((o) => o.setName("channel").setDescription("Announcement channel")
-      .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
-    .addBooleanOption((o) => o.setName("disable").setDescription("Stop announcements")))
-  .addSubcommand((sub) => sub.setName("dungeon-channel").setDescription("Channel for dungeon runs and records (default: the notify channel).")
-    .addChannelOption((o) => o.setName("channel").setDescription("Dungeon channel")
-      .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
-    .addBooleanOption((o) => o.setName("disable").setDescription("Go back to using the notify channel")))
-  .addSubcommand((sub) => sub.setName("raid-log-channel").setDescription("Channel for raid summaries (default: the notify channel).")
-    .addChannelOption((o) => o.setName("channel").setDescription("Raid logs channel")
-      .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
-    .addBooleanOption((o) => o.setName("disable").setDescription("Go back to using the notify channel")))
-  .addSubcommand((sub) => sub.setName("loot-channel").setDescription("Channel for loot awards and EP/GP changes (default: the notify channel).")
-    .addChannelOption((o) => o.setName("channel").setDescription("Loot log channel")
-      .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
-    .addBooleanOption((o) => o.setName("disable").setDescription("Go back to using the notify channel")))
-  .addSubcommand((sub) => sub.setName("craft-channel").setDescription("Channel for craft requests (default: the officer log).")
-    .addChannelOption((o) => o.setName("channel").setDescription("Craft board: a forum channel (best) or a text channel")
-      .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement, ChannelType.GuildForum))
-    .addBooleanOption((o) => o.setName("disable").setDescription("Go back to using the officer log")))
-  .addSubcommand((sub) => sub.setName("readiness-channel").setDescription("Private channel where raid readiness (gear checks) is posted.")
-    .addChannelOption((o) => o.setName("channel").setDescription("Readiness channel (make it visible to officers and raid leaders only)")
-      .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
-    .addBooleanOption((o) => o.setName("disable").setDescription("Stop posting readiness to a channel")))
-  .addSubcommand((sub) => sub.setName("auto-import").setDescription("Apply addon uploads from the companion by itself (no /import-apply).")
+  .addSubcommand((sub) => sub.setName("auto-import").setDescription("Apply addon uploads from the companion by itself (no /import apply).")
     .addBooleanOption((o) => o.setName("enabled").setDescription("Apply uploads automatically").setRequired(true)))
   .addSubcommand((sub) => sub.setName("wcl-guild").setDescription("Warcraft Logs: find the guild's new reports by itself and check them against attendance.")
     .addStringOption((o) => o.setName("guild").setDescription("The guild's page link on warcraftlogs.com (.../guild/id/12345) or its number"))
@@ -97,25 +81,21 @@ export const configCommand = new SlashCommandBuilder()
   .addSubcommand((sub) => sub.setName("loot-mode").setDescription("How loot is decided: EPGP bids, or loot council (officers decide, bidding off).")
     .addStringOption((o) => o.setName("mode").setDescription("Loot mode").setRequired(true).addChoices(
       { name: "EPGP (GP bids decide)", value: "EPGP" }, { name: "Loot council (officers decide)", value: "COUNCIL" })))
-  .addSubcommand((sub) => sub.setName("core-channel").setDescription("Channel that shows each raid core's roster (one live message per core).")
-    .addChannelOption((o) => o.setName("channel").setDescription("Raid roster channel")
-      .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
-    .addBooleanOption((o) => o.setName("disable").setDescription("Stop showing core rosters in a channel")))
-  .addSubcommand((sub) => sub.setName("dungeon-leaderboard-channel").setDescription("Channel with the auto-updated dungeon leaderboard.")
-    .addChannelOption((o) => o.setName("channel").setDescription("Leaderboard channel")
-      .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
-    .addBooleanOption((o) => o.setName("disable").setDescription("Stop updating the leaderboard message")))
-  .addSubcommand((sub) => sub.setName("dungeon-signup-channel").setDescription("Channel for dungeon signups.")
-    .addChannelOption((o) => o.setName("channel").setDescription("Dungeon signups channel")
-      .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
-    .addBooleanOption((o) => o.setName("disable").setDescription("Clear the dungeon signups channel")))
   .addSubcommand((sub) => sub.setName("merit").setDescription("Rank /epgp leaderboard by PR x 30-day attendance instead of raw PR.")
     .addBooleanOption((o) => o.setName("enabled").setDescription("Use merit ranking").setRequired(true)));
 
 export async function executeConfig(interaction: ChatInputCommandInteraction): Promise<void> {
   const context = await requireGuildContext(interaction);
   if (!context) return;
-  const subcommand = interaction.options.getSubcommand();
+  let subcommand = interaction.options.getSubcommand();
+  // One "channel" command with a choice; the code below is keyed by the choice.
+  if (subcommand === "channel") {
+    subcommand = interaction.options.getString("which", true);
+    const picked = interaction.options.getChannel("channel");
+    if (picked?.type === ChannelType.GuildForum && subcommand !== "craft-channel") {
+      throw new Error("A forum channel only works for the craft board. Pick a text channel for this one.");
+    }
+  }
   const settings = await guildService.getSettings(context.guildId);
   if (!settings) throw new Error("Guild settings have not been initialized.");
   if (subcommand === "view") {
@@ -135,7 +115,7 @@ export async function executeConfig(interaction: ChatInputCommandInteraction): P
         `Dungeon posts: ${settings.dungeonChannelId ? `<#${settings.dungeonChannelId}>` : "notify channel"}`,
         `Raid logs: ${settings.raidLogChannelId ? `<#${settings.raidLogChannelId}>` : "notify channel"}`,
         `Loot and EP log: ${settings.lootChannelId ? `<#${settings.lootChannelId}>` : "notify channel"}`,
-        `Auto-apply addon uploads: ${settings.autoApplyImports ? "on" : "off (officers run /import-apply)"}`,
+        `Auto-apply addon uploads: ${settings.autoApplyImports ? "on" : "off (officers run /import apply)"}`,
         `Loot mode: ${settings.lootMode === "COUNCIL" ? "loot council" : "EPGP bids"}`,
         `Raid roster channel: ${settings.coreChannelId ? `<#${settings.coreChannelId}>` : "not set"}`,
         `Readiness channel: ${settings.readinessChannelId ? `<#${settings.readinessChannelId}>` : "not set"}`,
@@ -193,7 +173,7 @@ export async function executeConfig(interaction: ChatInputCommandInteraction): P
     const where = welcomeDelivery(updated) === "DM" ? "by private message"
       : welcomeDelivery(updated) === "BOTH" ? `by private message and in ${updated.welcomeChannelId ? `<#${updated.welcomeChannelId}>` : "(no channel set yet)"}`
         : updated.welcomeChannelId ? `in <#${updated.welcomeChannelId}>` : "nowhere yet (pick a channel or send_to: DM)";
-    await interaction.reply({ content: `Welcome messages go ${where}. Role buttons: ${updated.welcomeRoleIds.length ? updated.welcomeRoleIds.map((id) => `<@&${id}>`).join(", ") : "none (pick them in /setup step 3)"}. Try \`/config welcome preview:true\`.`, ephemeral: true });
+    await interaction.reply({ content: `Welcome messages go ${where}. Role buttons: ${updated.welcomeRoleIds.length ? updated.welcomeRoleIds.map((id) => `<@&${id}>`).join(", ") : "none (pick them in /setup step 3)"}. Try \`/setup config welcome preview:true\`.`, ephemeral: true });
     return;
   }
 
@@ -240,7 +220,7 @@ export async function executeConfig(interaction: ChatInputCommandInteraction): P
     await guildService.updateSettings(context.guildId, { weeklyReportEnabled: enabled });
     await interaction.reply({
       content: enabled
-        ? `Weekly report on. It posts in ${settings.notifyChannelId ? `<#${settings.notifyChannelId}>` : "the notify channel (set one with `/config notify-channel` first)"} within the hour, then every 7 days.`
+        ? `Weekly report on. It posts in ${settings.notifyChannelId ? `<#${settings.notifyChannelId}>` : "the notify channel (set one with `/setup config channel` first)"} within the hour, then every 7 days.`
         : "Weekly report off.",
       ephemeral: true
     });
@@ -309,8 +289,8 @@ export async function executeConfig(interaction: ChatInputCommandInteraction): P
     await guildService.updateSettings(context.guildId, { autoApplyImports: enabled });
     await interaction.reply({
       content: enabled
-        ? "Auto-apply is on: whatever the companion uploads (EPGP ledger, attendance, loot, dungeon runs, gear checks, discovered characters) is applied right away and announced. Duplicates are still skipped. Turn it off to review uploads with `/import-apply` again."
-        : "Auto-apply is off: uploads wait for an officer's `/import-apply`.",
+        ? "Auto-apply is on: whatever the companion uploads (EPGP ledger, attendance, loot, dungeon runs, gear checks, discovered characters) is applied right away and announced. Duplicates are still skipped. Turn it off to review uploads with `/import apply` again."
+        : "Auto-apply is off: uploads wait for an officer's `/import apply`.",
       ephemeral: true
     });
     return;
@@ -319,7 +299,7 @@ export async function executeConfig(interaction: ChatInputCommandInteraction): P
   if (subcommand === "wcl-guild") {
     if (interaction.options.getBoolean("off")) {
       await guildService.updateSettings(context.guildId, { wclGuildId: null, wclBaseUrl: null });
-      await interaction.reply({ content: "Warcraft Logs: no longer looking for new reports. `/wcl report` still works by hand.", ephemeral: true });
+      await interaction.reply({ content: "Warcraft Logs: no longer looking for new reports. `/raid wcl report` still works by hand.", ephemeral: true });
       return;
     }
     const input = interaction.options.getString("guild");
@@ -328,7 +308,7 @@ export async function executeConfig(interaction: ChatInputCommandInteraction): P
       await interaction.reply({
         content: settings?.wclGuildId
           ? `Warcraft Logs guild #${settings.wclGuildId} is watched. New public reports are posted in the raid logs channel and checked against attendance (details go to the officer log). Turn it off with off:true.`
-          : "No Warcraft Logs guild is set. Open your guild's page on warcraftlogs.com and run `/config wcl-guild guild:<that link>`.",
+          : "No Warcraft Logs guild is set. Open your guild's page on warcraftlogs.com and run `/setup config wcl-guild guild:<that link>`.",
         ephemeral: true
       });
       return;

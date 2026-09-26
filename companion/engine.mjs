@@ -83,7 +83,7 @@ export function createEngine(initialConfig, hooks = {}) {
     if (response.ok) {
       const message = body.autoApplied
         ? `Uploaded and applied automatically (${body.autoApplied.epgp} ledger entries, ${body.autoApplied.discovered} new characters).`
-        : `Uploaded ${body.transactionCount} ledger entries. Apply on Discord with: /import-apply id:${body.importId}`;
+        : `Uploaded ${body.transactionCount} ledger entries. Apply on Discord with: /import apply id:${body.importId}`;
       state.lastUpload = { at: new Date().toISOString(), message };
       state.uploads += 1;
       log("ok", message);

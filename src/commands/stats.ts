@@ -40,7 +40,7 @@ export async function executeStats(interaction: ChatInputCommandInteraction): Pr
 }
 
 // Called hourly from main.ts: posts the weekly report to the notify channel
-// for guilds that turned it on (/config weekly-report). Marks the guild
+// for guilds that turned it on (/setup config weekly-report). Marks the guild
 // first so a failed post can't repeat every hour.
 export async function runWeeklyReports(client: Client, now = new Date()): Promise<number> {
   const configured = await prisma.guildSettings.findMany({

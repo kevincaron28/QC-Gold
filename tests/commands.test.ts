@@ -29,10 +29,14 @@ describe("command registration", () => {
   it("registers each top-level command exactly once", () => {
     const names = commands.map((command) => command.name);
     expect(new Set(names).size).toBe(names.length);
-    expect(names).toContain("import");
-    expect(names).toContain("loot");
-    expect(names).toContain("apply");
-    expect(names).toContain("application");
-    for (const name of ["mod", "tag", "wishlist", "selfroles"]) expect(names).toContain(name);
+    for (const name of ["setup", "import", "loot", "apply", "mod", "tag", "character", "report"]) expect(names).toContain(name);
+  });
+
+  it("keeps the command list short: old commands live under a parent", () => {
+    expect(commands.length).toBeLessThanOrEqual(20);
+    const names = commands.map((command) => command.name);
+    for (const gone of ["config", "testraid", "selfroles", "who", "wcl", "dkp", "application", "import-apply", "readiness", "profession", "attunement", "wishlist", "dungeon-admin", "stats", "inactive", "export", "guildhealth", "health"]) {
+      expect(names).not.toContain(gone);
+    }
   });
 });

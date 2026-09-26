@@ -16,7 +16,7 @@ or `/reload`, so a server can never see it. What changes with a cloud bot:
   and it runs whenever the PC is on.
 - The addon already shares data guild-wide, so one officer's upload carries
   everyone who was online (characters, gear, consumables). With
-  `/config auto-import enabled:true` the bot applies each upload by itself.
+  `/setup config auto-import enabled:true` the bot applies each upload by itself.
 
 ## Is Oracle's free tier a good fit? Honest assessment
 
@@ -109,7 +109,7 @@ allowed to reach it) and the same `COMPANION_UPLOAD_TOKEN` as on your PC.
 
 1. **Close the bot on your PC** (and remove `start-bot.bat`'s companion line
    if you like; the companion stays on your PC).
-2. Start the cloud bot; in Discord run `/health`.
+2. Start the cloud bot; in Discord run `/report ping`.
 3. On your PC edit `companion/companion.config.json`:
    `"uploadUrl": "https://qcgold.duckdns.org/api/v1/addon-imports"`.
    (`start-companion.bat` now only starts the companion; the bot is no longer
@@ -130,7 +130,7 @@ themselves. Logs: `journalctl -u guilded -n 100`.
 
 ## Security notes
 
-- The API only answers `/health` without a token; every other path needs the
+- The API only answers `/report ping` without a token; every other path needs the
   bearer token, compared in constant time.
 - Ten wrong tokens from one address in ten minutes locks that address out.
 - Keep `COMPANION_UPLOAD_TOKEN` at 32+ random characters and never commit it.

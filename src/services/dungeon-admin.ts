@@ -113,7 +113,7 @@ export function describeConfig(config: DungeonConfig, dungeonNames: Map<number, 
   return [
     `**Points:** ${rules.join(" · ")}`,
     `**Same dungeon in one week:** ${config.weeklyRepeat.map((share) => `${Math.round(share * 100)}%`).join(" → ")} (resets Tuesday)`,
-    `**Target times:** ${targets.length ? targets.join(" · ") : "none (`/dungeon-admin target`)"}`,
+    `**Target times:** ${targets.length ? targets.join(" · ") : "none (`/dungeon admin target`)"}`,
     `**Dungeon Master achievement:** ${config.dungeonMasterCount} different dungeons`
   ].join("\n");
 }

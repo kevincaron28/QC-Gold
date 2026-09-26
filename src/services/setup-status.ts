@@ -56,14 +56,14 @@ export function setupChecks(facts: SetupFacts, lang: Lang = "en"): SetupCheck[] 
       label: T("Permission roles (Guild Master, Officer, Raid Leader, DKP Officer)"),
       ok: missingRoles.length === 0,
       optional: false,
-      fix: T("Missing: {roles}. Run /setup and press \"Create missing roles\", then give them to your officers.", { roles: missingRoles.join(", ") })
+      fix: T("Missing: {roles}. Run /setup start and press \"Create missing roles\", then give them to your officers.", { roles: missingRoles.join(", ") })
     },
-    channelCheck(lang, T("Announcements channel"), facts.notifyChannel, false, T("Run /setup, step 2 (Channels).")),
-    channelCheck(lang, T("Raid signups channel"), facts.raidChannel, false, T("Run /setup, step 2 (Channels).")),
-    channelCheck(lang, T("Officer log channel"), facts.logChannel, false, T("Run /setup, step 2 (Channels).")),
-    channelCheck(lang, T("Raid logs channel"), facts.raidLogChannel ?? null, true, T("Optional: run /setup, step 2 (Channels). Raid summaries use announcements until then.")),
-    channelCheck(lang, T("Dungeon leaderboard channel"), facts.dungeonLeaderboardChannel ?? null, true, T("Optional: run /setup, step 3 (Dungeon channels).")),
-    channelCheck(lang, T("Welcome channel"), facts.welcomeChannel, true, T("Optional: run /setup, step 5 (Welcome).")),
+    channelCheck(lang, T("Announcements channel"), facts.notifyChannel, false, T("Run /setup start, step 2 (Channels).")),
+    channelCheck(lang, T("Raid signups channel"), facts.raidChannel, false, T("Run /setup start, step 2 (Channels).")),
+    channelCheck(lang, T("Officer log channel"), facts.logChannel, false, T("Run /setup start, step 2 (Channels).")),
+    channelCheck(lang, T("Raid logs channel"), facts.raidLogChannel ?? null, true, T("Optional: run /setup start, step 2 (Channels). Raid summaries use announcements until then.")),
+    channelCheck(lang, T("Dungeon leaderboard channel"), facts.dungeonLeaderboardChannel ?? null, true, T("Optional: run /setup start, step 3 (Dungeon channels).")),
+    channelCheck(lang, T("Welcome channel"), facts.welcomeChannel, true, T("Optional: run /setup start, step 5 (Welcome).")),
     ...facts.autoRoles.map((role) => ({
       label: T("Auto-role \"{name}\"", { name: role.name }),
       ok: role.botCanAssign,
@@ -74,7 +74,7 @@ export function setupChecks(facts: SetupFacts, lang: Lang = "en"): SetupCheck[] 
       label: T("EPGP point values (base GP set)"),
       ok: facts.epgpConfigured,
       optional: true,
-      fix: T("Defaults work, but base GP is 0: run /setup step 7 and press \"Use recommended values\".")
+      fix: T("Defaults work, but base GP is 0: run /setup start step 7 and press \"Use recommended values\".")
     },
     { label: T("Raid reminders"), ok: facts.remindersOn, optional: true, fix: T("Optional: turn them on in /setup step 7.") },
     { label: T("Weekly guild report"), ok: facts.weeklyReportOn, optional: true, fix: T("Optional: turn it on in /setup step 7.") },

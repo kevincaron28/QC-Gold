@@ -8,43 +8,24 @@ import {
   type ChatInputCommandInteraction
 } from "discord.js";
 import { commands } from "./commands/index.js";
-import { executeHealth } from "./commands/health.js";
+import { legacyView, resolveCommand } from "./commands/router.js";
 import { executeProfile } from "./commands/profile.js";
-import { executeCharacter } from "./commands/character.js";
-import { executeProfession } from "./commands/profession.js";
-import { executeConfig } from "./commands/settings.js";
 import { replyWithCommandError } from "./commands/context.js";
-import { executeDkp } from "./commands/dkp.js";
-import { executeRaid, handleRaidSignupButton, RAID_SIGNUP_PREFIX } from "./commands/raid.js";
-import { executeImport } from "./commands/import.js";
+import { handleRaidSignupButton, RAID_SIGNUP_PREFIX } from "./commands/raid.js";
 import { executeLoot } from "./commands/loot.js";
-import { executeApply, executeApplication } from "./commands/application.js";
-import { executeImportApply } from "./commands/import-apply.js";
-import { executeEpgp } from "./commands/epgp.js";
-import { executeReadiness } from "./commands/readiness.js";
-import { executeAttunement } from "./commands/attunement.js";
-import { executeModeration } from "./commands/moderation.js";
+import { executeApply } from "./commands/application.js";
 import { executeTag } from "./commands/tag.js";
-import { executeWishlist } from "./commands/wishlist.js";
-import { executeSelfRoles, handleSelfRoleButton, SELF_ROLE_PREFIX } from "./commands/selfroles.js";
+import { handleSelfRoleButton, SELF_ROLE_PREFIX } from "./commands/selfroles.js";
 import { EP_AWARD_PREFIX, handleEpAwardButton } from "./commands/ep-award.js";
-import { executeWho } from "./commands/who.js";
-import { executeWcl } from "./commands/wcl.js";
 import { executeCore } from "./commands/core.js";
-import { executeInactive } from "./commands/inactive.js";
-import { executeExport } from "./commands/export.js";
-import { executeGuildHealth } from "./commands/guild-health.js";
 import { executePoll, handlePollButton, POLL_PREFIX } from "./commands/poll.js";
 import { CRAFT_PREFIX, handleCraftButton, handleCraftModal } from "./commands/craft-board.js";
 import { cleanupDungeonGroups, DUNGEON_GROUP_PREFIX, handleDungeonGroupButton } from "./commands/dungeon-group.js";
-import { executeStats, runWeeklyReports } from "./commands/stats.js";
+import { runWeeklyReports } from "./commands/stats.js";
 import { executeBank } from "./commands/bank.js";
-import { executeTestRaid } from "./commands/testraid.js";
 import { executeCraft } from "./commands/craft.js";
-import { executeSetup, greetNewGuild, logSetupStatus } from "./commands/setup.js";
+import { greetNewGuild, logSetupStatus } from "./commands/setup.js";
 import { executeHelp } from "./commands/help.js";
-import { executeDungeon } from "./commands/dungeon.js";
-import { executeDungeonAdmin } from "./commands/dungeon-admin.js";
 import { handleAutocomplete } from "./commands/autocomplete.js";
 import { prisma } from "./database.js";
 import { runRaidReminders } from "./services/reminders.js";
@@ -60,40 +41,15 @@ import { handleMemberJoin, handleMemberLeave, handleWelcomeRoleButton, WELCOME_R
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers] });
 startCompanionApi(client);
 const handlers = new Collection<string, (interaction: ChatInputCommandInteraction) => Promise<void>>();
-handlers.set("health", executeHealth);
 handlers.set("profile", executeProfile);
-handlers.set("character", executeCharacter);
-handlers.set("profession", executeProfession);
-handlers.set("config", executeConfig);
-handlers.set("dkp", executeDkp);
-handlers.set("raid", executeRaid);
-handlers.set("import", executeImport);
 handlers.set("loot", executeLoot);
 handlers.set("apply", executeApply);
-handlers.set("application", executeApplication);
-handlers.set("import-apply", executeImportApply);
-handlers.set("epgp", executeEpgp);
-handlers.set("readiness", executeReadiness);
-handlers.set("attunement", executeAttunement);
-handlers.set("mod", executeModeration);
 handlers.set("tag", executeTag);
-handlers.set("wishlist", executeWishlist);
-handlers.set("selfroles", executeSelfRoles);
-handlers.set("who", executeWho);
-handlers.set("wcl", executeWcl);
 handlers.set("core", executeCore);
-handlers.set("inactive", executeInactive);
-handlers.set("export", executeExport);
-handlers.set("guildhealth", executeGuildHealth);
 handlers.set("poll", executePoll);
-handlers.set("stats", executeStats);
 handlers.set("bank", executeBank);
-handlers.set("testraid", executeTestRaid);
 handlers.set("craft", executeCraft);
-handlers.set("setup", executeSetup);
 handlers.set("help", executeHelp);
-handlers.set("dungeon", executeDungeon);
-handlers.set("dungeon-admin", executeDungeonAdmin);
 
 client.once(Events.ClientReady, (readyClient) => {
   registerCommandsEverywhere().catch((error: unknown) => console.error("Command registration failed", error));
@@ -118,7 +74,7 @@ client.once(Events.ClientReady, (readyClient) => {
       console.warn(`Raid reminder check skipped, will retry in 5 minutes: ${text}`);
     });
   }, 5 * 60 * 1000);
-  // Warcraft Logs: new reports of the guild set with /config wcl-guild, every 10 minutes.
+  // Warcraft Logs: new reports of the guild set with /setup config wcl-guild, every 10 minutes.
   setInterval(() => {
     runWclDiscovery(readyClient, prisma).catch((error: unknown) => console.warn("Warcraft Logs check skipped:", error instanceof Error ? error.message : error));
   }, 10 * 60 * 1000);
@@ -223,13 +179,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
     return;
   }
   if (!interaction.isChatInputCommand()) return;
-  const handler = handlers.get(interaction.commandName);
+  const found = resolveCommand(commands, interaction);
+  const handler = found.handler ?? handlers.get(found.legacy);
   if (!handler) {
     await interaction.reply({ content: "That command is not available.", ephemeral: true });
     return;
   }
   try {
-    await handler(interaction);
+    await handler(found.merged ? legacyView(interaction, found.legacy, found.sub) : interaction);
   } catch (error) {
     await replyWithCommandError(interaction, error);
   }

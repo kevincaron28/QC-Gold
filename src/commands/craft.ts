@@ -49,7 +49,7 @@ export async function executeCraft(interaction: ChatInputCommandInteraction): Pr
   if (subcommand === "permissions") {
     if (!isOfficer) throw new Error("Only Officers or Guild Masters can change the craft board's permissions.");
     const settings = await prisma.guildSettings.findUnique({ where: { guildId: context.guildId } });
-    if (!settings?.craftChannelId || !interaction.guild) throw new Error("No craft board is set. Run /setup first.");
+    if (!settings?.craftChannelId || !interaction.guild) throw new Error("No craft board is set. Run /setup start first.");
     const fixed = await repairCraftBoardPermissions(interaction.guild, settings.craftChannelId);
     await interaction.reply({
       content: fixed

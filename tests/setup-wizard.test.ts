@@ -66,7 +66,7 @@ describe("setup wizard screens", () => {
   it("the checklist step lists what's missing with a fix", async () => {
     const text = (await renderStep(8, guild as never, "g1", "")).embeds[0]!.toJSON().description ?? "";
     expect(text).toContain("❌ Raid signups channel");
-    expect(text).toContain("Run /setup, step 2");
+    expect(text).toContain("Run /setup start, step 2");
     expect(text).toContain("✅ Announcements channel (#announcements)");
   });
 });
@@ -97,7 +97,7 @@ describe("setup wizard in French", () => {
       expect(roles).toContain("(facultatif)");
       const checklist = (await renderStep(8, guild as never, "g1", "")).embeds[0]!.toJSON().description ?? "";
       expect(checklist).toContain("❌ Salon des inscriptions aux raids");
-      expect(checklist).toContain("Lancez /setup, étape 2 (Salons).");
+      expect(checklist).toContain("Lancez /setup start, étape 2 (Salons).");
     } finally {
       settings.language = "en";
     }

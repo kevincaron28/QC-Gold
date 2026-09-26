@@ -14,25 +14,25 @@ const LINES: Record<"everyone" | "raidLeader" | "dkpOfficer" | "officer", Record
     en: [
       "`/character add` — link your WoW character (do this first), or `/character import` with the line `/guilded character` shows in game, or `/character sync` with `/guilded share`",
       "Raid posts have buttons to sign up (or use `/raid signup`)",
-      "`/epgp balance` · `/epgp leaderboard` · `/profile` · `/who <name>`",
-      "`/raid progress` · `/raid report` · `/stats` · `/loot history`",
+      "`/epgp balance` · `/epgp leaderboard` · `/profile` · `/character who <name>`",
+      "`/raid progress` · `/raid report` · `/report stats` · `/loot history`",
       "`/loot bid` — bid GP on a Discord loot auction",
-      "`/wishlist add` · `/profession set` · `/profession who <prof>`",
+      "`/character wishlist add` · `/character profession set` · `/character profession who <prof>`",
       "`/bank request` — ask the guild bank · `/craft request` — ask a crafter",
       "`/dungeon leaderboard` · `/dungeon records` · `/dungeon player` — dungeon challenge · `/dungeon group` — form a group with its own voice channel",
-      "`/readiness me` — your latest gear check from the addon",
+      "`/character readiness me` — your latest gear check from the addon",
       "`/apply` — apply to the guild"
     ],
     fr: [
       "`/character add` — liez votre personnage WoW (à faire en premier), ou `/character import` avec la ligne de `/guilded character` en jeu, ou `/character sync` avec `/guilded share`",
       "Les annonces de raid ont des boutons pour s'inscrire (ou `/raid signup`)",
-      "`/epgp balance` · `/epgp leaderboard` · `/profile` · `/who <nom>`",
-      "`/raid progress` · `/raid report` · `/stats` · `/loot history`",
+      "`/epgp balance` · `/epgp leaderboard` · `/profile` · `/character who <nom>`",
+      "`/raid progress` · `/raid report` · `/report stats` · `/loot history`",
       "`/loot bid` — miser des GP sur une enchère Discord",
-      "`/wishlist add` · `/profession set` · `/profession who <métier>`",
+      "`/character wishlist add` · `/character profession set` · `/character profession who <métier>`",
       "`/bank request` — demander à la banque de guilde · `/craft request` — demander à un artisan",
       "`/dungeon leaderboard` · `/dungeon records` · `/dungeon player` — défi des donjons · `/dungeon group` — former un groupe avec son salon vocal",
-      "`/readiness me` — votre dernière vérification d'équipement (addon)",
+      "`/character readiness me` — votre dernière vérification d'équipement (addon)",
       "`/apply` — postuler à la guilde"
     ]
   },
@@ -41,13 +41,13 @@ const LINES: Record<"everyone" | "raidLeader" | "dkpOfficer" | "officer", Record
       "`/raid create` (times like `friday 8pm`) · `/raid edit` · `/raid start` · `/raid end` (shows the EP to approve)",
       "`/raid attendance` · `/raid boss` · `/raid note` · `/raid award-ep`",
       "`/core setup` — guided raid core (name, players, rules) · `/core add` · `/core remove` · `/raid create core:` (priority signups)",
-      "`/readiness raid` — who's ready for tonight"
+      "`/character readiness raid` — who's ready for tonight"
     ],
     fr: [
       "`/raid create` (heures comme `vendredi 20h`) · `/raid edit` · `/raid start` · `/raid end` (propose les EP à approuver)",
       "`/raid attendance` · `/raid boss` · `/raid note` · `/raid award-ep`",
       "`/core setup` — noyau de raid guidé (nom, joueurs, règles) · `/core add` · `/core remove` · `/raid create core:` (inscription prioritaire)",
-      "`/readiness raid` — qui est prêt pour ce soir"
+      "`/character readiness raid` — qui est prêt pour ce soir"
     ]
   },
   dkpOfficer: {
@@ -56,22 +56,22 @@ const LINES: Record<"everyone" | "raidLeader" | "dkpOfficer" | "officer", Record
   },
   officer: {
     en: [
-      "`/setup` — guided setup and checklist · `/config` — every setting",
-      "`/loot auction` · `/loot close` · `/import-apply` (addon data)",
-      "`/testraid start` — fake raid to try everything, `/testraid cleanup` after",
-      "`/dungeon-admin` — invalidate a run, award points, rules, target times, new season",
-      "`/bank list` / `handle` · `/application list` · `/mod` · `/tag set` · `/selfroles`",
-      "`/wcl report url:` — pull a Warcraft Logs report into the raid history",
-      "`/inactive` · `/export` · `/guildhealth` · `/poll create` · `/loot award` (loot council)"
+      "`/setup start` — guided setup and checklist · `/setup config` — every setting",
+      "`/loot auction` · `/loot close` · `/import apply` (addon data)",
+      "`/setup testraid start` — fake raid to try everything, `/setup testraid cleanup` after",
+      "`/dungeon admin` — invalidate a run, award points, rules, target times, new season",
+      "`/bank list` / `handle` · `/mod application list` · `/mod` · `/tag set` · `/setup selfroles`",
+      "`/raid wcl report url:` — pull a Warcraft Logs report into the raid history",
+      "`/report inactive` · `/report export` · `/report guild` · `/poll create` · `/loot award` (loot council)"
     ],
     fr: [
-      "`/setup` — configuration guidée et liste de vérification · `/config` — tous les réglages",
-      "`/loot auction` · `/loot close` · `/import-apply` (données de l'addon)",
-      "`/testraid start` — faux raid pour tout essayer, puis `/testraid cleanup`",
-      "`/dungeon-admin` — annuler un donjon, donner des points, règles, temps cibles, nouvelle saison",
-      "`/bank list` / `handle` · `/application list` · `/mod` · `/tag set` · `/selfroles`",
-      "`/wcl report url:` — importer un rapport Warcraft Logs dans l'historique des raids",
-      "`/inactive` · `/export` · `/guildhealth` · `/poll create` · `/loot award` (conseil de loot)"
+      "`/setup start` — configuration guidée et liste de vérification · `/setup config` — tous les réglages",
+      "`/loot auction` · `/loot close` · `/import apply` (données de l'addon)",
+      "`/setup testraid start` — faux raid pour tout essayer, puis `/setup testraid cleanup`",
+      "`/dungeon admin` — annuler un donjon, donner des points, règles, temps cibles, nouvelle saison",
+      "`/bank list` / `handle` · `/mod application list` · `/mod` · `/tag set` · `/setup selfroles`",
+      "`/raid wcl report url:` — importer un rapport Warcraft Logs dans l'historique des raids",
+      "`/report inactive` · `/report export` · `/report guild` · `/poll create` · `/loot award` (conseil de loot)"
     ]
   }
 };

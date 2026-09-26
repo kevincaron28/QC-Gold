@@ -19,7 +19,7 @@ export const testRaidCommand = new SlashCommandBuilder()
     .addStringOption((o) => o.setName("realm").setDescription("Realm for the fake characters (default: your main's realm)")))
   .addSubcommand((sub) => sub.setName("finish").setDescription("Play the test raid: attendance, boss kills, loot, then end it and propose EP.")
     .addStringOption((o) => o.setName("raid").setDescription("Test raid (pick from the list)").setAutocomplete(true).setRequired(true))
-    .addBooleanOption((o) => o.setName("via_addon").setDescription("Send attendance as an addon import to /import-apply instead")))
+    .addBooleanOption((o) => o.setName("via_addon").setDescription("Send attendance as an addon import to /import apply instead")))
   .addSubcommand((sub) => sub.setName("dungeon").setDescription("Fake dungeon run by 5 test characters: points, records, announcement.")
     .addNumberOption((o) => o.setName("minutes").setDescription("How long the run took (default 20-30)").setMinValue(1).setMaxValue(300))
     .addBooleanOption((o) => o.setName("deaths").setDescription("Give one player 2 deaths"))
@@ -65,7 +65,7 @@ export async function executeTestRaid(interaction: ChatInputCommandInteraction):
 
 `
         + `${posted ? "The run was announced in the dungeon channel (marked [TEST])." : "No dungeon or notify channel is set, so nothing was announced."} `
-        + "Try `/dungeon leaderboard`, `/dungeon records`, `/dungeon-admin invalidate`. Run it again for the weekly repeat share; `/testraid cleanup` removes it all.",
+        + "Try `/dungeon leaderboard`, `/dungeon records`, `/dungeon admin invalidate`. Run it again for the weekly repeat share; `/setup testraid cleanup` removes it all.",
       ephemeral: true
     });
     return;
@@ -87,7 +87,7 @@ export async function executeTestRaid(interaction: ChatInputCommandInteraction):
         `${result.counts.SIGNED_UP} signed up, ${result.counts.MAYBE} maybe, ${result.counts.WAITLISTED} waitlisted.`,
         "Try it: `/raid signup` yourself, `/raid cancel-signup`, `/raid edit` caps (waitlist moves up), `/raid roster`, `/raid note`.",
         "The raid reminder fires 60 minutes before start (if a signup channel is set).",
-        `When ready: \`/testraid finish raid:${result.raid.id}\` (add \`via_addon:true\` to test the import path). Clean up with \`/testraid cleanup\`.`,
+        `When ready: \`/setup testraid finish raid:${result.raid.id}\` (add \`via_addon:true\` to test the import path). Clean up with \`/setup testraid cleanup\`.`,
         `In game, \`/guilded sim\` uses the same fake names (${SIM_CHARACTERS.slice(0, 3).join(", ")}...) so an addon export matches.`
       ].join("\n"),
       ephemeral: true
@@ -111,7 +111,7 @@ export async function executeTestRaid(interaction: ChatInputCommandInteraction):
   ].join("\n");
   if (result.importId) {
     await interaction.reply({
-      content: `${summary}\nAttendance was sent as an addon import. Apply it with \`/import-apply id:${result.importId}\` (you should see the no-show and the walk-in), then \`/raid award-ep raid:${result.raid.id}\`.`,
+      content: `${summary}\nAttendance was sent as an addon import. Apply it with \`/import apply id:${result.importId}\` (you should see the no-show and the walk-in), then \`/raid award-ep raid:${result.raid.id}\`.`,
       ephemeral: true
     });
     return;

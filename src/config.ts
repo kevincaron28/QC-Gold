@@ -14,10 +14,10 @@ const environmentSchema = z.object({
   // 127.0.0.1 = this computer only. On a server behind HTTPS (deploy/), use 0.0.0.0 or leave 127.0.0.1 with a reverse proxy.
   COMPANION_API_HOST: z.string().min(1).default("127.0.0.1"),
   COMPANION_UPLOAD_TOKEN: z.string().min(32).optional(),
-  // Warcraft Logs API v2 client (https://www.warcraftlogs.com/api/clients). Optional: /wcl stays off without it.
+  // Warcraft Logs API v2 client (https://www.warcraftlogs.com/api/clients). Optional: /raid wcl stays off without it.
   WCL_CLIENT_ID: z.string().min(1).optional(),
   WCL_CLIENT_SECRET: z.string().min(1).optional(),
-  // Site used when /wcl gets a bare report code instead of a full link.
+  // Site used when /raid wcl gets a bare report code instead of a full link.
   WCL_BASE_URL: z.string().url().default("https://www.warcraftlogs.com"),
   LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info")
 });

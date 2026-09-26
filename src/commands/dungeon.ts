@@ -12,7 +12,7 @@ import { executeDungeonGroup } from "./dungeon-group.js";
 import { guildService, requireGuildContext } from "./context.js";
 
 // Dungeon challenge views (roadmap D5). Points come from runs the addon
-// recorded and an officer imported (/import-apply).
+// recorded and an officer imported (/import apply).
 export const dungeonCommand = new SlashCommandBuilder()
   .setName("dungeon")
   .setDescription("Dungeon challenge: points leaderboard, records, player stats, recent runs.")

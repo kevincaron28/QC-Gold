@@ -28,7 +28,7 @@ local PANEL_HEIGHT = 540
 local SIDEBAR_WIDTH = 160
 local CONTENT_X = SIDEBAR_WIDTH + 26
 local PAGE_WIDTH = PANEL_WIDTH - CONTENT_X - 22
-local ATTUNEMENT_PRESETS = { "Molten Core", "Onyxia", "Blackwing Lair", "Naxxramas" }
+local ATTUNEMENT_PRESETS = { "Barrow Deeps", "Hyjal Summit", "Onyxia's Lair" }
 
 local button, panel
 
@@ -506,38 +506,134 @@ local function buildDungeonPage(page)
   ui.dgnBoard:SetWidth(PAGE_WIDTH)
 end
 
--- The Ready page: everyone in your raid or party, worst first, with why.
+-- The Ready page: everyone in your raid or party, worst first, one icon per check and why.
+-- Green tick = there, red cross = missing (and required), grey = missing but not required,
+-- question mark = the game hides it and nobody could tell, amber = running out.
 local READY_ROWS = 15
 local READY_COLORS = { READY = "|cff55dd55", PARTIAL = "|cffffcc33", NOT_READY = "|cffff5555", NODATA = "|cff999999" }
+local CELL_TEXTURE = {
+  ok = "Interface\\RaidFrame\\ReadyCheck-Ready", warn = "Interface\\RaidFrame\\ReadyCheck-Ready",
+  bad = "Interface\\RaidFrame\\ReadyCheck-NotReady", none = "Interface\\RaidFrame\\ReadyCheck-NotReady",
+  unknown = "Interface\\RaidFrame\\ReadyCheck-Waiting", waiting = "Interface\\RaidFrame\\ReadyCheck-Waiting",
+  ready = "Interface\\RaidFrame\\ReadyCheck-Ready", notready = "Interface\\RaidFrame\\ReadyCheck-NotReady",
+  silent = "Interface\\RaidFrame\\ReadyCheck-NotReady"
+}
+-- Tint per state: { red, green, blue, alpha }.
+local CELL_TINT = {
+  ok = { 1, 1, 1, 1 }, warn = { 1, 0.8, 0.2, 1 }, bad = { 1, 1, 1, 1 }, none = { 0.5, 0.5, 0.5, 0.35 },
+  unknown = { 1, 1, 1, 0.55 }, waiting = { 1, 1, 1, 0.55 }, ready = { 1, 1, 1, 1 }, notready = { 1, 1, 1, 1 },
+  silent = { 0.5, 0.5, 0.5, 0.6 }
+}
+-- The check columns: key in a row's cells, header icon (file id), tooltip title.
+local READY_COLUMNS = {
+  { key = "rc", text = "RC", title = "Ready check answer" },
+  { key = "flask", icon = 3528447, title = "Flask or elixir" },
+  { key = "food", icon = 136000, title = "Food" },
+  { key = "weapon", icon = 463543, title = "Weapon enchant" },
+  { key = "augment", icon = 4549099, title = "Augment rune" },
+  { key = "vantus", icon = 4638737, title = "Vantus rune" },
+  { key = "buffs", icon = 135987, title = "Raid buffs" },
+}
+local CELL_X, CELL_STEP, CELL_SIZE = 178, 24, 18
+local DUR_X = CELL_X + #READY_COLUMNS * CELL_STEP + 2
+local GEAR_X = DUR_X + 36
+local WHY_X = GEAR_X + 28
+
+local function readyTooltip(anchor, entry)
+  if not GameTooltip or not entry then return end
+  GameTooltip:SetOwner(anchor, "ANCHOR_RIGHT")
+  GameTooltip:AddLine(entry.name)
+  GameTooltip:AddLine(L(ns.ready.LABEL[entry.status]), 1, 1, 1)
+  for _, reason in ipairs(entry.reasons) do GameTooltip:AddLine("- " .. reason, 1, 0.82, 0.3) end
+  local source = entry.source == "none" and L("nothing known yet") or (L("from") .. ": " .. entry.source)
+  GameTooltip:AddLine(source, 0.6, 0.6, 0.6)
+  GameTooltip:Show()
+end
 
 local function buildReadyPage(page)
   ui.readySummary = at(newLabel(page, "", "GameFontNormal"), page, 0, 0)
   ui.readySummary:SetWidth(PAGE_WIDTH)
   ui.readyPage = 1
-  at(newButton(page, L("Refresh"), 90, function() if ns.ready then refresh() end end), page, 0, -24)
-  at(newButton(page, L("Ask everyone to check"), 170, function() if ns.ready then ns.ready.ask() end end), page, 94, -24)
-  at(newButton(page, L("Post to group chat"), 150, function() if ns.ready then ns.ready.post() end end), page, 268, -24)
-  ui.readyPrev = at(newButton(page, "<", 32, function() ui.readyPage = math.max(1, (ui.readyPage or 1) - 1); refresh() end), page, PAGE_WIDTH - 170, -24)
-  ui.readyPageLabel = at(newLabel(page, "", "GameFontHighlightSmall"), page, PAGE_WIDTH - 134, -30)
+  at(newButton(page, L("Refresh"), 90, function() if ns.ready then refresh() end end), page, 0, -34)
+  at(newButton(page, L("Ask everyone to check"), 170, function() if ns.ready then ns.ready.ask() end end), page, 94, -34)
+  at(newButton(page, L("Post to group chat"), 150, function() if ns.ready then ns.ready.post() end end), page, 268, -34)
+  ui.readyPrev = at(newButton(page, "<", 32, function() ui.readyPage = math.max(1, (ui.readyPage or 1) - 1); refresh() end), page, PAGE_WIDTH - 170, -34)
+  ui.readyPageLabel = at(newLabel(page, "", "GameFontHighlightSmall"), page, PAGE_WIDTH - 134, -40)
   ui.readyPageLabel:SetWidth(70)
-  ui.readyNext = at(newButton(page, ">", 32, function() ui.readyPage = (ui.readyPage or 1) + 1; refresh() end), page, PAGE_WIDTH - 60, -24)
-  at(newLabel(page, L("Player"), "GameFontDisableSmall"), page, 0, -58)
-  at(newLabel(page, L("Status"), "GameFontDisableSmall"), page, 132, -58)
-  at(newLabel(page, L("Why"), "GameFontDisableSmall"), page, 226, -58)
+  ui.readyNext = at(newButton(page, ">", 32, function() ui.readyPage = (ui.readyPage or 1) + 1; refresh() end), page, PAGE_WIDTH - 60, -34)
+  at(newLabel(page, L("Player"), "GameFontDisableSmall"), page, 0, -68)
+  at(newLabel(page, L("Status"), "GameFontDisableSmall"), page, 116, -68)
+  -- Column headers: an icon (or RC) that says what the column is when hovered.
+  ui.readyHeaders = {}
+  for i, column in ipairs(READY_COLUMNS) do
+    local header = CreateFrame("Frame", nil, page)
+    header:SetWidth(CELL_SIZE)
+    header:SetHeight(CELL_SIZE)
+    at(header, page, CELL_X + (i - 1) * CELL_STEP, -64)
+    if column.icon then
+      local tex = header:CreateTexture(nil, "ARTWORK")
+      tex:SetAllPoints(header)
+      tex:SetTexture(column.icon)
+    else
+      local text = newLabel(header, column.text, "GameFontDisableSmall")
+      text:SetPoint("CENTER", header, "CENTER", 0, 0)
+    end
+    if header.EnableMouse then header:EnableMouse(true) end
+    header:SetScript("OnEnter", function(self)
+      if not GameTooltip then return end
+      GameTooltip:SetOwner(self, "ANCHOR_TOP")
+      GameTooltip:AddLine(L(column.title))
+      GameTooltip:Show()
+    end)
+    header:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+    ui.readyHeaders[i] = header
+  end
+  at(newLabel(page, L("Dur"), "GameFontDisableSmall"), page, DUR_X, -68)
+  at(newLabel(page, L("Gear"), "GameFontDisableSmall"), page, GEAR_X, -68)
+  at(newLabel(page, L("Why"), "GameFontDisableSmall"), page, WHY_X, -68)
   ui.readyRows = {}
   for i = 1, READY_ROWS do
-    local y = -74 - (i - 1) * 19
+    local y = -86 - (i - 1) * 21
+    -- One invisible hover area per row shows the full reasons.
+    local hover = CreateFrame("Frame", nil, page)
+    hover:SetWidth(PAGE_WIDTH)
+    hover:SetHeight(20)
+    at(hover, page, 0, y + 2)
+    if hover.EnableMouse then hover:EnableMouse(true) end
     local row = {
       name = at(newLabel(page, "", "GameFontHighlight"), page, 0, y),
-      status = at(newLabel(page, "", "GameFontHighlight"), page, 132, y),
-      why = at(newLabel(page, "", "GameFontHighlightSmall"), page, 226, y)
+      status = at(newLabel(page, "", "GameFontHighlightSmall"), page, 116, y - 1),
+      dur = at(newLabel(page, "", "GameFontHighlightSmall"), page, DUR_X, y - 1),
+      gear = CreateFrame("Frame", nil, page),
+      why = at(newLabel(page, "", "GameFontHighlightSmall"), page, WHY_X, y - 1),
+      cells = {}
     }
-    row.name:SetWidth(128)
-    row.status:SetWidth(90)
-    row.why:SetWidth(PAGE_WIDTH - 226)
+    row.name:SetWidth(112)
+    row.name:SetHeight(14)
+    row.status:SetWidth(60)
+    row.dur:SetWidth(34)
+    row.why:SetWidth(PAGE_WIDTH - WHY_X)
+    row.why:SetHeight(14)
+    -- One line each: a long reason is cut off here and shown in full when hovered.
+    if row.why.SetWordWrap then row.why:SetWordWrap(false) end
+    if row.name.SetWordWrap then row.name:SetWordWrap(false) end
+    for c, column in ipairs(READY_COLUMNS) do
+      local tex = page:CreateTexture(nil, "ARTWORK")
+      tex:SetWidth(CELL_SIZE)
+      tex:SetHeight(CELL_SIZE)
+      at(tex, page, CELL_X + (c - 1) * CELL_STEP, y + 1)
+      row.cells[column.key] = tex
+    end
+    row.gear:SetWidth(CELL_SIZE)
+    row.gear:SetHeight(CELL_SIZE)
+    at(row.gear, page, GEAR_X, y + 1)
+    row.gearTex = row.gear:CreateTexture(nil, "ARTWORK")
+    row.gearTex:SetAllPoints(row.gear)
+    hover:SetScript("OnEnter", function(self) readyTooltip(self, row.entry) end)
+    hover:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
     ui.readyRows[i] = row
   end
-  ui.readyHint = at(newLabel(page, "", "GameFontDisableSmall"), page, 0, -74 - READY_ROWS * 19 - 6)
+  ui.readyHint = at(newLabel(page, "", "GameFontDisableSmall"), page, 0, -86 - READY_ROWS * 21 - 6)
   ui.readyHint:SetWidth(PAGE_WIDTH)
 end
 
@@ -546,29 +642,71 @@ local function readyTabOpen()
   return tab and tab.name == "Ready" and panel and panel:IsShown()
 end
 
+local function setCell(texture, state)
+  if not texture then return end
+  if not state then texture:Hide() return end
+  texture:SetTexture(CELL_TEXTURE[state] or CELL_TEXTURE.unknown)
+  local tint = CELL_TINT[state] or CELL_TINT.unknown
+  texture:SetVertexColor(tint[1], tint[2], tint[3])
+  texture:SetAlpha(tint[4])
+  texture:Show()
+end
+
+local function classColor(class)
+  local c = RAID_CLASS_COLORS and class and RAID_CLASS_COLORS[class]
+  if c and c.colorStr then return "|c" .. c.colorStr end
+  if c and c.r then return string.format("|cff%02x%02x%02x", c.r * 255, c.g * 255, c.b * 255) end
+  return ""
+end
+
+-- One line on the latest ready check: how many said yes, no, or nothing.
+local function readyCheckLine(result)
+  if not result.check then return "" end
+  local yes, no, waiting = 0, 0, 0
+  for _, entry in ipairs(result.rows) do
+    local state = entry.cells and entry.cells.rc
+    if state == "ready" then yes = yes + 1
+    elseif state == "notready" then no = no + 1
+    elseif state == "waiting" or state == "silent" then waiting = waiting + 1 end
+  end
+  local label = result.check.finished and L("Last ready check") or L("Ready check in progress")
+  return string.format("%s: %d %s, %d %s, %d %s", label, yes, L("ready"), no, L("not ready"), waiting, L("no answer"))
+end
+
 local function refreshReady()
   if not ui.readySummary or not ns.ready then return end
   local result = ns.ready.collect()
   local pages = math.max(1, math.ceil(#result.rows / READY_ROWS))
   ui.readyPage = math.min(math.max(1, ui.readyPage or 1), pages)
-  ui.readySummary:SetText((result.inGroup and "" or (L("Not in a group: showing only you.") .. "  ")) .. ns.ready.summary(result))
+  local summary = (result.inGroup and "" or (L("Not in a group: showing only you.") .. "  ")) .. ns.ready.summary(result)
+  local checkLine = readyCheckLine(result)
+  if checkLine ~= "" then summary = summary .. "\n" .. checkLine end
+  ui.readySummary:SetText(summary)
   ui.readyPageLabel:SetText(string.format("%d / %d", ui.readyPage, pages))
   local first = (ui.readyPage - 1) * READY_ROWS
   for i = 1, READY_ROWS do
     local row = ui.readyRows[i]
     local entry = result.rows[first + i]
+    row.entry = entry
     if entry then
       local color = READY_COLORS[entry.status] or ""
-      row.name:SetText(color .. entry.name .. "|r")
+      row.name:SetText(classColor(entry.class) .. entry.name .. "|r")
       row.status:SetText(color .. L(ns.ready.LABEL[entry.status]) .. "|r")
       row.why:SetText(table.concat(entry.reasons, ", "))
+      local cells = entry.cells or {}
+      for _, column in ipairs(READY_COLUMNS) do setCell(row.cells[column.key], cells[column.key]) end
+      row.dur:SetText(cells.durability and (cells.durability .. "%") or "")
+      setCell(row.gearTex, cells.gear)
     else
       row.name:SetText("")
       row.status:SetText("")
       row.why:SetText("")
+      row.dur:SetText("")
+      for _, column in ipairs(READY_COLUMNS) do setCell(row.cells[column.key], nil) end
+      setCell(row.gearTex, nil)
     end
   end
-  ui.readyHint:SetText(result.inRaid and L("Flask and food are read from each player's buffs. Ask everyone to check refreshes gear and enchants too.")
+  ui.readyHint:SetText(result.inRaid and L("It checks by itself when a ready check starts: every Guilded reports what it carries. Hover a row for details; a question mark means the game hides it.")
     or L("Flask and food are only required in a raid group."))
   -- Keep it current while the page is open (people buff up, addons answer).
   if readyTabOpen() and not ui.readyTickPending and C_Timer then

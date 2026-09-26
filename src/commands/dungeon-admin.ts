@@ -59,7 +59,7 @@ export async function executeDungeonAdmin(interaction: ChatInputCommandInteracti
   const context = await requireGuildContext(interaction);
   if (!context) return;
   if (!interaction.member || !hasPermission(interaction.member as GuildMember, "officer")) {
-    await interaction.reply({ content: "Only officers can use /dungeon-admin.", ephemeral: true });
+    await interaction.reply({ content: "Only officers can use /dungeon admin.", ephemeral: true });
     return;
   }
   const subcommand = interaction.options.getSubcommand();

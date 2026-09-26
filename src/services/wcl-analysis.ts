@@ -94,7 +94,7 @@ export function formatOfficerCheck(input: { title: string; attendance: Attendanc
       lines.push(`• All ${attendance.presentCount} credited players match the log.`);
     }
   } else {
-    lines.push("Not linked to a raid, so attendance was not compared. Link it with `/wcl report raid:<id>`.");
+    lines.push("Not linked to a raid, so attendance was not compared. Link it with `/raid wcl report raid:<id>`.");
   }
   if (details && details.pulls > 0) {
     const short = (pick: (p: PlayerCheck) => number) => details.players

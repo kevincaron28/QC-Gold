@@ -39,7 +39,7 @@ export function reportUrl(baseUrl: string, code: string): string {
   return `${baseUrl.replace(/\/+$/, "")}/reports/${code}`;
 }
 
-// Re-running /wcl without a raid must not unlink an earlier one.
+// Re-running /raid wcl without a raid must not unlink an earlier one.
 function withoutRaid<T extends { raidId: string | null }>(data: T): Omit<T, "raidId"> {
   const copy = { ...data } as Partial<T>;
   delete copy.raidId;

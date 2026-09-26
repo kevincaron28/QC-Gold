@@ -194,7 +194,7 @@ export async function runCoreWizard(interaction: ChatInputCommandInteraction): P
           content: `✅ **${core.name}** is ready.\n`
             + `• Create its raids with \`/raid create core:${core.name}\` (its members get signup priority).\n`
             + `• Change the roster any time (roles, bench, add, remove): \`/core edit core:${core.name}\`; rules: \`/core rules\`.\n`
-            + (settings?.coreChannelId ? `• Its roster is posted in <#${settings.coreChannelId}>.` : "• Set a raid roster channel in `/setup` step 3 to show the roster there."),
+            + (settings?.coreChannelId ? `• Its roster is posted in <#${settings.coreChannelId}>.` : "• Set a raid roster channel in `/setup start` step 3 to show the roster there."),
           embeds: [], components: []
         });
         collector.stop("closed");

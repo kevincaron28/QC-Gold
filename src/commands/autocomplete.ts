@@ -12,6 +12,8 @@ import {
 import { dungeonChoices } from "../services/dungeon-stats.js";
 import { runChoices } from "../services/dungeon-admin.js";
 import { guildService } from "./context.js";
+import { commands } from "./index.js";
+import { resolveCommand } from "./router.js";
 
 // Routes every autocomplete request (see setAutocomplete(true) on ID
 // options) to the right list. Must answer within 3 seconds, so any error
@@ -25,8 +27,8 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
     const settings = await guildService.getSettings(guild.id);
     const focused = interaction.options.getFocused(true);
     const query = String(focused.value ?? "");
-    const command = interaction.commandName;
-    const subcommand = interaction.options.getSubcommand(false);
+    const { legacy: command, sub: legacySub } = resolveCommand(commands, interaction);
+    const subcommand = legacySub;
     const member = await guildService.ensureMember(guild.id, interaction.user.id, interaction.user.username);
     const timeZone = settings?.timezone ?? "America/Toronto";
     const language = settings?.language ?? "en";

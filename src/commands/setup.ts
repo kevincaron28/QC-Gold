@@ -35,7 +35,7 @@ import { boardTagNames, postBoardGuide } from "./craft-board.js";
 // seven steps with buttons and dropdowns only (no IDs, no typing):
 //   1 roles  2 channels  3 dungeon channels  4 extra channels  5 welcome  6 auto-roles  7 EPGP & automation  8 summary
 // Safe to re-run any time: it shows what's already set and changes only
-// what you click. `/setup status:true` shows just the checklist.
+// what you click. `/setup start status:true` shows just the checklist.
 
 export const setupCommand = new SlashCommandBuilder()
   .setName("setup")
@@ -66,7 +66,7 @@ const STEP_TITLES = [
 const LAST_STEP = 7;
 const SUMMARY_STEP = 8;
 
-// Common choices; anything else can be set with /config timezone.
+// Common choices; anything else can be set with /setup config timezone.
 const TIMEZONES: [string, string][] = [
   ["Eastern — Quebec, Ontario, New York", "America/Toronto"],
   ["Atlantic — Maritimes", "America/Halifax"],
@@ -170,7 +170,7 @@ export async function renderStep(step: number, guild: DiscordGuild, guildId: str
       T("**6. New member roles** — optional automatic Applicant / Member roles."),
       T("**7. EPGP, time & language** — point values, reminders, your timezone, English or French."),
       "",
-      T("You can **run /setup again any time**: it shows what's already done and only changes what you click. Nothing gets deleted.")
+      T("You can **run /setup start again any time**: it shows what's already done and only changes what you click. Nothing gets deleted.")
     ].join("\n"));
     components.push(
       new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -304,7 +304,7 @@ export async function renderStep(step: number, guild: DiscordGuild, guildId: str
       T("**Optional.** Skip with **Next** if you don't use these."),
       "",
       T("🆕 **Applicant role** — given automatically when someone joins: {role}", { role: roleLabel(lang, settings.applicantRoleId) }),
-      T("🛡️ **Member role** — given when an application is approved (`/application approve`): {role}", { role: roleLabel(lang, settings.memberRoleId) }),
+      T("🛡️ **Member role** — given when an application is approved (`/mod application approve`): {role}", { role: roleLabel(lang, settings.memberRoleId) }),
       "",
       T("**My role must be above these roles** (Server Settings → Roles, drag me higher). The final checklist tells you if it isn't.")
     ].join("\n"));
@@ -326,7 +326,7 @@ export async function renderStep(step: number, guild: DiscordGuild, guildId: str
       T("• Per boss killed: **{boss} EP**, full clear bonus: **{clear} EP**", { boss: settings.bossKillDkp, clear: settings.epCompletionBonus }),
       T("• Base GP: **{gp}** (stops new players with tiny GP from topping the list)", { gp: settings.baseGp }),
       T("• Weekly decay: **{percent}%**", { percent: Math.round(settings.epgpDecayPercent * 100) }),
-      T("**Recommended:** 10 attendance / 5 late / 5 per boss / 10 full clear / base GP 100 / 10% decay. Fine-tune later with `/config set`."),
+      T("**Recommended:** 10 attendance / 5 late / 5 per boss / 10 full clear / base GP 100 / 10% decay. Fine-tune later with `/setup config set`."),
       "",
       T("⏰ **Raid reminders:** {reminders}   📊 **Weekly report:** {weekly}   🤖 **Auto-apply uploads:** {auto}", {
         reminders: settings.raidReminderMinutes > 0 ? T("on ({minutes} min before start)", { minutes: settings.raidReminderMinutes }) : T("off"),
@@ -367,7 +367,7 @@ export async function renderStep(step: number, guild: DiscordGuild, guildId: str
       T("1. Everyone: `/character add` to link their WoW character."),
       T("2. Officers: install the WoW addon — {url}", { url: RELEASES_URL }),
       T("3. Raid leaders: `/core setup` builds a raid core (name, players, rules) with menus; then `/raid create core:<name>`."),
-      T("4. Try everything safely: `/testraid start` (fake raid, removed with `/testraid cleanup`)."),
+      T("4. Try everything safely: `/setup testraid start` (fake raid, removed with `/setup testraid cleanup`)."),
       T("5. `/help` lists every command by role.")
     ].join("\n").slice(0, 4000));
     components.push(new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -569,7 +569,7 @@ export async function executeSetup(interaction: ChatInputCommandInteraction): Pr
     try {
       note = "";
       if (action === "close") {
-        await i.update({ content: tx(await currentLang(), "Setup closed. Run `/setup` any time to come back, or `/setup status:true` for the checklist."), embeds: [], components: [] });
+        await i.update({ content: tx(await currentLang(), "Setup closed. Run `/setup start` any time to come back, or `/setup start status:true` for the checklist."), embeds: [], components: [] });
         collector.stop("closed");
         return;
       }
@@ -667,7 +667,7 @@ export async function executeSetup(interaction: ChatInputCommandInteraction): Pr
           const current = await guildService.getSettings(guildId);
           await guildService.updateSettings(guildId, { autoApplyImports: !current?.autoApplyImports });
           note = current?.autoApplyImports
-            ? T("Auto-apply is off: officers apply uploads with /import-apply.")
+            ? T("Auto-apply is off: officers apply uploads with /import apply.")
             : T("Auto-apply is on: what the companion uploads is applied and announced right away.");
         } else if (action === "weekly") {
           const settings = await guildService.getSettings(guildId);
@@ -694,7 +694,7 @@ export async function executeSetup(interaction: ChatInputCommandInteraction): Pr
 
   collector.on("end", async (_collected, reason) => {
     if (reason === "closed") return;
-    await interaction.editReply({ content: tx(await currentLang().catch(() => "en" as Lang), "Setup timed out after 15 minutes — your choices are saved. Run `/setup` to continue."), embeds: [], components: [] }).catch(() => undefined);
+    await interaction.editReply({ content: tx(await currentLang().catch(() => "en" as Lang), "Setup timed out after 15 minutes — your choices are saved. Run `/setup start` to continue."), embeds: [], components: [] }).catch(() => undefined);
   });
 }
 
@@ -706,8 +706,8 @@ export async function greetNewGuild(guild: DiscordGuild): Promise<void> {
   await channel.send({
     embeds: [new EmbedBuilder().setTitle(`${BRAND.emoji} Thanks for adding ${BRAND.name}!`).setColor(BRAND.color)
       // The server's language is not chosen yet at this point, so both languages.
-      .setDescription("A server admin should run **`/setup`** now — it's a 2-minute, click-through guide (no typing). You pick English or Français on its first screen.\n\n"
-        + "Un administrateur devrait lancer **`/setup`** maintenant — un guide de 2 minutes, avec des boutons (rien à écrire). Vous choisirez English ou Français sur le premier écran.\n\n`/help`")]
+      .setDescription("A server admin should run **`/setup start`** now — it's a 2-minute, click-through guide (no typing). You pick English or Français on its first screen.\n\n"
+        + "Un administrateur devrait lancer **`/setup start`** maintenant — un guide de 2 minutes, avec des boutons (rien à écrire). Vous choisirez English ou Français sur le premier écran.\n\n`/help`")]
   }).catch(() => undefined);
 }
 
@@ -722,7 +722,7 @@ export async function logSetupStatus(guilds: Iterable<DiscordGuild>): Promise<vo
       const checks = setupChecks(await gatherFacts(guild, record.id, settings));
       const missing = checks.filter((check) => !check.ok && !check.optional);
       if (missing.length === 0) console.info(`Setup complete for "${guild.name}".`);
-      else console.warn(`Setup not finished for "${guild.name}" (${missing.map((check) => check.label).join("; ")}). Run /setup in Discord.`);
+      else console.warn(`Setup not finished for "${guild.name}" (${missing.map((check) => check.label).join("; ")}). Run /setup start in Discord.`);
     } catch (error) {
       console.warn(`Could not check setup for "${guild.name}": ${error instanceof Error ? error.message : String(error)}`);
     }

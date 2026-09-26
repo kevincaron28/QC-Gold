@@ -51,7 +51,9 @@ new `KIND`, never a changed one.
 | Backup.lua | `backup` | (none) | `/guilded backup` and `/guilded restore [undo]`: this guild's saved data as one `QGBKP1:` code |
 | API.lua | always on | (none) | `GuildedAPI` read-only v1 for other addons and WeakAuras (see the file header) |
 | Digest.lua | `digest` | (none) | Login digest: "since your last login" from saved data; `/guilded digest [on/off]` |
-| Consumables.lua | `consumables` | (none) | `/guilded consumes`: who in the group lacks a flask/elixir or food; your own buffs go into your readiness snapshot |
+| Consumables.lua | `consumables` | (none) | `/guilded consumes`: who in the group lacks a flask/elixir or food; your own buffs go into your readiness snapshot; buffs are read by spell id and icon (ConsumableData.lua), hidden buffs are "unknown", never "missing" |
+| ConsumableData.lua | with `consumables` | (none) | Spell ids of flasks, augment and vantus runes and raid buffs, and the food icons (from Ready Check Consumables, MIT) |
+| Ready.lua | always on | Guilded (`CONSUME\|`) | The Ready page and `/guilded ready`: runs on every ready check by itself, each addon reports what it carries |
 | Sim.lua | `sim` | (none) | Test raid / dungeon run for officers |
 | Sync.lua | always on | GuildedSync | Version check, standings, guild module switches |
 | Minimap.lua | always on | (none) | Minimap button and tools window |

@@ -82,7 +82,7 @@ export async function executeCore(interaction: ChatInputCommandInteraction): Pro
     const posted = await syncCoreRoster(interaction.guild, prisma, guildId, core.id);
     await interaction.reply({
       content: `Created raid core **${core.name}**. Add players with \`/core add\`, and create its raids with \`/raid create core:${core.name}\`.`
-        + (posted ? "" : " (Set a roster channel in `/setup` or `/config core-channel` to show the roster there.)"),
+        + (posted ? "" : " (Set a roster channel in `/setup start` or `/setup config channel` to show the roster there.)"),
       ephemeral: true
     });
     return;
@@ -160,7 +160,7 @@ export async function executeCore(interaction: ChatInputCommandInteraction): Pro
   if (subcommand === "post") {
     const value = interaction.options.getString("core");
     const settings = await guildService.getSettings(guildId);
-    if (!settings?.coreChannelId) throw new Error("No roster channel is set. Use /setup or /config core-channel first.");
+    if (!settings?.coreChannelId) throw new Error("No roster channel is set. Use /setup or /setup config channel first.");
     const cores = value ? [await coreService.byIdOrName(guildId, value)] : await coreService.list(guildId);
     let posted = 0;
     for (const core of cores) if (await syncCoreRoster(interaction.guild, prisma, guildId, core.id)) posted++;

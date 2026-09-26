@@ -10,7 +10,7 @@ import type { createAddonImportService } from "./addon-import.js";
 type ImportResult = Awaited<ReturnType<ReturnType<typeof createAddonImportService>["apply"]>>;
 
 // Everything that follows an applied import, whoever applied it (an officer
-// with /import-apply, or the bot itself when auto-apply is on): link newly
+// with /import apply, or the bot itself when auto-apply is on): link newly
 // discovered characters by Discord name, announce the import, dungeon runs
 // and the leaderboard, and refresh the readiness board.
 export async function followUpImport(discordGuild: DiscordGuild | null, guildId: string, result: ImportResult): Promise<{ autoLinked: { character: string; member: string }[] }> {

@@ -22,7 +22,12 @@ local function now()
 end
 
 local function playerName()
-  return UnitName("player") or "Unknown"
+  local name = UnitName("player")
+  -- Same spelling as everyone else's entry for you (no realm part).
+  if type(name) == "string" and not (issecretvalue ~= nil and issecretvalue(name) == true) then
+    name = string.match(name, "^([^%-%s]+)") or name
+  end
+  return name or "Unknown"
 end
 
 local function message(text)
@@ -47,7 +52,9 @@ end
 local function normalizeName(name)
   if type(name) ~= "string" or isSecret(name) then return nil end
   name = string.match(name, "^%s*(.-)%s*$")
-  name = string.match(name, "^([^%-]+)") or name
+  -- A character name is one word of letters: whatever follows a hyphen or a space is the realm
+  -- ("Ray-Realm", "Ray Realm"), never part of the name, so one player is one entry.
+  name = string.match(name, "^([^%-%s]+)") or name
   if name == "" then return nil end
   return string.upper(string.sub(name, 1, 1)) .. string.lower(string.sub(name, 2))
 end
@@ -667,10 +674,12 @@ local function inspectReadiness(silent, target)
     if rowsOk and type(rows) == "table" and scanned and scanned.readable then
       snapshot.consumables = rows
       if (IsInRaid and IsInRaid()) or (GetNumRaidMembers and GetNumRaidMembers() > 0) then
-        if not ns.consumables.hasElixirOrFlask(scanned) then
+        -- Only a complete look proves something is missing (hidden buffs are "unknown").
+        local facts = ns.consumables.factsFromScan and ns.consumables.factsFromScan(scanned) or {}
+        if facts.flask == false then
           table.insert(snapshot.findings, { code = "NO_FLASK", severity = "WARNING", message = "No flask or elixir active." })
         end
-        if not scanned.food then
+        if facts.food == false then
           table.insert(snapshot.findings, { code = "NO_FOOD", severity = "WARNING", message = "No food buff active." })
         end
       end
@@ -762,14 +771,16 @@ local function canonicalKey(key)
   end))
 end
 
-local function setAttunement(name, key, completed)
+local function setAttunement(name, key, completed, silent)
   key = canonicalKey(key)
   db.attunements[name] = db.attunements[name] or {}
   db.attunements[name][key] = { completed = completed, at = now(), by = playerName() }
   logEvent("ATTUNEMENT", { name = name, key = key, completed = completed })
   send("ATTUNEMENT|" .. name .. "|" .. key .. "|" .. tostring(completed), "GUILD")
-  message(name .. " attunement " .. (completed and "completed" or "cleared") .. ": " .. key .. ".")
+  if not silent then message(name .. " attunement " .. (completed and "completed" or "cleared") .. ": " .. key .. ".") end
 end
+ns.setAttunement = setAttunement
+ns.canonicalKey = canonicalKey
 
 -- Automatic sync: re-run inspectReadiness (silently, broadcasting to GUILD)
 -- on login, on gear changes, and when the raid roster changes, instead of
@@ -1106,6 +1117,11 @@ local function command(text)
   elseif action == "gp" then if requireOfficer() then changeEpgp(args[2], args[3], table.concat(args, " ", 4), "GP_AWARD") end
   elseif action == "deduct" then if requireOfficer() then changeEpgp(args[2], args[3], table.concat(args, " ", 4), "ADJUSTMENT") end
   elseif action == "loot" then if requireOfficer() then recordLoot(args) end
+  elseif action == "attune" and ns.attunements and (function()
+      local sub = string.lower(args[2] or "")
+      return sub == "auto" or sub == "track" or sub == "untrack" or sub == "tracked"
+    end)() then
+    ns.attunements.command(args)
   elseif action == "attune" then
     local completed = true
     local last = string.lower(args[#args] or "")
@@ -1210,6 +1226,9 @@ local function handleReadyRequest(channel, sender)
   if nowSeconds - lastReadyAnswerAt < 20 then return end
   lastReadyAnswerAt = nowSeconds
   if ns.inspectReadiness then pcall(ns.inspectReadiness, true, channel) end
+  -- Also share what you carry right now (flask, food, weapon enchant, ...): the requester's
+  -- page shows it even when the game hides your buffs from them.
+  if ns.ready and ns.ready.broadcastSelf then pcall(ns.ready.broadcastSelf, channel) end
 end
 
 -- ---------------------------------------------------------------------
@@ -1322,6 +1341,12 @@ local function onEvent(_, event, ...)
       handlePeerReadiness(text, sender)
     elseif string.sub(text, 1, 9) == "READYREQ|" then
       handleReadyRequest(channel, sender)
+    elseif string.sub(text, 1, 11) == "ATTUNEMENT|" then
+      -- Other players' own attunements (Modules/Attunements.lua keeps only self-reports).
+      if ns.attunements and ns.attunements.handleMessage then pcall(ns.attunements.handleMessage, text, channel, sender) end
+    elseif string.sub(text, 1, 8) == "CONSUME|" then
+      -- What a groupmate carries, sent by their own addon (Modules/Ready.lua checks who and where).
+      if ns.ready and ns.ready.handleReport then pcall(ns.ready.handleReport, text, channel, sender) end
     else
       logEvent("ADDON_MESSAGE", { text = text, channel = channel, sender = normalizeName(sender) })
     end

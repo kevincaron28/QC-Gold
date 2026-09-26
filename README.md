@@ -52,7 +52,7 @@ npm run dev
 ```
 
 `.env.local` needs `DISCORD_TOKEN`, `DISCORD_CLIENT_ID`, `DISCORD_GUILD_ID`, `DATABASE_URL` and a random
-`COMPANION_UPLOAD_TOKEN`. `WCL_CLIENT_ID` and `WCL_CLIENT_SECRET` are optional (they turn on `/wcl`).
+`COMPANION_UPLOAD_TOKEN`. `WCL_CLIENT_ID` and `WCL_CLIENT_SECRET` are optional (they turn on `/raid wcl`).
 On Windows, `start-bot.bat` does the database update, starts the companion app and restarts the bot if it
 crashes. Never commit `.env*` or `companion/companion.config.json` (both are already gitignored).
 
@@ -78,7 +78,7 @@ WoW addon --(saved file on logout or /reload)--> companion --(HTTP, local)--> bo
 
 - The game only writes the addon's data file on `/reload` or logout, so a reload (or logging out) is what
   sends new data. Nothing reloads the game on its own unless a player opts in with `/guilded sync auto on`.
-- Uploads wait as a preview until an officer runs `/import-apply`, unless `/config auto-import` is on.
+- Uploads wait as a preview until an officer runs `/import apply`, unless `/setup config auto-import` is on.
 - The bot's local API listens on `127.0.0.1` only and rejects every request without the upload token.
 - Each WoW guild keeps its own saved data in the addon; a realm rename keeps the data.
 

@@ -1,5 +1,25 @@
 # Changelog
 
+## Unreleased
+
+**Discord bot**
+- **17 commands instead of 34.** Related commands now sit under one parent: `/setup` (`start`, `config`, `testraid`, `selfroles`), `/character` (also `who`, `profession`, `attunement`, `wishlist`, `readiness`), `/raid wcl`, `/dungeon admin`, `/mod application`, `/import upload` and `/import apply`, and a new `/report` (`stats`, `inactive`, `guild`, `export`, `ping`). The old top-level names are gone; the guided setup is now `/setup start`. Nothing else changed: same options, same permissions, same results.
+- **Legacy DKP is hidden.** It is gone from `/profile` and `/epgp dkp` is no longer offered; the stored data and the addon import are untouched.
+- `/setup config channel` replaces the eleven separate `/config ...-channel` commands: pick which channel from a list, then the channel.
+
+**In game**
+- **The Ready page now runs by itself.** When anyone starts Blizzard's ready check, every Guilded in the group looks at itself and reports what it carries to the group (flask, food, augment and vantus rune, raid buffs, weapon enchant, durability), spread over a second or two. When the check ends, the leader or officer sees a summary of who has a problem in their chat window. Nothing to press. Guilded also reports again by itself when your flask or food changes, and when you join a group (never in combat, only when something changed).
+- **One icon per check** on the Ready page: ready check answer, flask, food, weapon enchant, augment rune, vantus rune, raid buffs, durability and gear. A green tick is there, red is missing, grey is missing but not required, amber is running out, and a question mark means nobody could tell. Hover a row for the full reasons and where they came from. Class-coloured names, and a line for how the latest ready check went.
+- **A hidden buff is never "missing".** Buffs are read by spell id and icon, so a French client works as well as an English one, and a player who is out of range, phased, offline or whose buffs the game hides shows a question mark (or comes from their own addon's report), not "no flask".
+- **Running out** (flask, food or weapon enchant under 10 minutes), **raid buffs** (only the ones someone in the group can give), **weapon enchant, augment rune and vantus rune** (off by default) and **durability** are checked. Officers choose what counts with `/guilded ready require <flask|food|buffs|weapon|augment|vantus> on|off`, `/guilded ready expiry <minutes>`, `/guilded ready durability <percent>`, `/guilded ready report on|off` and `/guilded ready autopost on|off` (tell the group at the end of a ready check); `/guilded ready settings` shows them.
+- Blizzard's own answers are shown too: who said ready, who said not ready (that makes them Not ready), and who never answered.
+- Only the player themselves can report themselves, and only through raid or party chat.
+
+- **Attunements track themselves.** Tell your addon once which quest (or reputation) an attunement needs: `/guilded attune track "Hyjal Summit" quest <id>` (or `rep <factionId> <standing>`). From then on it records the attunement by itself when you complete it and tells the guild; no more filling it in. Nothing is built in, because WoW Forever's raids (Barrow Deeps, Hyjal Summit, Onyxia's Lair) differ from the old ones. `/guilded attune tracked`, `untrack` and `auto` (look now) manage it. It only adds, never clears; `/guilded attune` by hand still works. Officers keep what each guildmate reports about themselves.
+- **One player, one name.** "Ray" and "Ray pissjug" (name plus a realm written with a space) are now the same person in the group list and everywhere else.
+
+**Credits:** spell ids and the approach follow Ready Check Consumables (MIT); see `docs/CREDITS.md`.
+
 ## 3.3.0
 
 **In game**

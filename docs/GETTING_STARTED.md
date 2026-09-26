@@ -29,19 +29,19 @@ the addon alone; the bot and the companion are optional.
    `COMPANION_UPLOAD_TOKEN`.
 3. Double-click **`start-bot.bat`**. It updates the database, starts the companion app and keeps the bot
    running (it restarts by itself if it crashes). Leave its window open.
-4. In Discord, run **`/health`**: the bot should answer.
+4. In Discord, run **`/report ping`**: the bot should answer.
 
 ## 4. Set up the Discord server
 
-Run **`/setup`** (you need Administrator). The first screen asks for the language, **English or Français**: pick Français and the guide, the roles, the channels and the posts members see are French. It is a click-through guide in seven steps. Choose
+Run **`/setup start`** (you need Administrator). The first screen asks for the language, **English or Français**: pick Français and the guide, the roles, the channels and the posts members see are French. It is a click-through guide in seven steps. Choose
 **Create the whole WoW section** to make the channels, sorted into categories with the right permissions
 (members read announcements and use buttons; the officer log and readiness board are private).
-Finish with `/setup status:true`: nothing should be red.
+Finish with `/setup start status:true`: nothing should be red.
 
 Then:
 - **`/core setup`** makes a raid core (a named roster). Change it any time with **`/core edit`**
   (roles, bench, add, remove, rename).
-- **`/config auto-import`** lets the bot apply uploads by itself. Otherwise an officer runs `/import-apply`.
+- **`/setup config auto-import`** lets the bot apply uploads by itself. Otherwise an officer runs `/import apply`.
 - **`/craft permissions`** (only needed for a craft board made by an older version).
 
 ## 5. Connect the game to the bot (the companion)
@@ -74,9 +74,9 @@ Pull or copy the new files, then run `start-bot.bat` again (it applies database 
 
 | You see | Why and what to do |
 | --- | --- |
-| "Could not reach the bot" in the companion | The bot is not running or still starting. Wait for `/health` to answer in Discord, then `/reload`. |
-| "Addon import not found" | You ran `/import-apply` in a different Discord server than the companion's server ID. |
-| "No unclaimed character called ..." | The character is already linked (`/character list`), or its upload has not been applied yet (`/import-apply`, or turn on `/config auto-import`). |
+| "Could not reach the bot" in the companion | The bot is not running or still starting. Wait for `/report ping` to answer in Discord, then `/reload`. |
+| "Addon import not found" | You ran `/import apply` in a different Discord server than the companion's server ID. |
+| "No unclaimed character called ..." | The character is already linked (`/character list`), or its upload has not been applied yet (`/import apply`, or turn on `/setup config auto-import`). |
 | "Unknown interaction" in the bot window | A command took over 3 seconds (a sleeping database). Run it again; the bot keeps running. |
 | `EPERM` when starting the bot | Another copy of the bot is still open. Close it and run `start-bot.bat` again. |
 | No tray coin | Look behind the **^** arrow next to the clock and drag the coin out. |

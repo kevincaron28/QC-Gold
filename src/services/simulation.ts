@@ -19,9 +19,9 @@ export const SIM_CHARACTERS = [
 const SIM_CLASSES = ["Warrior", "Paladin", "Priest", "Druid", "Shaman", "Mage", "Rogue", "Hunter", "Warlock"];
 export const SIM_BOSSES = ["Test Boss One", "Test Boss Two", "Test Boss Three"];
 export const SIM_IMPORT_SOURCE = "Guilded-Simulation";
-// Dungeon runs from /testraid dungeon and the addon's /guilded sim dungeon: a
+// Dungeon runs from /setup testraid dungeon and the addon's /guilded sim dungeon: a
 // made-up dungeon so they never mix with real records, and a SIM- run id
-// so /testraid cleanup can find them.
+// so /setup testraid cleanup can find them.
 export const SIM_DUNGEON = { instanceId: 999001, name: "Test Dungeon" };
 export const SIM_RUN_PREFIX = "SIM-";
 
@@ -66,7 +66,7 @@ export async function startTestRaid(database: PrismaClient, input: SimStartInput
   const raid = await raidService.create({
     guildId: input.guildId,
     title: "[TEST] Simulated raid",
-    description: "Test raid from /testraid. Remove it with /testraid cleanup.",
+    description: "Test raid from /setup testraid. Remove it with /setup testraid cleanup.",
     scheduledAt: new Date(Date.now() + Math.max(2, input.startsInMinutes) * 60_000),
     createdBy: input.createdBy,
     bosses: SIM_BOSSES,
@@ -90,7 +90,7 @@ export async function startTestRaid(database: PrismaClient, input: SimStartInput
 // Plays the raid: attendance (one late, one no-show, one walk-in from the
 // waitlist), all bosses killed, two loot auctions won by test players, and
 // ends it. With viaAddon, attendance comes from a generated addon import
-// instead (the officer applies it with /import-apply), exercising the
+// instead (the officer applies it with /import apply), exercising the
 // companion import path.
 export async function finishTestRaid(database: PrismaClient, input: { guildId: string; raidId: string; officerId: string; realm: string; viaAddon: boolean }) {
   const raidService = createRaidService(database);
@@ -100,7 +100,7 @@ export async function finishTestRaid(database: PrismaClient, input: { guildId: s
     include: { bosses: true, signups: { include: { member: { include: { characters: true } } } } }
   });
   if (!raid) throw new Error("Raid not found in this guild.");
-  if (!raid.isTest) throw new Error("That is a real raid. /testraid only plays [TEST] raids.");
+  if (!raid.isTest) throw new Error("That is a real raid. /setup testraid only plays [TEST] raids.");
   if (raid.status === "PLANNED") await raidService.start(raid.id, input.guildId);
   if (raid.status === "COMPLETED" || raid.status === "CANCELLED") throw new Error("That test raid is already over. Start a new one.");
 

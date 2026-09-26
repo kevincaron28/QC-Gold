@@ -89,7 +89,7 @@ PolyForm Noncommercial license. Not affiliated with or endorsed by Blizzard Ente
 **Discord bot**
 
 **Français / French**
-- `/setup` now starts with a language choice (English / Français). In French the whole setup guide and its checklist are French, and it creates a French server: categories (Guilde, Raids, Donjons, Artisanat, Officiers), channels (`guilded-annonces`, `inscriptions-raid`, `cores-de-raid`, `rapports-raid`, `butin`, `inscriptions-donjon`, `classement-donjons`, `donjons-termines`, `tableau-artisanat`, `journal-officiers`, `preparation-raid`) with French topics, and French permission roles (Maître de guilde, Officier, Chef de raid, Officier DKP, Chef du butin, Chef de classe). Both spellings of a role or channel are recognized, so an existing English server keeps working and can be mixed.
+- `/setup start` now starts with a language choice (English / Français). In French the whole setup guide and its checklist are French, and it creates a French server: categories (Guilde, Raids, Donjons, Artisanat, Officiers), channels (`guilded-annonces`, `inscriptions-raid`, `cores-de-raid`, `rapports-raid`, `butin`, `inscriptions-donjon`, `classement-donjons`, `donjons-termines`, `tableau-artisanat`, `journal-officiers`, `preparation-raid`) with French topics, and French permission roles (Maître de guilde, Officier, Chef de raid, Officier DKP, Chef du butin, Chef de classe). Both spellings of a role or channel are recognized, so an existing English server keeps working and can be mixed.
 - French for what members see in channels: the raid signup post, the core roster, the craft board (tags, posts, buttons, forms, direct messages), dungeon groups, polls and the Warcraft Logs card, plus the announcements and reminders that were already translated.
 - Still English for now: officers' own screens and replies (core wizard and editor, EP proposals, readiness board, most command replies), and the slash command descriptions.
 
@@ -100,8 +100,8 @@ PolyForm Noncommercial license. Not affiliated with or endorsed by Blizzard Ente
 
 **Discord bot**
 
-- **Warcraft Logs, automatic:** `/config wcl-guild guild:<page link>` makes the bot find the guild's new public reports itself, post them in the raid logs channel and attach each to the raid it matches by time.
-- **Officer check** (`/wcl check`, also sent to the officer log for every new report): players in the log but not credited or the reverse, characters not linked to a Discord member, EP not awarded yet, who came to boss pulls without a flask or food, and deaths. No damage or parse numbers.
+- **Warcraft Logs, automatic:** `/setup config wcl-guild guild:<page link>` makes the bot find the guild's new public reports itself, post them in the raid logs channel and attach each to the raid it matches by time.
+- **Officer check** (`/raid wcl check`, also sent to the officer log for every new report): players in the log but not credited or the reverse, characters not linked to a Discord member, EP not awarded yet, who came to boss pulls without a flask or food, and deaths. No damage or parse numbers.
 
 ## 3.0.2
 

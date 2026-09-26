@@ -70,7 +70,7 @@ const auditService = createAuditService(prisma);
 export function startCompanionApi(client?: Client): ReturnType<typeof createServer> {
   const server = createServer(async (request, response) => {
     try {
-      if (request.method === "GET" && request.url === "/health") {
+      if (request.method === "GET" && request.url === "/report ping") {
         json(response, 200, { ok: true });
         return;
       }
@@ -136,7 +136,7 @@ export function startCompanionApi(client?: Client): ReturnType<typeof createServ
         return;
       }
       const record = await importService.record(guild.id, preview.snapshot, preview.checksum, createdBy);
-      // Auto-apply (a guild opt-in: /config auto-import): apply now and follow up, no /import-apply.
+      // Auto-apply (a guild opt-in: /setup config auto-import): apply now and follow up, no /import apply.
       const settings = await prisma.guildSettings.findUnique({ where: { guildId: guild.id } });
       let autoApplied: { epgp: number; discovered: number } | null = null;
       if (settings?.autoApplyImports) {
@@ -150,7 +150,7 @@ export function startCompanionApi(client?: Client): ReturnType<typeof createServ
           await followUpImport(discordGuild, guild.id, result);
           autoApplied = { epgp: result.epgpTransactions.length, discovered: result.discovery.discovered };
         } catch (error) {
-          // Left as a normal pending import: an officer can still /import-apply it.
+          // Left as a normal pending import: an officer can still /import apply it.
           console.error("Auto-apply of an addon import failed", error);
         }
       }

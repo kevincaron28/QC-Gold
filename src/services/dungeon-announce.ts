@@ -9,7 +9,7 @@ const MAX_RUNS = 12;
 
 // One post per import (roadmap D6): the completed runs, then the records
 // they set. Abandoned and rejected runs stay out of the channel (officers
-// see them in the /import-apply reply). Null when there is nothing to show.
+// see them in the /import apply reply). Null when there is nothing to show.
 export function dungeonAnnouncement(summary: DungeonImportSummary, lang: Lang): EmbedBuilder | null {
   const done = summary.results.filter((run) => run.valid && run.state === "COMPLETED" && run.durationSec !== null);
   if (done.length === 0) return null;

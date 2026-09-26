@@ -169,7 +169,7 @@ Exports are the SavedVariables file itself. The companion
 bot a normalized JSON export: EPGP ledger entries (with their permanent ids),
 readiness and peer digests, attunements, finished raids with attendance and
 presence, loot, and dungeon runs. An officer reviews and applies it with
-`/import-apply`; entries already imported are skipped.
+`/import apply`; entries already imported are skipped.
 
 
 ## Version 2.0 additions
@@ -200,7 +200,7 @@ presence, loot, and dungeon runs. An officer reviews and applies it with
 ## Version 2.4 changes
 
 - **The casino is gone.** No wagers, no house games, no debt ledger, no trade settlement. `/guilded games` has fun roll games only (high roll, deathroll, duel). Old casino saved data is ignored.
-- **Item tooltips** (module `tooltip`): hover an item that someone wishlisted in Discord (`/wishlist`) or that was awarded before and you get up to three gold lines: who wants it, what it usually costs in GP, and your own PR and rank. The data comes from the bot with the standings and is shared with the guild the same way; items with no data show nothing. `/guilded modules off tooltip` turns it off.
+- **Item tooltips** (module `tooltip`): hover an item that someone wishlisted in Discord (`/character wishlist`) or that was awarded before and you get up to three gold lines: who wants it, what it usually costs in GP, and your own PR and rank. The data comes from the bot with the standings and is shared with the guild the same way; items with no data show nothing. `/guilded modules off tooltip` turns it off.
 - **Ready page** (in the window, and `/guilded ready`; officers and group leaders only, meaning guild officers plus the leader or an assistant of the current raid or party): who in your raid or party is ready. Each player is Ready, Issues, Not ready or No data, worst first, with the reason. It uses what each player's addon shared (gear, enchants, durability, flask, food) plus a live look at their buffs, so a player without the addon still shows flask and food. `ready ask` asks every addon in the group to check itself again; `ready post` posts the result to raid or party chat. Flask and food count only in a raid group.
 - **Guilded chat tab** (module `chattab`): `/guilded chat tab` opens a chat window named Guilded and sends the addon's own lines there (bid results, sync status, answers to commands), so raid chat stays clean. `/guilded chat off` puts them back in the main chat. Raid, party and whisper messages are never moved.
 - **`/guilded sync`** saves now so the companion can upload sooner, and **auto-save** does it by itself at safe moments (out of combat, outside instances, changes quiet for 90 seconds, at most every 10 minutes). It is **off by default**: nobody is reloaded without asking; officers get a small banner with a button, and logging out also saves. Turn it on with `/guilded sync auto on`.
