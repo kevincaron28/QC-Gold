@@ -34,10 +34,15 @@ local function L(text) return ns.L and ns.L(text) or text end
 local function groupChannel()
   if IsInRaid and IsInRaid() then return "RAID" end
   if IsInGroup and IsInGroup() then return "PARTY" end
+  -- A running test raid (/guilded sim start) lets an officer try bidding alone:
+  -- nothing is sent to anyone, fake raiders bid with /guilded sim bids.
+  local raid = ns.getActiveRaid and ns.getActiveRaid()
+  if raid and raid.test then return "TEST" end
   return nil
 end
 
 local function sendAddon(text, channel, target)
+  if channel == "TEST" then return end
   pcall(function()
     text = string.sub(text, 1, 255)
     if C_ChatInfo and C_ChatInfo.SendAddonMessage then
@@ -49,6 +54,7 @@ local function sendAddon(text, channel, target)
 end
 
 local function sendChat(text, channel, target)
+  if channel == "TEST" then return end
   pcall(function()
     if C_ChatInfo and C_ChatInfo.SendChatMessage then
       C_ChatInfo.SendChatMessage(text, channel, nil, target)
@@ -122,7 +128,7 @@ local function openBidding(args)
   if not ns.isOfficer() then ns.message("Only officers can run loot bidding."); return end
   if bidding.current then ns.message("Bidding is already running for " .. bidding.current.item .. ". Award or cancel it first."); return end
   local channel = groupChannel()
-  if not channel then ns.message("Be in a raid or party to run bidding."); return end
+  if not channel then ns.message("Be in a raid or party to run bidding (or start a test raid: /guilded sim start)."); return end
   local minimum = tonumber(args[1])
   local last = #args
   local seconds = DEFAULT_SECONDS
