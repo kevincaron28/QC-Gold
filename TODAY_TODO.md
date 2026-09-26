@@ -45,17 +45,17 @@ Install: copy `addon\Guilded\` (or unzip `dist\Guilded-v3.0.2.zip` after
 - [x] `/guilded sync` reloads the UI. After it, `/guilded diag` has no red LUA_ERROR lines.
 - [x] Optional: `/guilded modules off games` hides the Games page; `/guilded modules on games` restores it.
 
-## D. Discord side (only if you ship the bot to guilds; 45 min)
+## D. Discord side (done 2026-09-26; two items left)
 
-- [ ] `/setup`: 7 steps, "Create the whole WoW section" makes the channels in
+- [x] `/setup`: 7 steps, "Create the whole WoW section" makes the channels in
       categories; `/setup status:true` shows no red.
-- [ ] `/core setup` creates a core through the wizard.
-- [ ] `/testraid start`, `/testraid finish raid:<id>`, approve EP, raid report lands in
+- [x] `/core setup` creates a core through the wizard.
+- [x] `/testraid start`, `/testraid finish raid:<id>`, approve EP, raid report lands in
       raid-logs, `/testraid cleanup`.
-- [ ] `/raid create ... weekly:true`, start, end: the next week's raid appears. Cancel the extra.
-- [ ] `/craft request item:"Flask of Titans" profession:Alchemy`: a **forum post** appears
+- [x] `/raid create ... weekly:true`, start, end: the next week's raid appears. Cancel the extra.
+- [x] `/craft request item:"Flask of Titans" profession:Alchemy`: a **forum post** appears
       with Claim / Done buttons. Needs the craft-board to be a forum channel (`/setup` makes it).
-- [ ] Companion app: `start-companion-app.bat` opens the window and a tray coin.
+- [x] Companion app: `start-companion-app.bat` opens the window and a tray coin.
       Settings: **Find it**, **Test connection**, **Save and start**. Coin turns green.
       `/reload` in game: Status shows a fresh upload within seconds.
 - [ ] `/guilded invite missing` (officer in a party after creating a raid you signed up for).
