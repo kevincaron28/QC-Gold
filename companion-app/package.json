@@ -19,10 +19,38 @@
   "build": {
     "appId": "com.guilded.companion",
     "productName": "Guilded Companion",
-    "directories": { "output": "../dist/companion" },
-    "files": ["main.cjs", "preload.cjs", "detect-wow.cjs", "renderer/**", "assets/**", "package.json"],
-    "extraResources": [{ "from": "../companion", "to": "engine", "filter": ["engine.mjs", "lua-export.mjs", "standings.mjs"] }],
-    "win": { "target": "nsis", "icon": "assets/icon.png" },
-    "nsis": { "oneClick": true, "perMachine": false, "runAfterFinish": true, "shortcutName": "Guilded Companion" }
+    "directories": {
+      "output": "../dist/companion"
+    },
+    "files": [
+      "main.cjs",
+      "preload.cjs",
+      "detect-wow.cjs",
+      "renderer/**",
+      "assets/**",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../companion",
+        "to": "engine",
+        "filter": [
+          "engine.mjs",
+          "lua-export.mjs",
+          "standings.mjs"
+        ]
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.png",
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "runAfterFinish": true,
+      "shortcutName": "Guilded Companion"
+    }
   }
 }

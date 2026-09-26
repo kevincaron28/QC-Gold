@@ -1,0 +1,84 @@
+# Getting started: the bot, the addon and the companion
+
+For the officer who sets Guilded up for a guild. About 30 minutes. You can stop after step 3 and use
+the addon alone; the bot and the companion are optional.
+
+## 1. Install the addon (everyone)
+
+1. Unzip `Guilded-v<version>.zip` into `World of Warcraft\_forever_\Interface\AddOns\`. You should end up with
+   `AddOns\Guilded\Guilded.toc`.
+2. Start the game. Type `/guilded` for the command list, or click the gold coin on the minimap.
+
+## 2. Create the Discord bot
+
+1. Go to the [Discord Developer Portal](https://discord.com/developers/applications), create an application
+   and add a **Bot**. Copy the **token**, and the application's **Client ID**.
+2. On the Bot page, turn on **Server Members Intent**.
+3. Invite it: OAuth2, URL Generator, scopes `bot` and `applications.commands`, and these permissions:
+   View Channels, Send Messages, Send Messages in Threads, Create Public Threads, Manage Threads,
+   Embed Links, Read Message History, Manage Channels, Manage Roles.
+4. In your server, drag the bot's role **above** the applicant and member roles.
+5. Turn on Developer Mode in Discord (Settings, Advanced), right-click your server and **Copy Server ID**.
+
+## 3. Run the bot (on a Windows PC that stays on, or see [DEPLOY_ORACLE.md](DEPLOY_ORACLE.md))
+
+1. Install [Node.js 22+](https://nodejs.org). Create a free database at [neon.tech](https://neon.tech)
+   and copy its connection string.
+2. In the project folder run `npm install`, then create `.env.local` from `.env.example` and fill in
+   `DISCORD_TOKEN`, `DISCORD_CLIENT_ID`, `DISCORD_GUILD_ID` (your server ID), `DATABASE_URL` and a long random
+   `COMPANION_UPLOAD_TOKEN`.
+3. Double-click **`start-bot.bat`**. It updates the database, starts the companion app and keeps the bot
+   running (it restarts by itself if it crashes). Leave its window open.
+4. In Discord, run **`/health`**: the bot should answer.
+
+## 4. Set up the Discord server
+
+Run **`/setup`** (you need Administrator). It is a click-through guide in seven steps. Choose
+**Create the whole WoW section** to make the channels, sorted into categories with the right permissions
+(members read announcements and use buttons; the officer log and readiness board are private).
+Finish with `/setup status:true`: nothing should be red.
+
+Then:
+- **`/core setup`** makes a raid core (a named roster). Change it any time with **`/core edit`**
+  (roles, bench, add, remove, rename).
+- **`/config auto-import`** lets the bot apply uploads by itself. Otherwise an officer runs `/import-apply`.
+- **`/craft permissions`** (only needed for a craft board made by an older version).
+
+## 5. Connect the game to the bot (the companion)
+
+On the officer's PC that plays WoW (a Windows installer, `Guilded Companion Setup.exe`, does the same without Node.js; Windows may warn about an unknown publisher because it is not code-signed):
+1. Run **`start-companion-app.bat`** (it is also started by `start-bot.bat`). Look for the gold coin near the
+   clock; Windows may hide it behind the **^** arrow.
+2. Settings: **Find it** (it looks for `WTF\...\SavedVariables\Guilded.lua`), enter the server ID and the same
+   upload token, press **Test connection**, then **Save and start**. The coin turns green.
+3. In game, `/reload`. The companion's Status page shows a fresh upload within seconds.
+
+The game only writes the addon's data on `/reload` or logout, so that is when data moves. The addon
+never reloads on its own unless a player turns that on with `/guilded sync auto on`.
+
+## 6. Players
+
+- Everyone: install the addon. Characters appear in Discord automatically when someone with the
+  companion is online with them, and are linked by matching the Discord nickname (for example "Ray" or
+  "[GOLD] Ray"). Otherwise run **`/character claim`**.
+- Raid leaders: `/raid create` (add `core:` and `weekly:true` as needed). Members sign up with the buttons.
+- Officers: in game, `/guilded start` opens a raid, the Loot page runs GP bidding, and the Home page shows what
+  is waiting to go to Discord.
+
+## Updating
+
+Pull or copy the new files, then run `start-bot.bat` again (it applies database changes). Copy the new
+`Guilded` addon folder over the old one. Existing data is kept.
+
+## When something goes wrong
+
+| You see | Why and what to do |
+| --- | --- |
+| "Could not reach the bot" in the companion | The bot is not running or still starting. Wait for `/health` to answer in Discord, then `/reload`. |
+| "Addon import not found" | You ran `/import-apply` in a different Discord server than the companion's server ID. |
+| "No unclaimed character called ..." | The character is already linked (`/character list`), or its upload has not been applied yet (`/import-apply`, or turn on `/config auto-import`). |
+| "Unknown interaction" in the bot window | A command took over 3 seconds (a sleeping database). Run it again; the bot keeps running. |
+| `EPERM` when starting the bot | Another copy of the bot is still open. Close it and run `start-bot.bat` again. |
+| No tray coin | Look behind the **^** arrow next to the clock and drag the coin out. |
+| Standings say "the bot has no linked characters yet" | Link characters (above), then `/reload`. |
+| Red `LUA_ERROR` lines in `/guilded diag` | Copy the output and report it. |

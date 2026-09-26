@@ -10,3 +10,7 @@ companion/companion.config.json
 backups/
 companion-app/node_modules/
 companion-app/assets/
+
+# Local agent tooling
+.agents/
+skills-lock.json

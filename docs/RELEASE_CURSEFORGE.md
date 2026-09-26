@@ -9,7 +9,7 @@ Everything you need is here; the parts only you can do are marked **YOU**.
 2. `node addon/Guilded/validate-addon.mjs` passes and `npm run addon:zip` builds
    `dist/Guilded-v3.0.2.zip` (top folder inside the zip must be `Guilded`).
 3. **YOU:** play with the zip installed, tick the "Before release" list in
-   TODAY_TODO.md.
+   RELEASE_CHECKLIST.md.
 4. **YOU:** take 3 to 5 screenshots in game (Home page, Raid page during a raid,
    Standings, bid popup, the readiness board in Discord). Make a logo 400x400.
 
