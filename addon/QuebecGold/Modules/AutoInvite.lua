@@ -100,7 +100,75 @@ frame:SetScript("OnEvent", function(_, event, text, sender)
   if not ok and ns.logDiagnostic then ns.logDiagnostic("LUA_ERROR", "autoinvite: " .. tostring(err)) end
 end)
 
+-- ---------------------------------------------------------------------
+-- /qg invite raid | missing: invite everyone signed up for the next raid
+-- (the Discord signups the companion wrote into Standings.lua).
+-- ---------------------------------------------------------------------
+
+local INVITE_SPACING_SECONDS = 0.6
+
+local function partyInvite(name)
+  if C_PartyInfo and C_PartyInfo.InviteUnit then return pcall(C_PartyInfo.InviteUnit, name) end
+  if InviteUnit then return pcall(InviteUnit, name) end
+  return false, "no invite function"
+end
+
+local function nextRaid()
+  local raid = QuebecGoldNextRaid
+  if type(raid) ~= "table" or type(raid.players) ~= "table" then return nil end
+  return raid
+end
+
+-- Who signed up for the next raid and is not in your group yet.
+function module.missingFromGroup()
+  local raid = nextRaid()
+  if not raid then return nil end
+  local inGroup = {}
+  for _, name in ipairs(ns.groupMembers and ns.groupMembers() or {}) do inGroup[name] = true end
+  local missing = {}
+  for _, player in ipairs(raid.players) do
+    local name = ns.normalizeName and ns.normalizeName(player.name)
+    if name and not inGroup[name] then table.insert(missing, name) end
+  end
+  return missing, raid
+end
+
+local function inviteRaid()
+  local missing, raid = module.missingFromGroup()
+  if not raid then
+    ns.message("No raid roster yet. It comes from Discord signups through the companion (and needs a raid created in the next day and a half).")
+    return
+  end
+  if inCombat then ns.message("Not while you are in combat.") return end
+  if #missing == 0 then ns.message("Everyone signed up for " .. tostring(raid.title) .. " is already in your group.") return end
+  ns.message(string.format("Inviting %d of %d signed up for %s: %s", #missing, #raid.players, tostring(raid.title), table.concat(missing, ", ")))
+  local failed = {}
+  for index, name in ipairs(missing) do
+    local function go()
+      local ok = partyInvite(name)
+      if not ok then table.insert(failed, name) end
+      if index == #missing and #failed > 0 then
+        ns.message("The game would not invite: " .. table.concat(failed, ", ") .. ". Invite them by hand.")
+      end
+    end
+    if C_Timer and C_Timer.After and index > 1 then C_Timer.After((index - 1) * INVITE_SPACING_SECONDS, go) else go() end
+  end
+  ns.message("Invites sent. If the group turns into more than 5, convert it to a raid (right-click yourself in the portrait menu).")
+end
+
 ns.commandHandlers = ns.commandHandlers or {}
+ns.commandHandlers["invite"] = function(args)
+  if ns.moduleActive and not ns.moduleActive("autoinvite") then return end
+  if not (ns.isOfficer and ns.isOfficer()) then ns.message("Only officers can invite the raid.") return end
+  local action = string.lower(args[1] or "raid")
+  if action == "missing" then
+    local missing, raid = module.missingFromGroup()
+    if not raid then ns.message("No raid roster yet (see /qg invite raid).") return end
+    ns.message(#missing == 0 and ("Everyone signed up for " .. tostring(raid.title) .. " is in your group.")
+      or (#missing .. " signed up for " .. tostring(raid.title) .. " but not in your group: " .. table.concat(missing, ", ")))
+  elseif action == "raid" then inviteRaid()
+  else ns.message("/qg invite raid | missing") end
+end
 ns.commandHandlers["autoinvite"] = function(args)
   if ns.moduleActive and not ns.moduleActive("autoinvite") then return end
   local auto = state()
@@ -125,3 +193,4 @@ ns.commandHandlers["autoinvite"] = function(args)
 end
 ns.commandHelp = ns.commandHelp or {}
 table.insert(ns.commandHelp, { officer = true, text = "/qg autoinvite on [phrase] | off | status - invite players who whisper you the phrase" })
+table.insert(ns.commandHelp, { officer = true, text = "/qg invite raid | missing - invite everyone signed up for the next raid on Discord" })

@@ -33,6 +33,7 @@ Hover a page name for what it is for. The **Player** box (target someone, or **M
 | `/qg character` | One line with your character (name, class, race, level, spec, professions) for `/character import` |
 | `/qg enchants [on/off/level <n>]` | Show or change the missing-enchant check (which slots, from what level) |
 | `/qg consumes` / `/qg consumes me` | Officers: who in the group lacks a flask/elixir or food. Anyone: your own active consumables |
+| `/qg invite raid` / `/qg invite missing` | Officers: invite everyone signed up for the next Discord raid (their main characters, from the companion's Standings.lua, for raids in the next 36 hours), or just list who is not in your group yet. Invites go out 0.6 seconds apart; convert to a raid yourself when the group passes 5 |
 | `/qg autoinvite on [phrase]` / `off` / `status` | Officers: guild-invite anyone who whispers you the phrase (default `ginv`). Off by default; skips people already in the guild, never in combat, max 15 invites an hour |
 | `/qg backup` | A box with one code (`QGBKP1:...`) holding this guild's saved data (raids, EPGP ledger, roster, attendance, loot, settings). Copy it somewhere safe |
 | `/qg restore` / `/qg restore undo` | Paste a backup code and press Restore twice (first shows what it holds, then replaces your data). A backup from another guild is refused; `undo` puts back what was there before |

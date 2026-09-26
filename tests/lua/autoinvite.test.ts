@@ -80,3 +80,47 @@ describe("AutoInvite.lua", () => {
     expect(s.chat().join("\n")).toContain('Auto-invite is on, phrase "ginv". 1 recent invite(s).');
   });
 });
+
+describe("AutoInvite.lua: invite the raid from Discord signups", () => {
+  function withRaid(): LuaSession {
+    const s = withAutoInvite();
+    s.run(`
+      PARTY_INVITED = {}
+      C_PartyInfo = { InviteUnit = function(name) PARTY_INVITED[#PARTY_INVITED + 1] = name end }
+      NS.groupMembers = function() return { "Kev", "Amy" } end
+      QuebecGoldNextRaid = { id = "r1", title = "Molten Core", at = "2026-10-02T00:00:00Z", core = "", players = {
+        { name = "Amy", role = "TANK" }, { name = "Bob", role = "DPS" }, { name = "Cy-Realm", role = "HEALER" } }, maybe = {} }
+    `);
+    return s;
+  }
+  const invite = (s: LuaSession, line: string) => s.run(`local a = {}; for w in string.gmatch(${JSON.stringify(line)}, "%S+") do a[#a + 1] = w end; NS.commandHandlers["invite"](a)`);
+
+  it("lists who signed up but is not in the group yet", () => {
+    const s = withRaid();
+    invite(s, "missing");
+    expect(s.chat().join("\n")).toContain("2 signed up for Molten Core but not in your group: Bob, Cy");
+  });
+
+  it("invites only the missing players, spaced out, and says so", () => {
+    const s = withRaid();
+    s.run(`TIMERS = {}; C_Timer = { After = function(_, fn) TIMERS[#TIMERS + 1] = fn end }`);
+    invite(s, "raid");
+    expect(s.run(`return table.concat(PARTY_INVITED, ",")`)).toBe("Bob");       // the first goes at once
+    s.run(`for _, fn in ipairs(TIMERS) do fn() end`);
+    expect(s.run(`return table.concat(PARTY_INVITED, ",")`)).toBe("Bob,Cy");
+    expect(s.chat().join("\n")).toContain("Inviting 2 of 3 signed up for Molten Core");
+  });
+
+  it("explains when there is no roster, when everyone is here, and to non-officers", () => {
+    const s = withRaid();
+    s.run(`QuebecGoldNextRaid = nil`);
+    invite(s, "raid");
+    expect(s.chat().join("\n")).toContain("No raid roster yet");
+    s.run(`NS.groupMembers = function() return { "Kev", "Amy", "Bob", "Cy" } end; QuebecGoldNextRaid = { title = "MC", players = { { name = "Amy" }, { name = "Bob" } } }`);
+    invite(s, "raid");
+    expect(s.chat().join("\n")).toContain("already in your group");
+    s.run(`NS.isOfficer = function() return false end`);
+    invite(s, "raid");
+    expect(s.chat().join("\n")).toContain("Only officers can invite the raid");
+  });
+});

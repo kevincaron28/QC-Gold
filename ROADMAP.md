@@ -86,6 +86,7 @@ each item's notes.
 
 ### Progress log (update after every commit)
 
+- 2026-09-28 RF1 done: `/qg invite raid|missing` mass-invites the next raid's Discord signups (bot API -> companion -> Standings.lua -> addon). #40 (automatic character linking) is done in effect: see "Automatic character sync".
 - 2026-09-28 N6 done: tools window rebuilt with a grouped sidebar, Home page, page titles and tooltips, Player field only where used, permanent Send to Discord button; the real window code is built and exercised in the Lua tests (tests/lua/window.test.ts), but how it LOOKS has not been seen. Addon 2.4.0.
 - 2026-09-28 N7 done: craft board is a forum (post per request, status and profession tags, buttons, "Request a craft" form, DMs, auto-close); old text channel still works.
 - 2026-09-28 N5 done: `/core setup` guided wizard (name form, member menus per role, rules buttons, EP form), pointer in `/setup` and `/help`.
@@ -646,7 +647,7 @@ D10. [x] **S — Test path** *(Done 2026-09-25: /testraid dungeon through the re
     posts there yet. A "form a dungeon group" post with Tank/Healer/DPS
     buttons (reuse the raid signup embed) that the run tracker can match to
     a completed run.
-40. [ ] **M — Fully automatic character import.** The officer's addon already
+40. [x] **M — Fully automatic character import** *(done 2026-09-27 as discovery + auto-link by Discord name + /character claim; real ownership verification is still open, IR3)*. The officer's addon already
     receives every online guildmate's readiness digest over addon messages;
     extend it with class/race/level/spec so one officer export carries the
     whole online guild, and let `/import-apply` create **unlinked** characters
@@ -775,7 +776,7 @@ idea as our Casino module, which is a superset (pot, blackjack, ledger).
 
 **Raidify** (raid roster from a web app, mass invite, group layout, assignments,
 attendance, bench credit).
-- **RF1. [ ] M — Mass invite from the signup list:** `/qg invite raid <id>`
+- **RF1. [x] M — Mass invite from the signup list:** `/qg invite raid <id>`
   (officer) invites everyone signed up for a Discord raid, fuzzy-matching names,
   with a "whisper `inv` to be invited" option for late arrivals. Our signup
   data is already in Standings.lua-style exports; needs the raid roster sent
