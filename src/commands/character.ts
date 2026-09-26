@@ -2,6 +2,8 @@ import { SlashCommandBuilder, type ChatInputCommandInteraction } from "discord.j
 import { prisma } from "../database.js";
 import { importCharacter, parseCharacterString } from "../services/character-import.js";
 import { applySelfExport, parseSelfExport } from "../services/self-export.js";
+import { autoLinkUnclaimed, claimCharacter, linkUnclaimed } from "../services/character-autolink.js";
+import { hasPermission } from "../permissions.js";
 import { guildService, requireGuildContext } from "./context.js";
 
 export const characterCommand = new SlashCommandBuilder()
@@ -28,6 +30,21 @@ export const characterCommand = new SlashCommandBuilder()
     .addStringOption((option) => option.setName("code").setDescription("Paste the whole code from /qg share in game").setRequired(true))
     .addBooleanOption((option) => option.setName("main").setDescription("Set as your main (default: main only if you have none)")))
   .addSubcommand((subcommand) => subcommand
+    .setName("claim")
+    .setDescription("Link a character your addon has already reported (pick it from the list, nothing to type or paste).")
+    .addStringOption((option) => option.setName("name").setDescription("Your character").setAutocomplete(true).setRequired(true)))
+  .addSubcommand((subcommand) => subcommand
+    .setName("unclaimed")
+    .setDescription("Officers: characters the addons reported that nobody has linked yet."))
+  .addSubcommand((subcommand) => subcommand
+    .setName("link")
+    .setDescription("Officers: link a reported character to a Discord member.")
+    .addStringOption((option) => option.setName("name").setDescription("The character").setAutocomplete(true).setRequired(true))
+    .addUserOption((option) => option.setName("player").setDescription("Who it belongs to").setRequired(true)))
+  .addSubcommand((subcommand) => subcommand
+    .setName("autolink")
+    .setDescription("Officers: link reported characters whose name matches a Discord member's name."))
+  .addSubcommand((subcommand) => subcommand
     .setName("list")
     .setDescription("List your linked characters."));
 
@@ -43,6 +60,42 @@ export async function executeCharacter(interaction: ChatInputCommandInteraction)
         : characters.map((character) => `${character.isMain ? "⭐" : "•"} ${character.name} — ${character.race ? `${character.race} ` : ""}${character.className}${character.spec ? ` (${character.spec})` : ""}${character.lastSeenAt ? ` · last seen <t:${Math.floor(character.lastSeenAt.getTime() / 1000)}:R>` : ""}`).join("\n"),
       ephemeral: true
     });
+    return;
+  }
+
+  if (subcommand === "claim") {
+    const result = await claimCharacter(prisma, context.guildId, context.memberId, interaction.options.getString("name", true));
+    await interaction.reply({ content: `Linked **${result.row.name}** (${result.row.className}${result.row.level ? `, level ${result.row.level}` : ""}) as ${result.isMain ? "your main" : "an alt"}. Its gear and consumables now show up by themselves.`, ephemeral: true });
+    return;
+  }
+  if (["unclaimed", "link", "autolink"].includes(subcommand)) {
+    if (!interaction.member || !hasPermission(interaction.member as Parameters<typeof hasPermission>[0], "officer")) {
+      await interaction.reply({ content: "Only Officers and Guild Masters can do that.", ephemeral: true });
+      return;
+    }
+    if (subcommand === "unclaimed") {
+      const rows = await prisma.unclaimedCharacter.findMany({ where: { guildId: context.guildId }, orderBy: { name: "asc" }, take: 60 });
+      await interaction.reply({
+        content: rows.length
+          ? `**${rows.length} unclaimed:** ${rows.map((row) => `${row.name} (${row.className}${row.level ? ` ${row.level}` : ""})`).join(", ")}\nOwners: \`/character claim\`. Officers: \`/character link\` or \`/character autolink\`.`.slice(0, 1950)
+          : "Every character the addons reported is linked.",
+        ephemeral: true
+      });
+      return;
+    }
+    if (subcommand === "autolink") {
+      await interaction.deferReply({ ephemeral: true });
+      const linked = await autoLinkUnclaimed(interaction.guild!, prisma, context.guildId);
+      await interaction.editReply({ content: linked.length ? `Linked ${linked.map((row) => `${row.character} to ${row.member}`).join(", ")}.` : "Nothing matched by name (a Discord nickname must be the character's name, e.g. \"Ray\" or \"[GOLD] Ray\"). Use /character link for the rest." });
+      return;
+    }
+    const wanted = interaction.options.getString("name", true).trim();
+    const row = await prisma.unclaimedCharacter.findFirst({ where: { guildId: context.guildId, OR: [{ id: wanted }, { nameKey: wanted.toLowerCase() }] } });
+    if (!row) throw new Error(`No unclaimed character called "${wanted}".`);
+    const user = interaction.options.getUser("player", true);
+    const target = await guildService.ensureMember(context.guildId, user.id, user.username);
+    const outcome = await linkUnclaimed(prisma, target.id, row);
+    await interaction.reply({ content: `Linked **${row.name}** to ${user.username} as ${outcome.isMain ? "their main" : "an alt"}.`, ephemeral: true });
     return;
   }
 

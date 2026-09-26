@@ -144,6 +144,23 @@ export async function readAddonExport(path, realm) {
     };
   });
 
+  // Everyone who has told the guild who they are (class, race, level, spec),
+  // so the bot can discover characters nobody has linked yet.
+  const characters = Object.entries(database.peerRoster ?? {})
+    .filter(([, entry]) => entry?.identity?.class)
+    .map(([name, entry]) => ({
+      name,
+      realm,
+      class: String(entry.identity.class),
+      race: String(entry.identity.race ?? ""),
+      level: Number(entry.identity.level) || 0,
+      spec: String(entry.identity.spec ?? ""),
+      professions: String(entry.professions ?? "").split(",").filter(Boolean).map((part) => {
+        const [professionName, skill] = part.split(":");
+        return { name: professionName, skillLevel: Number(skill) || 0 };
+      })
+    }));
+
   // Finished in-game raids: explicit attendance marks plus everyone the addon
   // saw in the raid group (db.presence). Still-running raids wait for /qg end.
   const raids = [];
@@ -241,6 +258,7 @@ export async function readAddonExport(path, realm) {
       ...peerReadiness
     ],
     attunements,
+    ...(characters.length ? { characters } : {}),
     ...(database.consumeScan?.players ? {
       consumeScan: {
         at: String(database.consumeScan.at ?? exportedAt),

@@ -132,11 +132,15 @@ export const addonConsumeScanSchema = z.object({
   })).max(100).default([])
 });
 
+export type AddonCharacter = z.infer<typeof addonCharacterSchema>;
+
 export const addonSnapshotSchema = z.object({
   source: z.string().min(1),
   exportedAt: z.coerce.date(),
   wowGuild: z.string().optional(),
   character: addonCharacterSchema.optional(),
+  // Every guildmate whose addon told the guild who they are (peer digests).
+  characters: z.array(addonCharacterSchema).max(500).default([]),
   consumeScan: addonConsumeScanSchema.optional(),
   transactions: z.array(addonTransactionSchema).default([]),
   epgpTransactions: z.array(addonEpgpTransactionSchema).default([]),

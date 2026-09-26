@@ -209,3 +209,17 @@ describe("a realm rename is not a different guild", () => {
     expect(t.chat().join("\n")).toContain("your saved data was kept");
   });
 });
+
+describe("the guild digest tells everyone who you are", () => {
+  it("adds an I: identity field and reads it from a peer, in any field order", () => {
+    const s = loggedIn();
+    s.run(`GetInventoryItemLink = function() return nil end; SENT = {}; SlashCmdList["QUEBECGOLD"]("inspect")`);
+    const digest = s.run(`return SENT[#SENT].text`);
+    expect(digest).toContain("|I:WARRIOR,NightElf,60,");
+    // A peer digest: professions, identity and flags together, then with no professions.
+    s.run(`fire_event("CHAT_MSG_ADDON", "QuebecGold", "READINESS|Amy|READY|0|100|Mining:300|I:MAGE,Human,58,Fire|F:NOFOOD", "GUILD", "Amy-Realm")`);
+    expect(s.run(`local p = QuebecGoldDB.peerRoster["Amy"]; return p.professions .. "|" .. p.identity.class .. "|" .. p.identity.race .. "|" .. p.identity.level .. "|" .. p.identity.spec .. "|" .. p.flags`)).toBe("Mining:300|MAGE|Human|58|Fire|NOFOOD");
+    s.run(`fire_event("CHAT_MSG_ADDON", "QuebecGold", "READINESS|Bob|READY|0|100||I:ROGUE,Gnome,30,", "GUILD", "Bob-Realm")`);
+    expect(s.run(`local p = QuebecGoldDB.peerRoster["Bob"]; return p.professions .. "|" .. p.identity.class .. "|" .. p.identity.level`)).toBe("|ROGUE|30");
+  });
+});

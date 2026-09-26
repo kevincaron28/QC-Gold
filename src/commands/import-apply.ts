@@ -4,6 +4,7 @@ import { createAuditService } from "../services/audit.js";
 import { notifications, notify, notifyDungeon } from "../services/notify.js";
 import { updateDungeonLeaderboard } from "../services/dungeon-leaderboard.js";
 import { postReadinessBoard } from "../services/readiness-board.js";
+import { autoLinkUnclaimed } from "../services/character-autolink.js";
 import { dungeonAnnouncement } from "../services/dungeon-announce.js";
 import type { RaidImportSummary } from "../services/raid-import.js";
 import type { DungeonImportSummary } from "../services/dungeon-import.js";
@@ -74,9 +75,14 @@ export async function executeImportApply(interaction: ChatInputCommandInteractio
       skippedAlreadyImported: result.skipped
     }
   });
+  // Newly discovered characters: link the ones whose owner is recognisable by Discord name.
+  const autoLinked = interaction.guild && result.discovery.discovered > 0
+    ? await autoLinkUnclaimed(interaction.guild, prisma, context.guildId).catch(() => [])
+    : [];
   await interaction.reply({
     content: `Applied import \`${importId}\`: ${result.transactions.length} DKP transaction(s), `
       + (result.consumables ? `${result.consumables} consumable check(s), ` : "")
+      + (result.discovery.discovered ? `${result.discovery.discovered} new character(s) discovered${autoLinked.length ? ` (linked automatically: ${autoLinked.map((row) => `${row.character} to ${row.member}`).join(", ")})` : ""}${result.discovery.discovered > autoLinked.length ? `, ${result.discovery.discovered - autoLinked.length} waiting for /character claim` : ""}, ` : "")
       + `${result.epgpTransactions.length} EPGP transaction(s), ${result.readinessSnapshots.length} `
       + `readiness snapshot(s), and ${result.attunements.length} attunement update(s) recorded. `
       + `${result.skipped} ledger entr${result.skipped === 1 ? "y was" : "ies were"} already imported and skipped.`

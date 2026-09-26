@@ -54,6 +54,9 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
       choices = await runChoices(prisma, guild.id, query);
     } else if ((command === "dungeon" || command === "dungeon-admin") && focused.name === "dungeon") {
       choices = await dungeonChoices(prisma, guild.id, query);
+    } else if (command === "character" && focused.name === "name" && (subcommand === "claim" || subcommand === "link")) {
+      const rows = await prisma.unclaimedCharacter.findMany({ where: { guildId: guild.id, name: { contains: query, mode: "insensitive" } }, orderBy: { name: "asc" }, take: 25 });
+      choices = rows.map((row) => ({ name: `${row.name} - ${row.className}${row.level ? ` ${row.level}` : ""}`.slice(0, 100), value: row.name }));
     } else if (command === "import-apply" && focused.name === "id") {
       choices = await importChoices(prisma, guild.id, query);
     }

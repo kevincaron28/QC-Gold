@@ -139,6 +139,7 @@ model Guild {
   raidCores           RaidCore[]
   dungeonGroups       DungeonGroup[]
   polls               Poll[]
+  unclaimedCharacters UnclaimedCharacter[]
 }
 
 model Member {
@@ -956,4 +957,25 @@ model PollVote {
   member   Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
 
   @@unique([pollId, memberId])
+}
+
+// A character the addons revealed (through the guild digest) that no Discord
+// member has linked yet. It is linked automatically when a Discord name
+// matches, or by its owner with /character claim.
+model UnclaimedCharacter {
+  id          String   @id @default(cuid())
+  guildId     String
+  // Lowercase name: Forever realms are unreliable, so a name identifies it.
+  nameKey     String
+  name        String
+  realm       String
+  className   String
+  race        String?
+  level       Int?
+  spec        String?
+  professions Json?
+  lastSeenAt  DateTime @default(now())
+  guild       Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@unique([guildId, nameKey])
 }

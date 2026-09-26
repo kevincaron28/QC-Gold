@@ -4,7 +4,7 @@ import { normalizeAddonSnapshot, parseAddonSnapshot, type AddonSnapshot } from "
 import { deriveReadinessStatus } from "./readiness.js";
 import { applyAddonLoot, applyRaidAttendance, touchLastSeen } from "./raid-import.js";
 import { importDungeonRuns } from "./dungeon-import.js";
-import { normalizeClassName, normalizeRaceName } from "./character-import.js";
+import { applyDiscoveredCharacters } from "./roster-discovery.js";
 import { findCharacter } from "./character-match.js";
 
 export function createAddonImportService(database: PrismaClient) {
@@ -107,30 +107,11 @@ export function createAddonImportService(database: PrismaClient) {
           }));
         }
 
-        // The exporter's own character: keep an already-linked one current
-        // (class, race, level, spec, professions). Never creates a character.
-        if (snapshot.character) {
-          const own = snapshot.character;
-          const linked = findCharacter(characters, own.name, own.realm);
-          if (linked) {
-            await tx.character.update({
-              where: { id: linked.id },
-              data: {
-                ...(own.class ? { className: normalizeClassName(own.class) } : {}),
-                ...(own.race ? { race: normalizeRaceName(own.race) } : {}),
-                ...(own.level >= 1 ? { level: own.level } : {}),
-                ...(own.spec ? { spec: own.spec } : {})
-              }
-            });
-            for (const profession of own.professions) {
-              await tx.professionSkill.upsert({
-                where: { characterId_profession: { characterId: linked.id, profession: profession.name } },
-                create: { characterId: linked.id, profession: profession.name, skillLevel: profession.skillLevel },
-                update: { skillLevel: profession.skillLevel }
-              });
-            }
-          }
-        }
+        // Everyone the addons have revealed (the exporter and every guildmate
+        // whose digest reached them): linked characters are refreshed (class,
+        // race, level, spec, professions), the rest are remembered as
+        // unclaimed until they are linked. Never creates a linked character.
+        const discovery = await applyDiscoveredCharacters(tx, guildId, [...(snapshot.character ? [snapshot.character] : []), ...snapshot.characters], characters);
 
         // Readiness is best-effort: an unlinked character shouldn't block the
         // DKP/EPGP transactions in the same import from being applied.
@@ -237,7 +218,7 @@ export function createAddonImportService(database: PrismaClient) {
           where: { id: imported.id },
           data: { status: "APPLIED" }
         });
-        return { import: imported, transactions, epgpTransactions, readinessSnapshots, attunements, consumables, raids, loot, dungeons, skipped };
+        return { import: imported, transactions, epgpTransactions, readinessSnapshots, attunements, consumables, discovery, raids, loot, dungeons, skipped };
       });
     }
   };

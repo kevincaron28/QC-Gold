@@ -716,8 +716,17 @@ local function inspectReadiness(silent, target)
     elseif finding.code == "MISSING_ENCHANTS" then table.insert(flags, "ENCH:" .. table.concat(unenchanted, "+")) end
   end
   local digest = string.format("READINESS|%s|%s|%d|%d|%s", playerName(), snapshot.status, missing, minDurability, table.concat(profParts, ","))
-  if #flags > 0 and #digest + 3 + #table.concat(flags, ",") <= MAX_ADDON_MESSAGE then
-    digest = digest .. "|F:" .. table.concat(flags, ",")
+  -- Who this is (class, race, level, spec) so officers' exports can discover
+  -- every guildmate running the addon: "I:<CLASS>,<Race>,<level>,<spec>".
+  local identityOk, identity = pcall(collectCharacter)
+  if identityOk and type(identity) == "table" and identity.class ~= "" then
+    local field = "I:" .. table.concat({ identity.class, identity.race, tostring(identity.level or 0),
+      (string.gsub(identity.spec or "", "[|,;]", "")) }, ",")
+    if #digest + 1 + #field <= MAX_ADDON_MESSAGE then digest = digest .. "|" .. field end
+  end
+  local flagText = table.concat(flags, ",")
+  if #flags > 0 and #digest + 3 + #flagText <= MAX_ADDON_MESSAGE then
+    digest = digest .. "|F:" .. flagText
   end
   send(digest, target or "GUILD")
   if not silent then
@@ -1148,9 +1157,12 @@ local function handlePeerReadiness(text, sender)
   -- overwrite a guildmate's readiness in every officer's export.
   local name = normalizeName(parts[2])
   if not name or name ~= normalizeName(sender) then return end
-  local professions, flags = "", ""
+  local professions, flags, identity = "", "", nil
   for index = 6, #parts do
     if string.sub(parts[index], 1, 2) == "F:" then flags = string.sub(parts[index], 3)
+    elseif string.sub(parts[index], 1, 2) == "I:" then
+      local class, race, level, spec = string.match(string.sub(parts[index], 3), "^([^,]*),([^,]*),(%d*),?(.*)$")
+      if class and class ~= "" then identity = { class = class, race = race, level = tonumber(level) or 0, spec = spec or "" } end
     elseif professions == "" then professions = parts[index] end
   end
   db.peerRoster[name] = {
@@ -1159,6 +1171,7 @@ local function handlePeerReadiness(text, sender)
     minDurability = tonumber(parts[5]) or 100,
     professions = professions,
     flags = flags,
+    identity = identity,
     updatedAt = now(),
     reportedBy = name
   }
