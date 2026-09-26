@@ -35,6 +35,7 @@ import { executeInactive } from "./commands/inactive.js";
 import { executeExport } from "./commands/export.js";
 import { executeGuildHealth } from "./commands/guild-health.js";
 import { executePoll, handlePollButton, POLL_PREFIX } from "./commands/poll.js";
+import { CRAFT_PREFIX, handleCraftButton, handleCraftModal } from "./commands/craft-board.js";
 import { cleanupDungeonGroups, DUNGEON_GROUP_PREFIX, handleDungeonGroupButton } from "./commands/dungeon-group.js";
 import { executeStats, runWeeklyReports } from "./commands/stats.js";
 import { executeBank } from "./commands/bank.js";
@@ -159,6 +160,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
       console.error("Welcome role button failed", error);
       if (!interaction.replied) await interaction.reply({ content: "That didn't work, try again or ask an officer.", ephemeral: true }).catch(() => undefined);
     });
+    return;
+  }
+  if (interaction.isModalSubmit() && interaction.customId.startsWith(CRAFT_PREFIX)) {
+    await handleCraftModal(interaction).catch((error: unknown) => console.error("Craft form failed", error));
+    return;
+  }
+  if (interaction.isButton() && interaction.customId.startsWith(CRAFT_PREFIX)) {
+    await handleCraftButton(interaction).catch((error: unknown) => console.error("Craft button failed", error));
     return;
   }
   if (interaction.isButton() && interaction.customId.startsWith(POLL_PREFIX)) {

@@ -676,6 +676,8 @@ model CraftRequest {
   quantity          Int                @default(1)
   note              String?
   materialsProvided Boolean            @default(false)
+  // The forum post (thread) on the craft board, when the craft channel is a forum.
+  threadId          String?
   status            CraftRequestStatus @default(OPEN)
   claimedAt         DateTime?
   doneAt            DateTime?

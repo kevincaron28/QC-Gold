@@ -326,3 +326,13 @@ The addon's `/qg character` and `/qg share` codes still work as a fallback. Link
 ## Fewer things to type
 
 Where a value comes from a fixed list you pick it instead of typing: **class** and **profession** are dropdowns (`/character add`, `/apply`, `/profession`, `/craft`). These offer suggestions as you type, and anything else still works: **spec** (for the class you chose), **race**, **your characters** (`/profession set`, `/attunement`, `/wishlist`), **attunement names** already in use, **wishlist items** the guild has seen, **tag names**, **raid titles** you used before, **raid times** ("friday 8pm" shows the exact moment it means), **EP/GP reasons**, **auction length**. `/character add` no longer needs the realm (it uses your guild's). `/loot auction` only needs the item: minimum bid, increment and length come from `/config` unless you fill them in.
+
+## The craft board
+
+`/setup` creates **craft-board** as a **forum channel**: every craft request is its own post with tags (🟢 Open / 🟡 Claimed / ✅ Done, plus a profession tag) and buttons inside the post. Nobody types a command:
+
+- **Ask for a craft:** press **Request a craft** on the pinned "Start here" post (a small form: item, profession, how many, details) or use `/craft request`. The post shows who asked, which guild crafters have that profession, and any note.
+- **Crafters:** filter the forum by your profession tag, open a post, press **I'll craft it**; **Mark done** when it is made (the requester gets a DM); **Give back** if you cannot.
+- **Cancel:** the requester (or an officer) presses **Cancel request**.
+- Finished and cancelled posts get their tag, close and lock by themselves. Members cannot post in the forum; only the bot and officers can, so it stays tidy.
+- If the craft channel is an ordinary text channel (older setups), requests are announced there as before. To switch to the forum: `/config craft-channel disable:true`, then `/setup` step 3 and "Create them for me".

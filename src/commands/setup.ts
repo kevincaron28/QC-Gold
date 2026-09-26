@@ -27,6 +27,7 @@ import { updateDungeonLeaderboard } from "../services/dungeon-leaderboard.js";
 import { syncAllCoreRosters } from "../services/raid-core.js";
 import { asLang, t, type Lang } from "../i18n.js";
 import { BRAND } from "../brand.js";
+import { boardTagNames, postBoardGuide } from "./craft-board.js";
 
 // Guided first-time setup. One private message that walks an admin through
 // seven steps with buttons and dropdowns only (no IDs, no typing):
@@ -216,7 +217,7 @@ export async function renderStep(step: number, guild: DiscordGuild, guildId: str
 
   const channelSelect = (id: string, placeholder: string) => new ActionRowBuilder<ChannelSelectMenuBuilder>().addComponents(
     new ChannelSelectMenuBuilder().setCustomId(`setup:${id}`).setPlaceholder(placeholder)
-      .setChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement).setMinValues(1).setMaxValues(1));
+      .setChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement, ...(id === "ch-craft" ? [ChannelType.GuildForum] : [])).setMinValues(1).setMaxValues(1));
 
   if (step === 3) {
     embed.setDescription([
@@ -225,7 +226,7 @@ export async function renderStep(step: number, guild: DiscordGuild, guildId: str
       `⭐ **Raid roster** — one live message per raid core (\`/core create\`); core members get signup priority: ${channelLabel(settings.coreChannelId)}`,
       `🛡️ **Raid readiness** — private, officers and raid leaders only: who is ready for raid night: ${settings.readinessChannelId ? `<#${settings.readinessChannelId}>` : "*not set*"}`,
       `🎁 **Loot & EP log** — every loot award and EP/GP change: ${settings.lootChannelId ? `<#${settings.lootChannelId}>` : "same as announcements"}`,
-      `🔨 **Craft board** — craft requests, so crafters see them (bank requests stay in the officer log): ${settings.craftChannelId ? `<#${settings.craftChannelId}>` : "the officer log"}`
+      `🔨 **Craft board** — a forum where every craft request is its own post with tags and buttons (bank requests stay in the officer log): ${settings.craftChannelId ? `<#${settings.craftChannelId}>` : "the officer log"}`
     ].join("\n"));
     components.push(
       channelSelect("ch-core", "⭐ Pick the raid roster channel"),
@@ -391,7 +392,7 @@ const CATEGORY_NAMES: Record<CategoryKey, string> = {
   guild: "⚜️ Guild", raid: "⚔️ Raiding", dungeon: "🏰 Dungeons", craft: "🔨 Crafting", officers: "🔒 Officers"
 };
 
-const CHANNEL_SPECS: Record<ChannelField, { name: string; topic: string; access: Access; category: CategoryKey }> = {
+const CHANNEL_SPECS: Record<ChannelField, { name: string; topic: string; access: Access; category: CategoryKey; forum?: boolean }> = {
   notifyChannelId: { name: `${BRAND.channelPrefix}-announcements`, topic: `Raid, boss and guild announcements from ${BRAND.name}`, access: "readonly", category: "guild" },
   raidSignupChannelId: { name: "raid-signups", topic: "Raid signups: use the buttons under each raid post", access: "readonly", category: "raid" },
   coreChannelId: { name: "raid-roster", topic: "Raid core rosters: core members get signup priority", access: "readonly", category: "raid" },
@@ -400,7 +401,7 @@ const CHANNEL_SPECS: Record<ChannelField, { name: string; topic: string; access:
   dungeonSignupChannelId: { name: "dungeon-signups", topic: "Dungeon groups: use the buttons under each post", access: "readonly", category: "dungeon" },
   dungeonLeaderboardChannelId: { name: "dungeon-leaderboard", topic: "Dungeon challenge standings, updated automatically", access: "readonly", category: "dungeon" },
   dungeonChannelId: { name: "dungeon-runs", topic: "Completed dungeon runs and new records", access: "readonly", category: "dungeon" },
-  craftChannelId: { name: "craft-board", topic: "Craft requests (/craft request): crafters claim them here", access: "open", category: "craft" },
+  craftChannelId: { name: "craft-board", topic: "Craft requests: press Request a craft in the pinned post. Crafters filter by profession tag and press I'll craft it.", access: "readonly", category: "craft", forum: true },
   logChannelId: { name: "officer-log", topic: "Officer log: joins, moderation, bank and craft requests", access: "officers", category: "officers" },
   readinessChannelId: { name: "raid-readiness", topic: "Who is ready for raid night: gear and consumable checks (officers and raid leaders only)", access: "leaders", category: "officers" }
 };
@@ -438,7 +439,7 @@ function overwritesFor(guild: DiscordGuild, access: Access): OverwriteResolvable
   }
   if (access === "readonly") {
     return [
-      { id: guild.roles.everyone.id, deny: [PermissionFlagsBits.SendMessages, PermissionFlagsBits.CreatePublicThreads, PermissionFlagsBits.CreatePrivateThreads] },
+      { id: guild.roles.everyone.id, deny: [PermissionFlagsBits.SendMessages, PermissionFlagsBits.SendMessagesInThreads, PermissionFlagsBits.CreatePublicThreads, PermissionFlagsBits.CreatePrivateThreads] },
       ...officers.map((role) => ({ id: role.id, allow: [PermissionFlagsBits.SendMessages] })),
       ...bot
     ];
@@ -459,10 +460,17 @@ async function createSectionChannels(guild: DiscordGuild, guildId: string, field
     const spec = CHANNEL_SPECS[field];
     const category = await ensureCategory(guild, spec.category);
     const overwrites = overwritesFor(guild, spec.access);
-    const channel = await guild.channels.create({
-      name: spec.name, type: ChannelType.GuildText, topic: spec.topic, parent: category.id,
-      ...(overwrites ? { permissionOverwrites: overwrites } : {})
-    });
+    const channel = spec.forum
+      ? await guild.channels.create({
+        name: spec.name, type: ChannelType.GuildForum, topic: spec.topic, parent: category.id,
+        availableTags: boardTagNames().map((name) => ({ name })),
+        ...(overwrites ? { permissionOverwrites: overwrites } : {})
+      })
+      : await guild.channels.create({
+        name: spec.name, type: ChannelType.GuildText, topic: spec.topic, parent: category.id,
+        ...(overwrites ? { permissionOverwrites: overwrites } : {})
+      });
+    if (spec.forum && channel.type === ChannelType.GuildForum) await postBoardGuide(channel).catch((error: unknown) => console.warn("Craft board guide not posted", error));
     update[field] = channel.id;
     made.push(`<#${channel.id}>${spec.access === "officers" ? " (officers only)" : spec.access === "leaders" ? " (officers and raid leaders only)" : ""}`);
   }
@@ -485,7 +493,7 @@ async function organizeChannels(guild: DiscordGuild, guildId: string): Promise<s
     const channelId = settings[field];
     if (!channelId) continue;
     const channel = await guild.channels.fetch(channelId).catch(() => null);
-    if (!channel || channel.type !== ChannelType.GuildText) continue;
+    if (!channel || (channel.type !== ChannelType.GuildText && channel.type !== ChannelType.GuildForum)) continue;
     const spec = CHANNEL_SPECS[field];
     if (channel.name !== spec.name) { skipped.push(`<#${channel.id}>`); continue; }
     const category = await ensureCategory(guild, spec.category);

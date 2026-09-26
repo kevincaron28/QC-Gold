@@ -6,6 +6,7 @@ import { postToLogChannel } from "../services/housekeeping.js";
 import { findProfessionHolders } from "../services/profession-search.js";
 import { requireGuildContext } from "./context.js";
 import { PROFESSIONS } from "../wow-data.js";
+import { postCraftRequest, syncCraftPost } from "./craft-board.js";
 
 const craftService = createCraftService(prisma);
 
@@ -55,12 +56,14 @@ export async function executeCraft(interaction: ChatInputCommandInteraction): Pr
       materialsProvided: interaction.options.getBoolean("materials") ?? false
     });
     const crafters = profession ? (await findProfessionHolders(prisma, context.guildId, profession)).slice(0, 5) : [];
-    await interaction.reply({
-      content: `Request posted: ${describe(request)}. ID \`${request.id}\`. You'll get a DM when someone claims it.`
-        + (crafters.length ? `\nGuild ${profession} crafters: ${crafters.map((c) => `${c.character} (${c.skillLevel})`).join(", ")}` : ""),
-      ephemeral: true
+    await interaction.deferReply({ ephemeral: true });
+    const board = await postCraftRequest(interaction.guild, request.id);
+    await interaction.editReply({
+      content: (board.posted ? `Request posted on the craft board: <#${board.threadId}>.` : `Request posted: ${describe(request)}. ID \`${request.id}\`.`)
+        + " You'll get a DM when someone claims it."
+        + (crafters.length ? `\nGuild ${profession} crafters: ${crafters.map((c) => `${c.character} (${c.skillLevel})`).join(", ")}` : "")
     });
-    if (interaction.guild) {
+    if (interaction.guild && !board.posted) {
       await postToLogChannel(interaction.guild, `🔨 Craft request from ${interaction.user.username}: ${describe(request)} — /craft claim id:${request.id}`, "craft");
     }
     return;
@@ -83,22 +86,26 @@ export async function executeCraft(interaction: ChatInputCommandInteraction): Pr
   const id = interaction.options.getString("id", true).replace(/`/g, "").trim();
   if (subcommand === "claim") {
     const request = await craftService.claim(context.guildId, id, context.memberId);
+    await syncCraftPost(interaction.guild, request.id);
     await interaction.reply({ content: `You claimed ${describe(request)} for ${request.requester.displayName}. \`/craft done id:${request.id}\` when it's made.`, ephemeral: true });
     await dm(request.requester.discordUserId, `🔨 ${request.crafter?.displayName ?? "A guild crafter"} is crafting your ${describe(request)}.`);
     return;
   }
   if (subcommand === "done") {
     const request = await craftService.complete(context.guildId, id, context.memberId, isOfficer);
+    await syncCraftPost(interaction.guild, request.id);
     await interaction.reply({ content: `Marked done: ${describe(request)}.`, ephemeral: true });
     await dm(request.requester.discordUserId, `✅ Your ${describe(request)} is crafted by ${request.crafter?.displayName ?? "a guild crafter"}. Check your mail or arrange a trade.`);
     return;
   }
   if (subcommand === "release") {
     const request = await craftService.release(context.guildId, id, context.memberId, isOfficer);
+    await syncCraftPost(interaction.guild, request.id);
     await interaction.reply({ content: `Released ${describe(request)} back to the list.`, ephemeral: true });
     return;
   }
   const request = await craftService.cancel(context.guildId, id, context.memberId, isOfficer);
+  await syncCraftPost(interaction.guild, request.id);
   await interaction.reply({ content: `Cancelled ${describe(request)}.`, ephemeral: true });
   if (request.crafter) await dm(request.crafter.discordUserId, `The craft request for ${describe(request)} was cancelled.`);
 }
