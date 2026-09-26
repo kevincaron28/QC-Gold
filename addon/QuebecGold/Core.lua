@@ -509,13 +509,15 @@ end
 local function characterString(info)
   local professions = {}
   for _, profession in ipairs(info.professions or {}) do
-    table.insert(professions, string.gsub(profession.name, "[|,:]", "") .. ":" .. tostring(profession.skillLevel))
+    table.insert(professions, (string.gsub(profession.name, "[|;,:]", "")) .. ":" .. tostring(profession.skillLevel))
   end
-  local function clean(value) return (string.gsub(tostring(value or ""), "|", "")) end
-  return "QG1|" .. table.concat({
+  -- ";" separates the fields: "|" is WoW's colour-code escape, and a "|R" in
+  -- the name ("Ray") was being eaten by the chat frame (QG1 lines broke).
+  local function clean(value) return (string.gsub(tostring(value or ""), "[|;]", "")) end
+  return "QG2;" .. table.concat({
     clean(info.name), clean(info.realm), clean(info.class), clean(info.race),
     tostring(info.level or 0), clean(info.spec), table.concat(professions, ",")
-  }, "|")
+  }, ";")
 end
 
 -- Plain base64 (RFC 4648), so a pasted string survives chat, edit boxes and Discord.
@@ -1196,6 +1198,16 @@ local function resolveGuildData()
   if db.guildKey == key then return "same" end
   local old = db.guildKey
   db.otherGuilds = db.otherGuilds or {}
+  -- Same guild name, new realm text (the realm name changes when the game
+  -- goes from beta to release): keep the data, just rename the key. Only when
+  -- nothing is parked under the new key, so two same-named guilds on
+  -- different realms are still told apart.
+  local function guildPart(text) return (string.match(text, "^(.*)%-[^%-]*$")) or text end
+  if guildPart(old) == guildPart(key) and not db.otherGuilds[key] then
+    db.guildKey = key
+    message(string.format("Guild realm changed from \"%s\" to \"%s\": your saved data was kept (same guild name).", old, key))
+    return "rekeyed"
+  end
   local parked = {}
   for field, value in pairs(db) do
     if not KEEP_AT_ROOT[field] then parked[field] = value end

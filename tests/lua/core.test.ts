@@ -30,7 +30,7 @@ describe("Core.lua (real file, mocked game)", () => {
   it("/qg character prints the QG1 line with class and race tokens", () => {
     const s = loggedIn();
     s.run(`SlashCmdList["QUEBECGOLD"]("character")`);
-    expect(s.chat().join("\n")).toContain("QG1|Kev|TestRealm|WARRIOR|NightElf|60|");
+    expect(s.chat().join("\n")).toContain("QG2;Kev;TestRealm;WARRIOR;NightElf;60;");
   });
 });
 
@@ -47,7 +47,7 @@ describe("player identity (Forever has no real realms)", () => {
     s.run(`GetRealmName = function() return "" end; GetNormalizedRealmName = nil`);
     expect(s.run(`local id = NS.compat.identity(); return tostring(id.hasRealm) .. "|" .. id.realm`)).toBe("false|");
     s.run(`SlashCmdList["QUEBECGOLD"]("character")`);
-    expect(s.chat().join("\n")).toContain("QG1|Kev||WARRIOR");
+    expect(s.chat().join("\n")).toContain("QG2;Kev;;WARRIOR");
   });
 });
 
@@ -186,5 +186,26 @@ describe("one saved-data set per WoW guild", () => {
     inGuild(s, "Alpha");
     s.run(`fire_event("GUILD_ROSTER_UPDATE"); SlashCmdList["QUEBECGOLD"]("diag")`);
     expect(s.chat().join("\n")).toContain("Saved data belongs to guild: Alpha-TestRealm");
+  });
+});
+
+describe("a realm rename is not a different guild", () => {
+  it("keeps the data and only renames the key when the guild name is the same", () => {
+    session = newLuaSession();
+    const t = session;
+    t.run(`
+      QuebecGoldDB = { version = 4, guildKey = "Alpha-Classic Beta PvP", epgp = { Bob = { ep = 50, gp = 0, ledger = {} } }, roster = { Bob = {} }, settings = { officers = {} } }
+      NS = {}
+      MOCK_UNITS = { player = { name = "Kev", buffs = {} } }
+      function GetGuildInfo() return "Alpha", "Officer", 1 end
+    `);
+    t.load("Core.lua");
+    t.load("Compat.lua");
+    t.run(`fire_event("PLAYER_LOGIN"); fire_event("GUILD_ROSTER_UPDATE")`);
+    // The mocked game now reports realm "TestRealm" instead of "Classic Beta PvP".
+    expect(t.run(`return QuebecGoldDB.guildKey`)).toBe("Alpha-TestRealm");
+    expect(t.run(`return QuebecGoldDB.epgp.Bob.ep`)).toBe("50");
+    expect(t.run(`return tostring(next(QuebecGoldDB.otherGuilds))`)).toBe("nil");
+    expect(t.chat().join("\n")).toContain("your saved data was kept");
   });
 });

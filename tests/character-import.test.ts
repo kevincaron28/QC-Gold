@@ -26,4 +26,13 @@ describe("character import line", () => {
     expect(normalizeRaceName("BloodElf")).toBe("Blood Elf");
     expect(normalizeRaceName("Dwarf")).toBe("Dwarf");
   });
+
+  it("reads the semicolon line (QG2) and explains a garbled pipe line", () => {
+    expect(parseCharacterString("QG2;Ray;Classic Beta PvP;PRIEST;Scourge;6;;Skinning:3,Cooking:1")).toEqual({
+      name: "Ray", realm: "Classic Beta PvP", className: "Priest", race: "Undead", level: 6,
+      professions: [{ name: "Skinning", skillLevel: 3 }, { name: "Cooking", skillLevel: 1 }]
+    });
+    // What WoW's chat did to "QG1|Ray|...": "|R" was eaten.
+    expect(() => parseCharacterString("QG1ay|Classic Beta PvP|PRIEST|Scourge|6|Skinning:3,Cooking:1")).toThrow(/garbled/);
+  });
 });

@@ -39,8 +39,17 @@ export function normalizeRaceName(raw: string): string {
 }
 
 export function parseCharacterString(input: string): ParsedCharacter {
-  const parts = input.trim().split("|").map((part) => part.trim());
-  if (parts[0] !== "QG1") throw new Error(`That doesn't look like a ${BRAND.name} character line. In game, type /qg character and copy the line it shows.`);
+  const text = input.trim();
+  // QG2 uses ";" between fields; QG1 (older addons) used "|", which WoW's chat can garble.
+  const separator = text.startsWith("QG2;") ? ";" : "|";
+  const parts = text.split(separator).map((part) => part.trim());
+  if (parts[0] === "QG2" || parts[0] === "QG1") {
+    // fine
+  } else if (/^QG1/i.test(text)) {
+    throw new Error("The game garbled that line (it swallowed part of it). Update the addon to 2.3 and run /qg character again: the new line uses semicolons.");
+  } else {
+    throw new Error(`That doesn't look like a ${BRAND.name} character line. In game, type /qg character and copy the line it shows.`);
+  }
   const [, name = "", realm = "", className = "", race = "", levelText = "", spec = "", professionText = ""] = parts;
   if (!name || !realm || !className) throw new Error("The character line is missing the name, realm or class. Run /qg character again in game.");
   if (name.length > 24 || realm.length > 64) throw new Error("The character line looks damaged. Run /qg character again in game.");
