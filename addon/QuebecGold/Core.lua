@@ -127,6 +127,8 @@ local function logEvent(kind, payload)
     at = now(), kind = kind, player = playerName(), data = payload
   })
   while #db.events > MAX_EVENTS do table.remove(db.events, 1) end
+  -- Something worth saving happened: tell the sync module (Modules/SyncNow.lua).
+  if ns.syncNow and ns.syncNow.mark then ns.syncNow.mark() end
 end
 
 -- Records a diagnostic entry (blocked action or captured Lua error) so it
@@ -923,6 +925,7 @@ ns.MODULES = {
   { key = "bidding", name = "GP bidding", desc = "in-game GP bids on loot", commands = { "bid" } },
   { key = "dungeon", name = "Dungeons", desc = "dungeon run tracking and points", commands = { "dungeon" } },
   { key = "calendar", name = "Calendar", desc = "guild calendar check", commands = { "calendar" } },
+  { key = "syncnow", name = "Send to Discord", desc = "save now / auto-save so the companion uploads sooner", commands = { "sync" } },
   { key = "autoinvite", name = "Auto-invite", desc = "guild invite when someone whispers a phrase", commands = { "autoinvite" } },
   { key = "backup", name = "Backup and restore", desc = "copy this guild's saved data as one code", commands = { "backup", "restore" } },
   { key = "digest", name = "Login digest", desc = "what changed since your last login", commands = { "digest" } },
