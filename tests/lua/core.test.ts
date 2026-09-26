@@ -27,6 +27,19 @@ describe("Core.lua (real file, mocked game)", () => {
     expect(s.chat().join("\n")).toContain("Loaded.");
   });
 
+  it("registers /guilded and the short /gd alias, and no old /qg", () => {
+    const s = loggedIn();
+    expect(s.run(`return SLASH_GUILDED1 .. " " .. SLASH_GUILDED2 .. " " .. tostring(SLASH_QUEBECGOLD1)`)).toBe("/guilded /gd nil");
+  });
+
+  it("adopts data saved under the old name once", () => {
+    session = newLuaSession();
+    session.run(`GuildedDB = nil; QuebecGoldDB = { legacyMarker = 42 }; SLASH = SlashCmdList; NS = {}`);
+    session.load("Core.lua");
+    session.run(`fire_event("PLAYER_LOGIN")`);
+    expect(session.run(`return tostring(GuildedDB.legacyMarker) .. "|" .. tostring(QuebecGoldDB)`)).toBe("42|nil");
+  });
+
   it("/guilded character prints the QG1 line with class and race tokens", () => {
     const s = loggedIn();
     s.run(`SlashCmdList["GUILDED"]("character")`);
