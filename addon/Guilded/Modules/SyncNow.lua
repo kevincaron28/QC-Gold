@@ -10,9 +10,10 @@
 --
 -- Safe moment = out of combat, not inside an instance, data actually changed
 -- since the last reload, changes quiet for 90 seconds, and at least
--- `minutes` (default 10) since the last reload. Officers (the people who run
--- the companion) get auto on by default; everyone else gets a banner with a
--- button instead (a click may reload, an addon on its own timer may not).
+-- `minutes` (default 10) since the last reload. Nobody is reloaded without
+-- asking: auto-reload is OFF by default (opt in with /guilded sync auto on).
+-- Officers (the people who run the companion) get a small banner with a
+-- "Send to Discord" button instead; logging out also saves the data.
 local addonName, ns = ...
 ns = ns or {}
 
@@ -44,12 +45,11 @@ local function officer()
   return ns.isOfficer and ns.isOfficer() or false
 end
 
--- nil = follow the default (on for officers).
+-- Off unless the player turned it on: the game never reloads on its own by default.
 local function autoEnabled()
   local s = state()
   if not s then return false end
-  if s.auto == nil then return officer() end
-  return s.auto
+  return s.auto == true
 end
 
 -- Called by Core whenever something worth saving happens.
@@ -145,7 +145,7 @@ function module.statusLine()
   if dirtyAt then
     local minutes = math.floor((clock() - dirtyAt) / 60)
     return string.format("Changes are waiting (%s). %s", minutes <= 0 and "just now" or (minutes .. " min"),
-      auto and "The addon will save them by itself at a safe moment; or press Send to Discord now." or "Press Send to Discord now: it saves and the companion uploads.")
+      auto and "The addon will save them by itself at a safe moment; or press Send to Discord now." or "Press Send to Discord now (it reloads the UI), or they are sent when you log out.")
   end
   return "Everything is saved. " .. (auto and "New changes are saved automatically at safe moments." or "After changes, press Send to Discord now.")
 end
@@ -179,8 +179,8 @@ ns.commandHandlers["sync"] = function(args)
       autoEnabled() and "on" or "off", s.minutes or DEFAULT_MINUTES))
   else
     local waiting = dirtyAt and ("changes waiting since " .. math.floor((clock() - dirtyAt) / 60) .. " min") or "nothing waiting"
-    ns.message(string.format("Sync to Discord: %s. Auto-save %s every %d min (%s). /guilded sync = save now.", waiting,
-      autoEnabled() and "on" or "off", s.minutes or DEFAULT_MINUTES, officer() and "officer default: on" or "you: banner only"))
+    ns.message(string.format("Sync to Discord: %s. Auto-reload %s (every %d min at most). /guilded sync = save now; sync auto on = reload by itself at safe moments.", waiting,
+      autoEnabled() and "on" or "off", s.minutes or DEFAULT_MINUTES))
   end
 end
 ns.commandHelp = ns.commandHelp or {}

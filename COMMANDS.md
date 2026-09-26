@@ -164,6 +164,7 @@ messages follow the language chosen in `/setup` (English or French).
 | `/bank mine` / `/bank cancel <id>` | Your requests / cancel an open one |
 | `/craft request <item> [profession] [quantity] [materials] [note]` | Ask a guild crafter to make something; shows who has that profession |
 | `/craft list [profession]` / `/craft claim <id>` | Crafters: see open requests and take one |
+| `/craft permissions` | Officers: put the craft board permissions right (members talk in a request post and press its buttons; only the bot and leadership start posts) |
 | `/craft done <id>` / `release <id>` / `mine` / `cancel <id>` | Finish, give back, see yours, or cancel. The requester gets DMs |
 
 ### Dungeon challenge
@@ -303,8 +304,9 @@ A **raid core** is a named roster (e.g. "Tuesday MC core"); a guild can have sev
 | Command | What it does |
 | --- | --- |
 | `/core setup` | **Start here.** A guided message: name the core in a form, pick its tanks, healers and DPS from member menus, then choose its rules (same as the guild by default; own point pool, loot council or EP values are buttons). Saved as you go (Raid Leaders) |
+| `/core edit <core>` | **Easiest way to change a core.** One message: pick how to add (Tank / Healer / DPS, main roster or **bench**), pick the players (players already in the core are moved to that role or spot), pick players to remove, rename. The roster message updates at once (Raid Leaders) |
 | `/core create <name> [description]` | Create a core with a command instead (Raid Leaders) |
-| `/core add <core> <player> [role]` / `/core remove <core> <player>` | Manage its players (Raid Leaders); role Tank / Healer / DPS |
+| `/core add <core> <player> [role] [bench]` / `/core remove <core> <player>` | Manage its players (Raid Leaders); role Tank / Healer / DPS; `bench:true` makes them a replacement (shown with a chair, no signup priority) |
 | `/core rules <core> [attendance] [late] [boss] [clear] [base_gp] [decay] [loot_mode] [pool] [reset]` | The core's point rules. **Every core follows the guild's settings** (`/config`, `/setup`) **unless you change a value here**; with no options it shows the effective rules and which differ. `pool:separate` gives the core its own EP/GP pool (from now on), `loot_mode` can make one core loot council, `reset` goes back to the guild defaults |
 | `/core show <core>` / `/core list` | See a roster / all cores (everyone) |
 | `/core post [core]` | Refresh the roster message(s) in the roster channel |

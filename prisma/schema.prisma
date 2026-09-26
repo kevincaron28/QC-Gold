@@ -886,6 +886,7 @@ model RaidCoreMember {
   coreId   String
   memberId String
   role     RaidRole @default(DPS)
+  bench    Boolean  @default(false)
   addedAt  DateTime @default(now())
   core     RaidCore @relation(fields: [coreId], references: [id], onDelete: Cascade)
   member   Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)

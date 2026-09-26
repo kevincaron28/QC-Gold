@@ -3,6 +3,7 @@ import type { RaidRole } from "@prisma/client";
 import { prisma } from "../database.js";
 import { hasPermission } from "../permissions.js";
 import { runCoreWizard } from "./core-wizard.js";
+import { runCoreEditor } from "./core-editor.js";
 import { describeRules, effectiveRules } from "../services/core-rules.js";
 import { createRaidCoreService, removeCoreRosterMessage, syncCoreRoster } from "../services/raid-core.js";
 import { guildService, requireGuildContext } from "./context.js";
@@ -19,13 +20,16 @@ export const coreCommand = new SlashCommandBuilder()
   .setName("core")
   .setDescription("Raid cores: named rosters whose members get priority at that core's raid signups.")
   .addSubcommand((sub) => sub.setName("setup").setDescription("Guided: name a raid core, pick its players from menus, choose its rules (Raid Leaders). Start here."))
+  .addSubcommand((sub) => sub.setName("edit").setDescription("Change a core by clicking: add or move players, roles, the bench, remove, rename (Raid Leaders).")
+    .addStringOption(coreOption))
   .addSubcommand((sub) => sub.setName("create").setDescription("Create a raid core with a command (Raid Leaders). /core setup is easier.")
     .addStringOption((o) => o.setName("name").setDescription("e.g. Tuesday MC core").setMinLength(2).setMaxLength(50).setRequired(true))
     .addStringOption((o) => o.setName("description").setDescription("Optional: schedule, goals").setMaxLength(300)))
   .addSubcommand((sub) => sub.setName("add").setDescription("Add a player to a core (Raid Leaders).")
     .addStringOption(coreOption)
     .addUserOption((o) => o.setName("player").setDescription("Discord member").setRequired(true))
-    .addStringOption(roleOption))
+    .addStringOption(roleOption)
+    .addBooleanOption((o) => o.setName("bench").setDescription("Put them on the bench (a replacement) instead of the main roster")))
   .addSubcommand((sub) => sub.setName("remove").setDescription("Remove a player from a core (Raid Leaders).")
     .addStringOption(coreOption)
     .addUserOption((o) => o.setName("player").setDescription("Discord member").setRequired(true)))
@@ -61,10 +65,15 @@ export async function executeCore(interaction: ChatInputCommandInteraction): Pro
   if (!context) return;
   const guildId = context.guildId;
   const subcommand = interaction.options.getSubcommand();
-  if (["setup", "create", "add", "remove", "post", "delete", "rules"].includes(subcommand)) requireRaidLeader(interaction);
+  if (["setup", "edit", "create", "add", "remove", "post", "delete", "rules"].includes(subcommand)) requireRaidLeader(interaction);
 
   if (subcommand === "setup") {
     await runCoreWizard(interaction);
+    return;
+  }
+
+  if (subcommand === "edit") {
+    await runCoreEditor(interaction, guildId, interaction.options.getString("core", true));
     return;
   }
 
@@ -83,11 +92,11 @@ export async function executeCore(interaction: ChatInputCommandInteraction): Pro
     const user = interaction.options.getUser("player", true);
     const target = await guildService.ensureMember(guildId, user.id, user.username);
     const core = subcommand === "add"
-      ? await coreService.addMember(guildId, interaction.options.getString("core", true), target.id, (interaction.options.getString("role") ?? "DPS") as RaidRole)
+      ? await coreService.addMember(guildId, interaction.options.getString("core", true), target.id, (interaction.options.getString("role") ?? "DPS") as RaidRole, interaction.options.getBoolean("bench") ?? false)
       : await coreService.removeMember(guildId, interaction.options.getString("core", true), target.id);
     await syncCoreRoster(interaction.guild, prisma, guildId, core.id);
     await interaction.reply({
-      content: subcommand === "add" ? `Added ${user.username} to **${core.name}**.` : `Removed ${user.username} from **${core.name}**.`,
+      content: subcommand === "add" ? `Added ${user.username} to **${core.name}**${interaction.options.getBoolean("bench") ? " (bench)" : ""}.` : `Removed ${user.username} from **${core.name}**.`,
       ephemeral: true
     });
     return;
@@ -126,10 +135,12 @@ export async function executeCore(interaction: ChatInputCommandInteraction): Pro
 
   if (subcommand === "show") {
     const core = await coreService.byIdOrName(guildId, interaction.options.getString("core", true));
-    const byRole = (role: RaidRole) => core.members.filter((entry) => entry.role === role).map((entry) => entry.member.displayName).join(", ") || "—";
+    const byRole = (role: RaidRole) => core.members.filter((entry) => entry.role === role && !entry.bench).map((entry) => entry.member.displayName).join(", ") || "—";
+    const benchNames = core.members.filter((entry) => entry.bench).map((entry) => `${entry.member.displayName} (${entry.role})`).join(", ");
     const rules = describeRules(effectiveRules(await guildService.getSettings(guildId), core), core.name);
     await interaction.reply({
-      content: `${core.description ? `${core.description}\n` : ""}${rules}\n🛡️ Tanks: ${byRole("TANK")}\n💚 Healers: ${byRole("HEALER")}\n⚔️ DPS: ${byRole("DPS")}`,
+      content: `${core.description ? `${core.description}\n` : ""}${rules}\n🛡️ Tanks: ${byRole("TANK")}\n💚 Healers: ${byRole("HEALER")}\n⚔️ DPS: ${byRole("DPS")}${benchNames ? `
+🪑 Bench: ${benchNames}` : ""}`,
       ephemeral: true
     });
     return;

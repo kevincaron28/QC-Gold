@@ -7,6 +7,7 @@ import { findProfessionHolders } from "../services/profession-search.js";
 import { requireGuildContext } from "./context.js";
 import { PROFESSIONS } from "../wow-data.js";
 import { postCraftRequest, syncCraftPost } from "./craft-board.js";
+import { repairCraftBoardPermissions } from "./setup.js";
 
 const craftService = createCraftService(prisma);
 
@@ -30,7 +31,8 @@ export const craftCommand = new SlashCommandBuilder()
   .addSubcommand((sub) => sub.setName("claim").setDescription("Take a request (you'll craft it).").addStringOption(idOption("from /craft list")))
   .addSubcommand((sub) => sub.setName("done").setDescription("Mark a request you claimed as crafted.").addStringOption(idOption("from /craft mine")))
   .addSubcommand((sub) => sub.setName("release").setDescription("Give a claimed request back to the list.").addStringOption(idOption("from /craft mine")))
-  .addSubcommand((sub) => sub.setName("cancel").setDescription("Cancel your request.").addStringOption(idOption("from /craft mine")));
+  .addSubcommand((sub) => sub.setName("cancel").setDescription("Cancel your request.").addStringOption(idOption("from /craft mine")))
+  .addSubcommand((sub) => sub.setName("permissions").setDescription("Officers: put the craft board's permissions right (members talk in posts, only the bot starts them)."));
 
 function describe(request: { item: string; quantity: number; profession: string | null; materialsProvided: boolean; note: string | null }): string {
   return `${request.quantity} × **${request.item}**${request.profession ? ` (${request.profession})` : ""}`
@@ -43,6 +45,20 @@ export async function executeCraft(interaction: ChatInputCommandInteraction): Pr
   const subcommand = interaction.options.getSubcommand();
   const isOfficer = !!interaction.member && hasPermission(interaction.member as GuildMember, "officer");
   const dm = (userId: string, text: string) => interaction.client.users.send(userId, text).catch(() => undefined);
+
+  if (subcommand === "permissions") {
+    if (!isOfficer) throw new Error("Only Officers or Guild Masters can change the craft board's permissions.");
+    const settings = await prisma.guildSettings.findUnique({ where: { guildId: context.guildId } });
+    if (!settings?.craftChannelId || !interaction.guild) throw new Error("No craft board is set. Run /setup first.");
+    const fixed = await repairCraftBoardPermissions(interaction.guild, settings.craftChannelId);
+    await interaction.reply({
+      content: fixed
+        ? `Craft board permissions are set: everyone can read, talk inside a request's post and press its buttons. Only the bot (through /craft request and the pinned button) and leadership start posts.`
+        : "The craft channel is not a forum, so nothing was changed. Create it with /setup.",
+      ephemeral: true
+    });
+    return;
+  }
 
   if (subcommand === "request") {
     const profession = interaction.options.getString("profession") ?? undefined;

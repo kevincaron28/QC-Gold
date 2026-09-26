@@ -41,7 +41,8 @@ export function createRaidService(database: PrismaClient) {
   }
 
   async function coreMemberIds(coreId: string): Promise<Set<string>> {
-    const rows = await database.raidCoreMember.findMany({ where: { coreId }, select: { memberId: true } });
+    // Main players only: the bench (replacements) gets no signup priority.
+    const rows = await database.raidCoreMember.findMany({ where: { coreId, bench: false }, select: { memberId: true } });
     return new Set(rows.map((row) => row.memberId));
   }
 

@@ -4,7 +4,7 @@ import { newLuaSession, type LuaSession } from "./harness.js";
 let session: LuaSession | undefined;
 afterEach(() => { session?.close(); session = undefined; });
 
-function withSync(officer = true): LuaSession {
+function withSync(officer = true, autoOn = false): LuaSession {
   session = newLuaSession();
   session.run(`
     DB = {}
@@ -28,6 +28,7 @@ function withSync(officer = true): LuaSession {
   `);
   session.load("Modules/SyncNow.lua");
   session.run(`fire_event("PLAYER_LOGIN")`);
+  if (autoOn) session.run(`NS.commandHandlers["sync"]({ "auto", "on" })`);
   return session;
 }
 
@@ -36,8 +37,17 @@ const runTimers = (s: LuaSession) => s.run(`local t = TIMERS; TIMERS = {}; for _
 const reloads = (s: LuaSession) => Number(s.run(`return RELOADS`));
 
 describe("SyncNow.lua", () => {
+  it("never reloads anyone by default, not even an officer (auto is opt-in)", () => {
+    const s = withSync(true);
+    s.run(`NS.syncNow.mark()`);
+    advance(s, 3600);
+    s.run(`NS.syncNow.tick()`);
+    expect(s.run(`return #TIMERS`)).toBe("0");
+    expect(reloads(s)).toBe(0);
+  });
+
   it("does nothing until something changed, then waits for the changes to settle and the interval to pass", () => {
-    const s = withSync();
+    const s = withSync(true, true);
     advance(s, 3600);
     s.run(`NS.syncNow.tick()`);
     expect(s.run(`return #TIMERS`)).toBe("0");
@@ -54,7 +64,7 @@ describe("SyncNow.lua", () => {
   });
 
   it("respects the minimum interval since login", () => {
-    const s = withSync();
+    const s = withSync(true, true);
     s.run(`NS.syncNow.mark()`);
     advance(s, 200);
     s.run(`NS.syncNow.tick()`);
@@ -65,7 +75,7 @@ describe("SyncNow.lua", () => {
   });
 
   it("never reloads in combat or inside an instance, even at the last second", () => {
-    const s = withSync();
+    const s = withSync(true, true);
     s.run(`NS.syncNow.mark()`);
     advance(s, 1000);
     s.run(`INSTANCE = true; NS.syncNow.tick()`);

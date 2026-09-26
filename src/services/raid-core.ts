@@ -39,12 +39,13 @@ export function createRaidCoreService(database: Db) {
       return core;
     },
 
-    async addMember(guildId: string, value: string, memberId: string, role: RaidRole) {
+    // Adds a player, or changes the role / bench spot of one already in the core.
+    async addMember(guildId: string, value: string, memberId: string, role: RaidRole, bench = false) {
       const core = await byIdOrName(guildId, value);
       await database.raidCoreMember.upsert({
         where: { coreId_memberId: { coreId: core.id, memberId } },
-        create: { coreId: core.id, memberId, role },
-        update: { role }
+        create: { coreId: core.id, memberId, role, bench },
+        update: { role, bench }
       });
       return core;
     },
@@ -64,8 +65,15 @@ export function createRaidCoreService(database: Db) {
       });
     },
 
+    // The main players (they get signup priority). The bench does not.
     async memberIds(coreId: string): Promise<Set<string>> {
-      const rows = await database.raidCoreMember.findMany({ where: { coreId }, select: { memberId: true } });
+      const rows = await database.raidCoreMember.findMany({ where: { coreId, bench: false }, select: { memberId: true } });
+      return new Set(rows.map((row) => row.memberId));
+    },
+
+    // Bench members (replacements), shown with a chair on the signup post.
+    async benchIds(coreId: string): Promise<Set<string>> {
+      const rows = await database.raidCoreMember.findMany({ where: { coreId, bench: true }, select: { memberId: true } });
       return new Set(rows.map((row) => row.memberId));
     }
   };
@@ -74,17 +82,22 @@ export function createRaidCoreService(database: Db) {
 type CoreForEmbed = {
   name: string;
   description: string | null;
-  members: { role: RaidRole; member: { displayName: string } }[];
+  members: { role: RaidRole; bench: boolean; member: { displayName: string } }[];
 };
 
 export function coreRosterEmbed(core: CoreForEmbed): EmbedBuilder {
   const embed = new EmbedBuilder().setColor(0xd4af37).setTitle(`⚜️ ${core.name}`);
   if (core.description) embed.setDescription(core.description);
   for (const role of ROLE_ORDER) {
-    const names = core.members.filter((entry) => entry.role === role).map((entry) => entry.member.displayName).sort((a, b) => a.localeCompare(b));
+    const names = core.members.filter((entry) => entry.role === role && !entry.bench).map((entry) => entry.member.displayName).sort((a, b) => a.localeCompare(b));
     embed.addFields({ name: `${ROLE_LABEL[role]} (${names.length})`, value: names.length ? names.join("\n").slice(0, 1000) : "—", inline: true });
   }
-  embed.setFooter({ text: `${core.members.length} core member${core.members.length === 1 ? "" : "s"} · priority at this core's raid signups` });
+  const bench = core.members.filter((entry) => entry.bench)
+    .map((entry) => `${entry.member.displayName} (${entry.role === "TANK" ? "Tank" : entry.role === "HEALER" ? "Healer" : "DPS"})`)
+    .sort((a, b) => a.localeCompare(b));
+  if (bench.length) embed.addFields({ name: `🪑 Bench (${bench.length})`, value: bench.join("\n").slice(0, 1000), inline: false });
+  const mains = core.members.length - bench.length;
+  embed.setFooter({ text: `${mains} core member${mains === 1 ? "" : "s"}${bench.length ? ` + ${bench.length} on the bench` : ""} · core members get priority at this core's raid signups` });
   return embed;
 }
 

@@ -1,5 +1,18 @@
 # Changelog
 
+## 3.0.2
+
+**In game**
+- The game is never reloaded on its own any more. Auto-reload is off for everyone (opt in with `/guilded sync auto on`); officers get a small banner with a Send to Discord button, and logging out also saves.
+- `/guilded modules on <module>` now confirms.
+
+**Discord bot**
+- Raid signup posts list the players in every role with the count and FULL, mark core members (⭐) and the bench (🪑), and show which core members have not signed up yet.
+- New `/core edit`: add or move players, change roles, use a bench of replacements, remove players and rename a core from one message. `/core add` has a `bench` option.
+- Fixed the "invalid string length" error on step 3 of `/core setup`.
+- Craft board: members can talk inside a request post and press its buttons but not start posts; officers fix an older board with `/craft permissions`.
+- The addon-import notice goes to the private officer log.
+
 ## 3.0.1
 
 Renamed to **Guilded** (`/guilded`, short `/gd`; the old `/qg` is gone, saved data from the old name is adopted once).

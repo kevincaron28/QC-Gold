@@ -6,6 +6,7 @@ import {
   ChannelType,
   EmbedBuilder,
   PermissionFlagsBits,
+  PermissionsBitField,
   RoleSelectMenuBuilder,
   SlashCommandBuilder,
   StringSelectMenuBuilder,
@@ -385,7 +386,7 @@ type ChannelField = "notifyChannelId" | "raidSignupChannelId" | "raidLogChannelI
 // leadership post (signup channels are read-only too: people use the buttons);
 // "officers" hidden from everyone but Guild Master/Officer; "leaders" hidden
 // from everyone but the leadership roles.
-type Access = "open" | "readonly" | "officers" | "leaders";
+type Access = "open" | "readonly" | "officers" | "leaders" | "board";
 type CategoryKey = "guild" | "raid" | "dungeon" | "craft" | "officers";
 
 const CATEGORY_NAMES: Record<CategoryKey, string> = {
@@ -401,7 +402,7 @@ const CHANNEL_SPECS: Record<ChannelField, { name: string; topic: string; access:
   dungeonSignupChannelId: { name: "dungeon-signups", topic: "Dungeon groups: use the buttons under each post", access: "readonly", category: "dungeon" },
   dungeonLeaderboardChannelId: { name: "dungeon-leaderboard", topic: "Dungeon challenge standings, updated automatically", access: "readonly", category: "dungeon" },
   dungeonChannelId: { name: "dungeon-runs", topic: "Completed dungeon runs and new records", access: "readonly", category: "dungeon" },
-  craftChannelId: { name: "craft-board", topic: "Craft requests: press Request a craft in the pinned post. Crafters filter by profession tag and press I'll craft it.", access: "readonly", category: "craft", forum: true },
+  craftChannelId: { name: "craft-board", topic: "Craft requests: press Request a craft in the pinned post. Crafters filter by profession tag and press I'll craft it.", access: "board", category: "craft", forum: true },
   logChannelId: { name: "officer-log", topic: "Officer log: joins, moderation, bank and craft requests", access: "officers", category: "officers" },
   readinessChannelId: { name: "raid-readiness", topic: "Who is ready for raid night: gear and consumable checks (officers and raid leaders only)", access: "leaders", category: "officers" }
 };
@@ -437,6 +438,20 @@ function overwritesFor(guild: DiscordGuild, access: Access): OverwriteResolvable
       ...bot
     ];
   }
+  if (access === "board") {
+    // The craft board: everyone reads and talks inside a request's post and can press its
+    // buttons, but cannot start posts of their own (requests go through the bot, so they
+    // keep their tags and buttons). Leadership can post and tidy threads.
+    return [
+      {
+        id: guild.roles.everyone.id,
+        allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.SendMessagesInThreads, PermissionFlagsBits.AddReactions, PermissionFlagsBits.EmbedLinks, PermissionFlagsBits.AttachFiles],
+        deny: [PermissionFlagsBits.SendMessages, PermissionFlagsBits.CreatePublicThreads, PermissionFlagsBits.CreatePrivateThreads]
+      },
+      ...leaders.map((role) => ({ id: role.id, allow: [PermissionFlagsBits.SendMessages, PermissionFlagsBits.ManageThreads] })),
+      ...(me ? [{ id: me.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.SendMessagesInThreads, PermissionFlagsBits.CreatePublicThreads, PermissionFlagsBits.ManageThreads, PermissionFlagsBits.EmbedLinks, PermissionFlagsBits.ReadMessageHistory] }] : [])
+    ];
+  }
   if (access === "readonly") {
     return [
       { id: guild.roles.everyone.id, deny: [PermissionFlagsBits.SendMessages, PermissionFlagsBits.SendMessagesInThreads, PermissionFlagsBits.CreatePublicThreads, PermissionFlagsBits.CreatePrivateThreads] },
@@ -445,6 +460,19 @@ function overwritesFor(guild: DiscordGuild, access: Access): OverwriteResolvable
     ];
   }
   return undefined;
+}
+
+// Puts the craft board's permissions right again (for a board made by an older version,
+// or one someone changed). Only the entries the board needs are touched.
+export async function repairCraftBoardPermissions(guild: DiscordGuild, channelId: string): Promise<boolean> {
+  await guild.roles.fetch();
+  const channel = await guild.channels.fetch(channelId).catch(() => null);
+  if (!channel || channel.type !== ChannelType.GuildForum) return false;
+  for (const entry of overwritesFor(guild, "board") ?? []) {
+    const flags = (list: unknown, value: boolean) => Object.fromEntries((Array.isArray(list) ? list : []).map((flag) => [new PermissionsBitField(flag as bigint).toArray()[0], value]));
+    await channel.permissionOverwrites.edit(entry.id as string, { ...flags(entry.allow, true), ...flags(entry.deny, false) } as never);
+  }
+  return true;
 }
 
 // Creates only the channels in `fields` that aren't set yet, each in its own

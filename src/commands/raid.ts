@@ -13,6 +13,7 @@ import { parseRaidTime } from "../services/raid-time.js";
 import { asLang, t, type Lang } from "../i18n.js";
 import { createRaidService, type SignupAvailability } from "../services/raid.js";
 import { createRaidCoreService } from "../services/raid-core.js";
+import { buildSignupEmbed } from "../services/signup-embed.js";
 import { hasPermission } from "../permissions.js";
 import { guildService, requireGuildContext } from "./context.js";
 import { BRAND } from "../brand.js";
@@ -128,35 +129,15 @@ export async function syncSignupEmbed(discordGuild: DiscordGuild, guildId: strin
   try {
     const raid = await raidService.getStatus(raidId, guildId);
     const lang = asLang((await guildService.getSettings(guildId))?.language);
-    const roleName = (role: RaidRole) => t(lang, `role.${role}` as const);
     const everyone = await raidService.signups(raidId, guildId);
-    const coreIds = raid.coreId ? await createRaidCoreService(prisma).memberIds(raid.coreId) : new Set<string>();
-    const coreName = raid.coreId ? (await prisma.raidCore.findUnique({ where: { id: raid.coreId }, select: { name: true } }))?.name : undefined;
-    const roster = everyone.filter((signup) => signup.status === "SIGNED_UP");
-    const listOf = (status: string) => everyone.filter((signup) => signup.status === status)
-      .map((signup) => `${coreIds.has(signup.memberId) ? "⭐ " : ""}${signup.member.displayName} (${roleName(signup.role)})`).join(", ");
-    const maybe = listOf("MAYBE");
-    const waitlist = listOf("WAITLISTED");
-    const caps: Record<RaidRole, number | null> = { TANK: raid.tankLimit, HEALER: raid.healerLimit, DPS: raid.dpsLimit };
-    const roleLines = (["TANK", "HEALER", "DPS"] as const).map((role) => {
-      const count = roster.filter((signup) => signup.role === role).length;
-      const cap = caps[role];
-      return `${roleName(role)}: ${count}${cap !== null ? `/${cap}` : ""}`;
+    const core = raid.coreId
+      ? await prisma.raidCore.findUnique({ where: { id: raid.coreId }, select: { name: true, members: { select: { memberId: true, role: true, bench: true, member: { select: { displayName: true } } } } } })
+      : null;
+    const embed = buildSignupEmbed({
+      lang, raid,
+      signups: everyone.map((signup) => ({ memberId: signup.memberId, displayName: signup.member.displayName, role: signup.role, status: signup.status })),
+      core: core ? { name: core.name, members: core.members.map((m) => ({ memberId: m.memberId, displayName: m.member.displayName, role: m.role, bench: m.bench })) } : undefined
     });
-
-    const embed = new EmbedBuilder()
-      .setTitle(`⚜️ ${raid.title}`)
-      .addFields(
-        { name: t(lang, "signup.status"), value: t(lang, `status.${raid.status}` as const), inline: true },
-        { name: t(lang, "signup.start"), value: `<t:${Math.floor(raid.scheduledAt.getTime() / 1000)}:F>`, inline: true },
-        { name: t(lang, "signup.total"), value: String(roster.length), inline: true },
-        { name: t(lang, "signup.roles"), value: roleLines.join("\n"), inline: false }
-      )
-      .setFooter({ text: raid.status === "PLANNED" ? t(lang, "signup.footer.open") : t(lang, "signup.footer.closed", { id: raid.id }) });
-    if (maybe) embed.addFields({ name: t(lang, "signup.maybe"), value: maybe.slice(0, 1000), inline: false });
-    if (waitlist) embed.addFields({ name: t(lang, "signup.waitlist"), value: waitlist.slice(0, 1000), inline: false });
-    if (raid.description) embed.setDescription(raid.description);
-    if (coreName) embed.addFields({ name: "Raid core", value: `**${coreName}** — ⭐ core members get signup priority`, inline: false });
 
     if (raid.signupChannelId && raid.signupMessageId) {
       const channel = await discordGuild.channels.fetch(raid.signupChannelId).catch(() => null);

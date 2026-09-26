@@ -35,7 +35,7 @@ async function rosterStep(core: { id: string; name: string; description: string 
   const embed = coreRosterEmbed(full).setTitle(`⚜️ ${core.name} — step 2 of 3: pick the players`)
     .setDescription([
       "Pick people from each menu: tanks, healers, DPS. Each pick is saved at once; you can use a menu again to add more.",
-      "To take someone out later: `/core remove`.",
+      "To change roles, use the bench or remove someone later: `/core edit`.",
       note ? `\n**Last action:** ${note}` : ""
     ].join("\n"));
   const menu = (id: string, placeholder: string) => new ActionRowBuilder<UserSelectMenuBuilder>().addComponents(
@@ -81,12 +81,15 @@ function nameModal() {
   );
 }
 
-function epModal(core: RaidCore) {
-  const input = (id: string, label: string, value: number | null) =>
-    new ActionRowBuilder<TextInputBuilder>().addComponents(
-      new TextInputBuilder().setCustomId(id).setLabel(`${label} (empty = guild default)`).setStyle(TextInputStyle.Short).setRequired(false).setMaxLength(5)
-        .setValue(value === null ? "" : String(value)));
-  return new ModalBuilder().setCustomId("corewiz:ep-modal").setTitle(`${core.name}: EP values`).addComponents(
+export function epModal(core: RaidCore) {
+  // Discord limits: a label and the title are at most 45 characters, and an empty value is not allowed.
+  const input = (id: string, label: string, value: number | null) => {
+    const field = new TextInputBuilder().setCustomId(id).setLabel(label).setPlaceholder("empty = guild default")
+      .setStyle(TextInputStyle.Short).setRequired(false).setMaxLength(5);
+    if (value !== null) field.setValue(String(value));
+    return new ActionRowBuilder<TextInputBuilder>().addComponents(field);
+  };
+  return new ModalBuilder().setCustomId("corewiz:ep-modal").setTitle(`EP values: ${core.name}`.slice(0, 45)).addComponents(
     input("attendance", "EP for attending", core.attendanceEp), input("late", "EP for arriving late", core.lateEp),
     input("boss", "EP per boss killed", core.bossEp), input("clear", "Bonus EP for a full clear", core.completionEp));
 }
@@ -190,7 +193,7 @@ export async function runCoreWizard(interaction: ChatInputCommandInteraction): P
         await i.update({
           content: `✅ **${core.name}** is ready.\n`
             + `• Create its raids with \`/raid create core:${core.name}\` (its members get signup priority).\n`
-            + `• Change the roster any time: \`/core add\`, \`/core remove\`; rules: \`/core rules\`.\n`
+            + `• Change the roster any time (roles, bench, add, remove): \`/core edit core:${core.name}\`; rules: \`/core rules\`.\n`
             + (settings?.coreChannelId ? `• Its roster is posted in <#${settings.coreChannelId}>.` : "• Set a raid roster channel in `/setup` step 3 to show the roster there."),
           embeds: [], components: []
         });

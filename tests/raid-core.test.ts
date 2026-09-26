@@ -80,7 +80,7 @@ describe("core roster embed", () => {
   it("groups members by role and counts them", () => {
     const embed = coreRosterEmbed({
       name: "Tuesday MC", description: "8pm", members: [
-        { role: "TANK", member: { displayName: "Bob" } }, { role: "DPS", member: { displayName: "Zed" } }, { role: "DPS", member: { displayName: "Amy" } }
+        { role: "TANK", bench: false, member: { displayName: "Bob" } }, { role: "DPS", bench: false, member: { displayName: "Zed" } }, { role: "DPS", bench: false, member: { displayName: "Amy" } }
       ]
     }).toJSON();
     expect(embed.title).toContain("Tuesday MC");
