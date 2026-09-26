@@ -17,6 +17,7 @@ Modules\Games.lua
 Modules\Sync.lua
 Modules\Sim.lua
 Modules\Bidding.lua
+Modules\Council.lua
 Modules\Calendar.lua
 Modules\ConsumableData.lua
 Modules\Consumables.lua

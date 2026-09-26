@@ -29,7 +29,7 @@ versus member views. They are listed in the release checklist.
 2. ~~Item tooltips~~ **built** (3.1.0): wishlist, usual GP and your PR on item tooltips; needs a look in the real game (the tooltip hooks are the untested part).
 3. ~~Warcraft Logs, next level~~ **built** (`/config wcl-guild`, `/wcl check`); needs a try on a real guild page and a raid that was run through the bot.
 4. ~~Chat tab for addon messages~~ **built** (3.2.0, `/guilded chat tab`); needs a look in the real game (opening a chat window is the untested part).
-5. **Loot response voting** (BiS / upgrade / off-spec) for loot council guilds.
+5. ~~Loot response voting~~ **built** (in the addon, `/guilded council`); needs a try with a second player (popup, whisper answers).
 6. **Imports** from SoftRes, That's My BiS and Guild Roster Manager. Needs sample files from a real export.
 7. **Guild calendar sync:** in-game events to Discord and back. Half built (the check command exists).
 8. **Recipes and cooldowns:** who can craft what, transmute cooldowns, shopping list.

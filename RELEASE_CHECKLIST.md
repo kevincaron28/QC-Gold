@@ -26,6 +26,7 @@
 Say "untested" on the listing until these pass.
 
 - [ ] Bid popup on a second character, then a bid by whisper (`/w Officer 30`); the officer sees both in the list and awards one.
+- [ ] Loot council on a second character: open an item in the Council tab, answer from the popup, then a whisper answer (`bis`); the officer sees both ranked and awards one.
 - [ ] `/guilded games duel <player>` with a friend (and `/guilded casino` only says it was removed).
 - [ ] `/guilded invite missing` and `/guilded invite raid` as officer in a party, after creating a raid you and a friend signed up for.
 - [ ] A non-officer alt sees fewer pages (no Raid, EPGP, Loot).

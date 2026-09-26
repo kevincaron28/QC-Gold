@@ -378,6 +378,53 @@ local function buildLootPage(page)
   forModule("bidding", at(newLabel(page, "Pugs without the addon bid by whispering you a number.", "GameFontDisableSmall"), page, 116, -283))
 end
 
+-- Loot council: officers open an item, raiders answer BiS / Upgrade / Off-spec / Pass, officers award.
+local function buildCouncilPage(page)
+  at(newLabel(page, "Item (click the box, then shift-click the item)"), page, 0, 0)
+  ui.councilItemBox = at(newEdit(page, 400), page, 6, -18)
+  at(newLabel(page, "Time"), page, 0, -52)
+  ui.councilSeconds = 60
+  ui.councilSecondsButtons = {}
+  local x = 60
+  for _, seconds in ipairs({ 30, 60, 120 }) do
+    local b = at(newButton(page, seconds .. "s", 50, function()
+      ui.councilSeconds = seconds
+      for s, button in pairs(ui.councilSecondsButtons) do
+        if s == seconds then button:LockHighlight() else button:UnlockHighlight() end
+      end
+    end), page, x, -48)
+    ui.councilSecondsButtons[seconds] = b
+    x = x + 54
+  end
+  ui.councilSecondsButtons[60]:LockHighlight()
+
+  at(newButton(page, "Open council", 110, function()
+    local text = ui.councilItemBox:GetText()
+    if text == "" then ns.message("Put the item in the Item box first (shift-click it).") return end
+    run("council start " .. text .. " " .. ui.councilSeconds)
+  end), page, 0, -80)
+  at(newButton(page, "Close now", 90, function() run("council close") end), page, 114, -80)
+  local cancel = at(newButton(page, "Cancel", 80), page, 210, -80)
+  confirmClick(cancel, "Cancel", function() run("council cancel") end)
+
+  at(newLabel(page, "Award for", "GameFontNormalSmall"), page, 0, -114)
+  at(newLabel(page, "GP", "GameFontNormalSmall"), page, 200, -114)
+  ui.councilGpBox = at(newEdit(page, 50, true), page, 226, -110)
+  ui.councilGpBox:SetText("0")
+  at(newButton(page, "Award selected Player", 160, function()
+    local name = needPlayer()
+    if name then run("council award " .. name .. " " .. (tonumber(ui.councilGpBox:GetText()) or 0)) ui.councilItemBox:SetText("") end
+  end), page, 0, -134)
+  at(newButton(page, "Award top pick", 120, function()
+    run("council award")
+    ui.councilItemBox:SetText("")
+  end), page, 166, -134)
+
+  ui.councilStatus = at(newLabel(page, "", "GameFontHighlightSmall"), page, 0, -170)
+  ui.councilStatus:SetWidth(PAGE_WIDTH)
+  at(newLabel(page, "Members without the addon whisper you: bis, upgrade, os or pass.", "GameFontDisableSmall"), page, 0, -300)
+end
+
 local function buildGamesPage(page)
   at(newLabel(page, "Fun roll games. No gold, nothing owed. Players type 1 in party/raid chat to join, then /roll.", "GameFontNormalSmall"), page, 0, -4)
   at(newButton(page, "High roll", 100, function() run("games highroll") end), page, 0, -28)
@@ -764,6 +811,7 @@ local TAB_DEFS = {
   { name = "Raid", hint = "run a raid: start, bosses, attendance", group = "Raid night", officer = true, usesPlayer = true, build = buildRaidPage },
   { name = "EPGP", hint = "award EP and GP", group = "Raid night", officer = true, usesPlayer = true, build = buildEpgpPage },
   { name = "Loot", hint = "bids and loot", group = "Raid night", officer = true, usesPlayer = true, build = buildLootPage },
+  { name = "Council", hint = "loot council: BiS / upgrade / off-spec answers", group = "Raid night", module = "council", officer = true, usesPlayer = true, build = buildCouncilPage },
   { name = "Dungeons", hint = "the run being recorded, points", group = "Fun and runs", module = "dungeon", build = buildDungeonPage },
   { name = "Games", hint = "fun roll games", group = "Fun and runs", module = "games", usesPlayer = true, build = buildGamesPage },
   { name = "Tools", hint = "switch parts on or off, diagnostics", group = "System", build = buildToolsPage }
@@ -928,6 +976,8 @@ local function refreshHome(db, officer, me)
   if gameText ~= "" and gameText ~= "No games running." then table.insert(now, gameText) end
   local bidText = moduleOn("bidding") and ns.bidding and ns.bidding.statusText and ns.bidding.statusText() or ""
   if bidText ~= "" then table.insert(now, bidText) end
+  local councilText = moduleOn("council") and ns.council and ns.council.current and ns.council.statusText() or ""
+  if councilText ~= "" then table.insert(now, councilText) end
   ui.homeNow:SetText(table.concat(now, "\n"))
 
   local row = ns.getStanding and ns.getStanding(me)
@@ -996,6 +1046,14 @@ refresh = function()
     end
 
     ui.gamesStatus:SetText(moduleOn("games") and ns.games and ns.games.statusText and ns.games.statusText() or "")
+    if ui.councilStatus then
+      ui.councilStatus:SetText(moduleOn("council") and ns.council and ns.council.statusText and ns.council.statusText() or "")
+      local session = moduleOn("council") and ns.council and ns.council.current
+      if session and session.open and not ui.councilTickPending and C_Timer then
+        ui.councilTickPending = true
+        C_Timer.After(1, function() ui.councilTickPending = false; refresh() end)
+      end
+    end
     ui.bidStatus:SetText(moduleOn("bidding") and ns.bidding and ns.bidding.statusText and ns.bidding.statusText() or "")
     -- Keep the bid countdown moving while bidding is open.
     local auction = moduleOn("bidding") and ns.bidding and ns.bidding.current
@@ -1156,6 +1214,7 @@ local function buildPanel()
   end
   ns.onGamesChange = function() refresh() end
   ns.onBiddingChange = function() refresh() end
+  ns.onCouncilChange = function() refresh() end
   ns.onDungeonChange = function() refresh() end
   ns.onModulesChange = function() refresh() end
   ns.onPeerReadiness = function() if readyTabOpen() then refresh() end end

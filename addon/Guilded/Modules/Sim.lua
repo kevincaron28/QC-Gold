@@ -149,9 +149,12 @@ ns.commandHandlers["sim"] = function(args)
   elseif action == "bids" then
     if ns.moduleActive and not ns.moduleActive("bidding") then ns.message("GP bidding is off (/guilded modules).")
     elseif ns.simulateBids then ns.simulateBids() else ns.message("GP bidding is not loaded.") end
+  elseif action == "council" then
+    if ns.moduleActive and not ns.moduleActive("council") then ns.message("Loot council is off (/guilded modules).")
+    elseif ns.simulateCouncil then ns.simulateCouncil() else ns.message("Loot council is not loaded.") end
   else
-    ns.message("/guilded sim start | end | bids (fake bids on open bidding) | dungeon [minutes] | clear")
+    ns.message("/guilded sim start | end | bids (fake bids on open bidding) | council (fake answers) | dungeon [minutes] | clear")
   end
 end
 ns.commandHelp = ns.commandHelp or {}
-table.insert(ns.commandHelp, { officer = true, text = "/guilded sim start|end|bids|dungeon|clear - test raid or dungeon run with fake players" })
+table.insert(ns.commandHelp, { officer = true, text = "/guilded sim start|end|bids|council|dungeon|clear - test raid or dungeon run with fake players" })

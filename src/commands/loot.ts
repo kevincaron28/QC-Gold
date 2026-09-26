@@ -66,7 +66,7 @@ export async function executeLoot(interaction: ChatInputCommandInteraction): Pro
     return;
   }
   if (councilMode && (subcommand === "auction" || subcommand === "bid")) {
-    await interaction.reply({ content: "This raid uses **loot council**: officers decide. Officers award with `/loot award`; add the item to your `/character wishlist` to state interest.", ephemeral: true });
+    await interaction.reply({ content: "This raid uses **loot council**: officers decide. In game, officers open the loot council (answer BiS, Upgrade, Off-spec or Pass in the popup) and award with `/loot award` or in the Council tab; add the item to your `/character wishlist` to state interest.", ephemeral: true });
     return;
   }
   if (subcommand === "auction") {

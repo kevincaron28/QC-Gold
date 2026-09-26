@@ -89,6 +89,28 @@ one for the winner.
 | `/guilded bid cancel` | Cancel, nothing recorded |
 | `/guilded bid status` | Current bids |
 
+### Officers: loot council (Council tab)
+
+For loot council guilds: officers open an item, raiders say how much they
+want it, and the officers decide. Shift-click the item into the Council tab
+and press **Open council**. Raiders with the addon get a popup with **BiS**,
+**Upgrade**, **Off-spec** and **Pass** (it also sends what they wear in that
+slot); anyone else whispers you `bis`, `upgrade`, `os` or `pass`. Answers are
+private and listed best first: BiS, then Upgrade, then Off-spec, then higher
+PR, then first to answer; a player whose Discord wishlist names the item is
+marked. The list is a guide, you award to whoever the council picks. Award
+records the loot (and GP only if you give a price) like any other award.
+
+| Command | What it does |
+| --- | --- |
+| `/guilded council start <item> [seconds]` | Open the council (default 60 s) |
+| `/guilded council close` | Stop early and show the list |
+| `/guilded council award [player] [GP]` | Give it to a player (default: the top pick, 0 GP) |
+| `/guilded council cancel` | Cancel, nothing recorded |
+| `/guilded council status` | Current answers |
+| `/guilded council bis\|upgrade\|os\|pass` | Members: answer from the keyboard |
+| `/guilded sim council` | Fake raiders answer the open item (test raid) |
+
 ### Officers: test raid (no raids are out yet)
 
 | Command | What it does |

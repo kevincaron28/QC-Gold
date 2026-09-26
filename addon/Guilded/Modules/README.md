@@ -44,6 +44,7 @@ new `KIND`, never a changed one.
 | --- | --- | --- | --- |
 | Games.lua | `games` | (none) | Fun roll games: high roll, deathroll, duel. No gold |
 | Bidding.lua | `bidding` | GuildedBid | In-game GP bidding on loot |
+| Council.lua | `council` | GuildedLC | Loot council: BiS / upgrade / off-spec answers, ranked for the officers |
 | Dungeon.lua | `dungeon` | GuildedDgn | Dungeon run tracking for the Dungeon Challenge |
 | Calendar.lua | `calendar` | (none) | `/guilded calendar check` |
 | AutoInvite.lua | `autoinvite` | (none) | Officers: `/guilded autoinvite on [phrase]`, guild invite for whoever whispers the phrase (rate limited) |
@@ -68,6 +69,15 @@ Officer-run GP bidding: `/guilded bid start <min GP> <item> [seconds]` opens it
 for the raid (addon users get a popup, pugs whisper a number), highest PR
 breaks ties, then the earliest bid. `award` records the loot and GP through
 Core's own commands.
+
+## Council.lua
+
+Loot council answers: `/guilded council start <item> [seconds]` opens it for the
+raid (addon users get a popup with BiS / Upgrade / Off-spec / Pass, pugs whisper
+a word). Answers rank by tier, then PR, then time, and carry what the player
+wears in that slot. `award [player] [GP]` records the loot through Core's own
+commands (GP only when a price is given). Prefix `GuildedLC`: `OPEN`, `RESP`,
+`ACK`, `CLOSE`, `AWARD`.
 
 ## Dungeon.lua
 
