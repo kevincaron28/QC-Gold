@@ -7,6 +7,8 @@
 - **Legacy DKP is hidden.** It is gone from `/profile` and `/epgp dkp` is no longer offered; the stored data and the addon import are untouched.
 - `/setup config channel` replaces the eleven separate `/config ...-channel` commands: pick which channel from a list, then the channel.
 
+- **SoftRes import.** `/import softres <file>` reads a SoftRes.it reserves CSV and adds every reserve to the matching character's wishlist (high priority), so the tooltips and the loot council list show who reserved what. Names that are not linked are listed, nothing is guessed.
+
 **In game**
 - **Loot council answers.** A new Council tab and `/guilded council start <item>` for loot council guilds: raiders get a popup with BiS, Upgrade, Off-spec and Pass (players without the addon whisper `bis`, `upgrade`, `os` or `pass`). Officers see the answers ranked (BiS, Upgrade, Off-spec, then PR), with what each player wears in that slot and a mark when the item is on their wishlist, and award to whoever the council picks. `/guilded sim council` tries it alone in a test raid.
 - **The Ready page now runs by itself.** When anyone starts Blizzard's ready check, every Guilded in the group looks at itself and reports what it carries to the group (flask, food, augment and vantus rune, raid buffs, weapon enchant, durability), spread over a second or two. When the check ends, the leader or officer sees a summary of who has a problem in their chat window. Nothing to press. Guilded also reports again by itself when your flask or food changes, and when you join a group (never in combat, only when something changed).

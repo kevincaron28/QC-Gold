@@ -166,7 +166,7 @@ There are 17 commands, not 34: small ones sit under a parent, so typing `/` show
 | `/epgp` | EPGP points (the old DKP commands are hidden) |
 | `/dungeon` | the challenge, plus `admin` (officer tools) |
 | `/mod` | moderation, plus `application` (handle guild applications) |
-| `/import` | `upload` (preview an addon file), `apply` (apply it) |
+| `/import` | `upload` (preview an addon file), `apply` (apply it), `softres` (SoftRes reserves to wishlists) |
 | `/report` | `stats`, `inactive`, `guild` (health), `export`, `ping` (is the bot online) |
 | `/help` `/profile` `/loot` `/craft` `/bank` `/apply` `/poll` `/core` `/tag` | unchanged |
 
@@ -283,6 +283,7 @@ Approve, and a raid can never be paid twice.
 | `/setup testraid dungeon [minutes] [deaths]` | Fake dungeon run by 5 test characters through the real import: points, records, `[TEST]` announcement. Run twice to see the weekly repeat share |
 | `/setup testraid cleanup` | Delete every test raid, test dungeon run and fake raider with their EPGP, points and loot. Real data is untouched |
 | `/loot auction <item> <minimum> <increment> <duration> [boss] [raid]` / `/loot close <auction>` | Run a GP auction (boss/raid show up in loot history) |
+| `/import softres <file> [priority]` | Read a SoftRes.it reserves CSV (the export whose columns start with Item Name, Item ID, From, Raider Name) and add each reserve to that player's wishlist (default high priority). Players are matched by character name; names not linked in this guild are listed and skipped. Safe to run again |
 | `/import upload <file>` then `/import apply <id>` | Preview then apply an addon export. Entries already imported are skipped; in-game raids fill Discord attendance and list no-shows and walk-ins |
 | `/dungeon admin invalidate <run> <reason>` | A run stops counting and its points are taken back (records update by themselves) |
 | `/dungeon admin award <amount> <reason> [member | character]` | Give dungeon points by hand; a negative amount takes them away |
