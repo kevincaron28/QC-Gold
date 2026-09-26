@@ -27,12 +27,13 @@ versus member views. They are listed in the release checklist.
 
 1. **Test with a second player** (see the checklist). Fix whatever it finds. This comes before any feature.
 2. **Item tooltips:** show GP cost, who wishlisted it and your priority on an item's tooltip. Small and useful every raid.
-3. **Chat tab for addon messages:** an optional "Guilded" chat tab so bid results and status lines stay out of raid chat.
-4. **Loot response voting** (BiS / upgrade / off-spec) for loot council guilds.
-5. **Imports** from SoftRes, That's My BiS and Guild Roster Manager. Needs sample files from a real export.
+3. **Warcraft Logs, next level** (the connection works): find the guild's new reports by itself and attach each to the raid it matches by time; compare the log's player list with attendance to catch no-shows and missing EP; an officer-only summary of deaths and consumable use. Not planned: parse rankings or damage leaderboards.
+4. **Chat tab for addon messages:** an optional "Guilded" chat tab so bid results and status lines stay out of raid chat.
+5. **Loot response voting** (BiS / upgrade / off-spec) for loot council guilds.
+6. **Imports** from SoftRes, That's My BiS and Guild Roster Manager. Needs sample files from a real export.
 6. **Guild calendar sync:** in-game events to Discord and back. Half built (the check command exists).
 7. **Recipes and cooldowns:** who can craft what, transmute cooldowns, shopping list.
-8. **Web dashboard** for standings, loot and raid history.
+9. **Web dashboard** for standings, loot and raid history.
 9. **Hosting:** the free Oracle Cloud setup is written ([docs/DEPLOY_ORACLE.md](docs/DEPLOY_ORACLE.md)); a hosted
    multi-guild bot is a bigger step and only worth it if other guilds ask.
 
