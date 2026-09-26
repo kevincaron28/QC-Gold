@@ -1,0 +1,67 @@
+import { describe, expect, it } from "vitest";
+// @ts-expect-error a plain .mjs script without type declarations
+import { collectKeys } from "../scripts/i18n-keys.mjs";
+import { FR_TEXT } from "../src/i18n-fr.js";
+import { tx } from "../src/i18n.js";
+import { channelNames, channelSpec, CATEGORY_NAMES, type ChannelField } from "../src/setup-names.js";
+import { isPermissionRoleName, permissionRoleNames, permissionRolesFr } from "../src/permissions.js";
+
+const placeholders = (text: string) => [...text.matchAll(/\{(\w+)\}/g)].map((match) => match[1]).sort();
+
+describe("French text", () => {
+  it("has a French entry for every text in the setup guide, its checklist and the craft board", () => {
+    const missing = (collectKeys() as string[]).filter((key) => !(key in FR_TEXT));
+    expect(missing).toEqual([]);
+  });
+
+  it("keeps the {placeholders} of the English text", () => {
+    for (const [english, french] of Object.entries(FR_TEXT)) {
+      expect(placeholders(french), english).toEqual(placeholders(english));
+      expect(french.trim().length, english).toBeGreaterThan(0);
+    }
+  });
+
+  it("tx fills placeholders, uses French only for fr, and falls back to English", () => {
+    expect(tx("fr", "Give me {gm}", { gm: "Maître de guilde" })).toBe("Me donner Maître de guilde");
+    expect(tx("en", "Give me {gm}", { gm: "Guild Master" })).toBe("Give me Guild Master");
+    expect(tx("fr", "A text nobody translated {x}", { x: 1 })).toBe("A text nobody translated 1");
+  });
+
+  it("stays inside Discord's limits for buttons and select placeholders it is used in", () => {
+    for (const key of collectKeys() as string[]) {
+      const french = FR_TEXT[key] ?? key;
+      // A button label is at most 80 characters; the long texts are descriptions, so only check short keys.
+      if (key.length <= 80 && !key.includes("\n")) expect(french.length, key).toBeLessThanOrEqual(160);
+    }
+  });
+});
+
+describe("French server names", () => {
+  const fields: ChannelField[] = ["notifyChannelId", "raidSignupChannelId", "raidLogChannelId", "logChannelId", "dungeonLeaderboardChannelId", "dungeonSignupChannelId", "dungeonChannelId", "lootChannelId", "craftChannelId", "readinessChannelId", "coreChannelId"];
+
+  it("gives every channel a valid, distinct French name and topic", () => {
+    const names = new Set<string>();
+    for (const field of fields) {
+      const fr = channelSpec(field, "fr");
+      const en = channelSpec(field, "en");
+      expect(fr.name).toMatch(/^[a-z0-9-]{2,100}$/);
+      expect(fr.topic.length).toBeLessThanOrEqual(1024);
+      expect(fr.name).not.toBe(en.name);
+      expect(fr.access).toBe(en.access);
+      expect(fr.category).toBe(en.category);
+      expect(names.has(fr.name)).toBe(false);
+      names.add(fr.name);
+      expect(channelNames(field)).toEqual([en.name, fr.name]);
+    }
+  });
+
+  it("has French categories and role names, and both spellings count as the role", () => {
+    expect(Object.keys(CATEGORY_NAMES.fr)).toEqual(Object.keys(CATEGORY_NAMES.en));
+    expect(CATEGORY_NAMES.fr.guild).toBe("⚜️ Guilde");
+    expect(permissionRolesFr.officer).toBe("Officier");
+    expect(isPermissionRoleName("officer", "Officer")).toBe(true);
+    expect(isPermissionRoleName("officer", "Officier")).toBe(true);
+    expect(isPermissionRoleName("officer", "Chef de raid")).toBe(false);
+    expect(permissionRoleNames("guildMaster")).toEqual(["Guild Master", "Maître de guilde"]);
+  });
+});

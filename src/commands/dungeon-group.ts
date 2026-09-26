@@ -5,7 +5,7 @@ import {
 } from "discord.js";
 import type { RaidRole } from "@prisma/client";
 import { prisma } from "../database.js";
-import { hasPermission, permissionRoles } from "../permissions.js";
+import { hasPermission, isPermissionRoleName } from "../permissions.js";
 import { createDungeonGroupService, GROUP_CAPS, GROUP_SIZE, shouldDeleteVoice, shouldExpireOpenGroup } from "../services/dungeon-group.js";
 import { guildService, requireGuildContext } from "./context.js";
 import { BRAND } from "../brand.js";
@@ -83,7 +83,7 @@ async function createVoice(guild: DiscordGuild, groupId: string): Promise<string
   const me = guild.members.me;
   const allow = [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect, PermissionFlagsBits.Speak];
   const userIds = new Set([...signups.map((s) => s.member.discordUserId), ...(leader ? [leader.discordUserId] : [])]);
-  const leadership = guild.roles.cache.filter((role) => role.name === permissionRoles.guildMaster || role.name === permissionRoles.officer);
+  const leadership = guild.roles.cache.filter((role) => isPermissionRoleName("guildMaster", role.name) || isPermissionRoleName("officer", role.name));
   const overwrites: OverwriteResolvable[] = [
     { id: guild.roles.everyone.id, deny: [PermissionFlagsBits.Connect] },
     ...[...userIds].map((id) => ({ id, allow })),

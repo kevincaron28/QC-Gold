@@ -1,6 +1,8 @@
 // Member-facing text in English and French (GuildSettings.language).
 // Officer/admin replies stay in English. Placeholders look like {name}.
 
+import { FR_TEXT } from "./i18n-fr.js";
+
 export type Lang = "en" | "fr";
 
 export function asLang(value: string | null | undefined): Lang {
@@ -156,5 +158,13 @@ export type StringKey = keyof typeof STRINGS;
 
 export function t(lang: Lang, key: StringKey, vars: Record<string, string | number> = {}): string {
   const template = STRINGS[key][lang] ?? STRINGS[key].en;
+  return template.replace(/\{(\w+)\}/g, (match, name: string) => (name in vars ? String(vars[name]) : match));
+}
+
+// English-first text for screens with many long sentences (the /setup guide and similar):
+// the English wording stays in the code, and French is looked up by that exact English text
+// in i18n-fr.ts. Text without a French entry is shown in English. {name} placeholders work as in t().
+export function tx(lang: Lang, english: string, vars: Record<string, string | number> = {}): string {
+  const template = (lang === "fr" ? FR_TEXT[english] : undefined) ?? english;
   return template.replace(/\{(\w+)\}/g, (match, name: string) => (name in vars ? String(vars[name]) : match));
 }

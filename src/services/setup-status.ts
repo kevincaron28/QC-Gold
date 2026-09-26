@@ -1,9 +1,12 @@
+import { tx, type Lang } from "../i18n.js";
+
 // The /setup checklist: what's configured, what's missing, and exactly how
 // to fix each missing thing. Pure (takes plain data) so it's easy to test.
 
 export interface SetupFacts {
   existingRoleNames: string[];
-  requiredRoleNames: string[];
+  // Each entry is one required role: a name, or the names (English and French) any of which counts.
+  requiredRoleNames: (string | string[])[];
   notifyChannel: ChannelFact | null;
   raidChannel: ChannelFact | null;
   logChannel: ChannelFact | null;
@@ -32,53 +35,60 @@ export interface SetupCheck {
   fix: string;
 }
 
-function channelCheck(label: string, fact: ChannelFact | null, optional: boolean, fix: string): SetupCheck {
+function channelCheck(lang: Lang, label: string, fact: ChannelFact | null, optional: boolean, fix: string): SetupCheck {
   if (!fact) return { label, ok: false, optional, fix };
-  if (!fact.exists) return { label, ok: false, optional, fix: `The saved channel was deleted. ${fix}` };
-  if (!fact.botCanPost) return { label: `${label} (#${fact.name})`, ok: false, optional, fix: `I can't post in #${fact.name}. Give my role "Send Messages" and "Embed Links" there, or pick another channel.` };
+  if (!fact.exists) return { label, ok: false, optional, fix: `${tx(lang, "The saved channel was deleted.")} ${fix}` };
+  if (!fact.botCanPost) {
+    return { label: `${label} (#${fact.name})`, ok: false, optional, fix: tx(lang, "I can't post in #{name}. Give my role \"Send Messages\" and \"Embed Links\" there, or pick another channel.", { name: fact.name }) };
+  }
   return { label: `${label} (#${fact.name})`, ok: true, optional, fix: "" };
 }
 
-export function setupChecks(facts: SetupFacts): SetupCheck[] {
-  const missingRoles = facts.requiredRoleNames.filter((name) => !facts.existingRoleNames.includes(name));
+export function setupChecks(facts: SetupFacts, lang: Lang = "en"): SetupCheck[] {
+  const T = (english: string, vars: Record<string, string | number> = {}) => tx(lang, english, vars);
+  const missingRoles = facts.requiredRoleNames
+    .map((entry) => (Array.isArray(entry) ? entry : [entry]))
+    .filter((names) => !names.some((name) => facts.existingRoleNames.includes(name)))
+    // Named in the guild's language when a French name exists.
+    .map((names) => (lang === "fr" && names[1] ? names[1] : names[0]));
   const checks: SetupCheck[] = [
     {
-      label: "Permission roles (Guild Master, Officer, Raid Leader, DKP Officer)",
+      label: T("Permission roles (Guild Master, Officer, Raid Leader, DKP Officer)"),
       ok: missingRoles.length === 0,
       optional: false,
-      fix: `Missing: ${missingRoles.join(", ")}. Run /setup and press "Create missing roles", then give them to your officers.`
+      fix: T("Missing: {roles}. Run /setup and press \"Create missing roles\", then give them to your officers.", { roles: missingRoles.join(", ") })
     },
-    channelCheck("Announcements channel", facts.notifyChannel, false, "Run /setup, step 2 (Channels)."),
-    channelCheck("Raid signups channel", facts.raidChannel, false, "Run /setup, step 2 (Channels)."),
-    channelCheck("Officer log channel", facts.logChannel, false, "Run /setup, step 2 (Channels)."),
-    channelCheck("Raid logs channel", facts.raidLogChannel ?? null, true, "Optional: run /setup, step 2 (Channels). Raid summaries use announcements until then."),
-    channelCheck("Dungeon leaderboard channel", facts.dungeonLeaderboardChannel ?? null, true, "Optional: run /setup, step 3 (Dungeon channels)."),
-    channelCheck("Welcome channel", facts.welcomeChannel, true, "Optional: run /setup, step 5 (Welcome)."),
+    channelCheck(lang, T("Announcements channel"), facts.notifyChannel, false, T("Run /setup, step 2 (Channels).")),
+    channelCheck(lang, T("Raid signups channel"), facts.raidChannel, false, T("Run /setup, step 2 (Channels).")),
+    channelCheck(lang, T("Officer log channel"), facts.logChannel, false, T("Run /setup, step 2 (Channels).")),
+    channelCheck(lang, T("Raid logs channel"), facts.raidLogChannel ?? null, true, T("Optional: run /setup, step 2 (Channels). Raid summaries use announcements until then.")),
+    channelCheck(lang, T("Dungeon leaderboard channel"), facts.dungeonLeaderboardChannel ?? null, true, T("Optional: run /setup, step 3 (Dungeon channels).")),
+    channelCheck(lang, T("Welcome channel"), facts.welcomeChannel, true, T("Optional: run /setup, step 5 (Welcome).")),
     ...facts.autoRoles.map((role) => ({
-      label: `Auto-role "${role.name}"`,
+      label: T("Auto-role \"{name}\"", { name: role.name }),
       ok: role.botCanAssign,
       optional: true,
-      fix: `My role must be above "${role.name}": Server Settings > Roles, drag my role higher.`
+      fix: T("My role must be above \"{name}\": Server Settings > Roles, drag my role higher.", { name: role.name })
     })),
     {
-      label: "EPGP point values (base GP set)",
+      label: T("EPGP point values (base GP set)"),
       ok: facts.epgpConfigured,
       optional: true,
-      fix: "Defaults work, but base GP is 0: run /setup step 7 and press \"Use recommended values\"."
+      fix: T("Defaults work, but base GP is 0: run /setup step 7 and press \"Use recommended values\".")
     },
-    { label: "Raid reminders", ok: facts.remindersOn, optional: true, fix: "Optional: turn them on in /setup step 7." },
-    { label: "Weekly guild report", ok: facts.weeklyReportOn, optional: true, fix: "Optional: turn it on in /setup step 7." },
+    { label: T("Raid reminders"), ok: facts.remindersOn, optional: true, fix: T("Optional: turn them on in /setup step 7.") },
+    { label: T("Weekly guild report"), ok: facts.weeklyReportOn, optional: true, fix: T("Optional: turn it on in /setup step 7.") },
     {
-      label: "Companion link to the WoW addon",
+      label: T("Companion link to the WoW addon"),
       ok: facts.companionTokenSet,
       optional: true,
-      fix: "Needed only to sync the addon: put COMPANION_UPLOAD_TOKEN in .env.local (and the same value in companion.config.json), then restart the bot."
+      fix: T("Needed only to sync the addon: put COMPANION_UPLOAD_TOKEN in .env.local (and the same value in companion.config.json), then restart the bot.")
     },
     {
-      label: "Characters linked",
+      label: T("Characters linked"),
       ok: facts.linkedCharacters > 0,
       optional: true,
-      fix: "Everyone runs /character add once so addon data and EPGP match them."
+      fix: T("Everyone runs /character add once so addon data and EPGP match them.")
     }
   ];
   return checks;
