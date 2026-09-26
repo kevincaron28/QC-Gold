@@ -31,7 +31,7 @@ screenshot or `/guilded diag` output. Tick as you go.
 Install: copy `addon\Guilded\` (or unzip `dist\Guilded-v3.0.0.zip` after
 `npm run addon:zip`) into `Interface\AddOns\`, restart the game.
 
-- [ ] Login: no error popup, no "blocked action". `/guilded version` says 3.0.0.
+- [x] (login OK 2026-09-26: Identity Ray / Classic Beta PvP matches the companion realm, no diagnostics, first /reload uploads reached the bot) Login: no error popup, no "blocked action". `/guilded version` says 3.0.0.
       `/guilded diag` first line `Identity: ...` (send it to me once, for the realm check).
 - [ ] **Click the gold coin.** The window has a sidebar (Home, Me, Standings...).
       Nothing overlaps or runs off the window. **Tell me what looks cramped.**

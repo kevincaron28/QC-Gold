@@ -93,7 +93,7 @@ export async function autoLinkUnclaimed(discordGuild: DiscordGuild, database: Db
 export async function claimCharacter(database: Db, guildId: string, memberId: string, nameOrId: string) {
   const wanted = nameOrId.trim();
   const row = await database.unclaimedCharacter.findFirst({ where: { guildId, OR: [{ id: wanted }, { nameKey: nameKey(wanted) }] } });
-  if (!row) throw new Error(`No unclaimed character called "${wanted}". Your addon reports it once you log in with it and an officer's companion uploads; /character list shows what is linked.`);
+  if (!row) throw new Error(`No unclaimed character called "${wanted}". Log in with it (the addon reports it), then an officer's companion uploads and an officer runs /import-apply (or turns on /config auto-import). /character list shows what is linked.`);
   const taken = await database.character.findFirst({ where: { member: { guildId }, name: { equals: row.name, mode: "insensitive" } } });
   if (taken) throw new Error(`${row.name} is already linked to someone.`);
   const outcome = await linkUnclaimed(database, memberId, row);

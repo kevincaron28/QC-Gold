@@ -406,13 +406,17 @@ local function buildMePage(page)
   ui.gearInfo = at(newLabel(page, "", "GameFontHighlightSmall"), page, 0, -30)
   ui.gearInfo:SetWidth(PAGE_WIDTH)
 
-  at(newLabel(page, L("Attunements")), page, 0, -100)
+  local attuneBlock = CreateFrame("Frame", nil, page)
+  attuneBlock:SetWidth(PAGE_WIDTH)
+  attuneBlock:SetHeight(120)
+  attuneBlock:SetPoint("TOPLEFT", ui.gearInfo, "BOTTOMLEFT", 0, -14)
+  at(newLabel(attuneBlock, L("Attunements")), attuneBlock, 0, 0)
   local x = 0
   for _, preset in ipairs(ATTUNEMENT_PRESETS) do
-    at(newButton(page, preset, 104, function() ui.attuneBox:SetText(preset) end), page, x, -120)
+    at(newButton(attuneBlock, preset, 104, function() ui.attuneBox:SetText(preset) end), attuneBlock, x, -20)
     x = x + 108
   end
-  ui.attuneBox = at(newEdit(page, 200), page, 6, -152)
+  ui.attuneBox = at(newEdit(attuneBlock, 200), attuneBlock, 6, -52)
   local function attune(clear)
     local key = string.gsub(ui.attuneBox:GetText(), '"', "")
     if key == "" then ns.message("Pick or type an attunement first."); return end
@@ -423,9 +427,9 @@ local function buildMePage(page)
       run('attune "' .. key .. '"' .. (clear and " clear" or ""))
     end
   end
-  at(newButton(page, L("Mark done"), 90, function() attune(false) end), page, 214, -152)
-  at(newButton(page, L("Clear"), 70, function() attune(true) end), page, 308, -152)
-  ui.attuneInfo = at(newLabel(page, "", "GameFontHighlightSmall"), page, 0, -184)
+  at(newButton(attuneBlock, L("Mark done"), 90, function() attune(false) end), attuneBlock, 214, -52)
+  at(newButton(attuneBlock, L("Clear"), 70, function() attune(true) end), attuneBlock, 308, -52)
+  ui.attuneInfo = at(newLabel(attuneBlock, "", "GameFontHighlightSmall"), attuneBlock, 0, -84)
   ui.attuneInfo:SetWidth(PAGE_WIDTH)
 end
 
@@ -504,6 +508,9 @@ end
 
 -- The Home page: what is going on right now, your standing and gear, whether
 -- your data has reached Discord, and the few things worth pressing first.
+local STATUS_WORD = { READY = "Ready", PARTIAL = "Partly ready", NOT_READY = "Not ready" }
+local function statusWord(status) return L(STATUS_WORD[status] or tostring(status or "?")) end
+
 local function heading(page, text, y)
   return at(newLabel(page, text, "GameFontNormal"), page, 0, y)
 end
@@ -714,8 +721,8 @@ local function refreshHome(db, officer, me)
   if snapshot then
     local problems = 0
     for _, finding in ipairs(snapshot.findings or {}) do if finding.severity ~= "INFO" then problems = problems + 1 end end
-    ui.homeGear:SetText(problems == 0 and string.format(L("%s: nothing missing."), snapshot.status or "?")
-      or string.format(L("%s: %d thing(s) to fix (see Me)."), snapshot.status or "?", problems))
+    ui.homeGear:SetText(problems == 0 and string.format(L("%s: nothing missing."), statusWord(snapshot.status))
+      or string.format(L("%s: %d thing(s) to fix (see Me)."), statusWord(snapshot.status), problems))
   else
     ui.homeGear:SetText(L("No gear check yet. Press Check my gear."))
   end
