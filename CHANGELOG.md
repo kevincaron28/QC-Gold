@@ -3,11 +3,10 @@
 ## Unreleased
 
 **Discord bot**
+- **Soft reserves reach Discord.** The list kept in the addon goes up with the companion's export, and `/loot reserves [item]` shows who reserved what (the newest export replaces the old list; a cleared list clears it). Needs the new database tables: run `npm run db:update` once.
 - **17 commands instead of 34.** Related commands now sit under one parent: `/setup` (`start`, `config`, `testraid`, `selfroles`), `/character` (also `who`, `profession`, `attunement`, `wishlist`, `readiness`), `/raid wcl`, `/dungeon admin`, `/mod application`, `/import upload` and `/import apply`, and a new `/report` (`stats`, `inactive`, `guild`, `export`, `ping`). The old top-level names are gone; the guided setup is now `/setup start`. Nothing else changed: same options, same permissions, same results.
 - **Legacy DKP is hidden.** It is gone from `/profile` and `/epgp dkp` is no longer offered; the stored data and the addon import are untouched.
 - `/setup config channel` replaces the eleven separate `/config ...-channel` commands: pick which channel from a list, then the channel.
-
-- **SoftRes import.** `/import softres <file>` reads a SoftRes.it reserves CSV and adds every reserve to the matching character's wishlist (high priority), so the tooltips and the loot council list show who reserved what. Names that are not linked are listed, nothing is guessed.
 
 **In game**
 - **Soft reserves, built into the addon.** No website needed: an officer runs `/guilded reserve open`, everyone reserves with `/guilded reserve [item link]` (or the new Reserves tab), and the list is shared with the guild. Lock it when the raid starts; when an item drops, `/guilded reserve roll [item link]` rolls between only the players who reserved it and `/guilded reserve award <player> [item link]` records the loot and uses up the reserve. Players without the addon whisper `res [item link]` to the officer. Item tooltips say who reserved the item, and the loot council list puts reservers first.

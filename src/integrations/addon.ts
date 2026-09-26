@@ -132,6 +132,25 @@ export const addonConsumeScanSchema = z.object({
   })).max(100).default([])
 });
 
+// The soft-reserve list from the addon (/guilded reserve). It replaces the bot's copy
+// when it is newer; a cleared list arrives with active = false and no entries.
+export const addonReservesSchema = z.object({
+  at: z.coerce.date(),
+  by: z.string().default(""),
+  title: z.string().default(""),
+  limit: z.number().int().min(1).max(5).default(1),
+  open: z.boolean().default(false),
+  active: z.boolean().default(true),
+  entries: z.array(z.object({
+    character: z.string().min(1),
+    realm: z.string().min(1),
+    itemId: z.number().int().positive(),
+    itemName: z.string().min(1).max(100)
+  })).max(2000).default([])
+});
+
+export type AddonReserves = z.infer<typeof addonReservesSchema>;
+
 export type AddonCharacter = z.infer<typeof addonCharacterSchema>;
 
 export const addonSnapshotSchema = z.object({
@@ -142,6 +161,7 @@ export const addonSnapshotSchema = z.object({
   // Every guildmate whose addon told the guild who they are (peer digests).
   characters: z.array(addonCharacterSchema).max(500).default([]),
   consumeScan: addonConsumeScanSchema.optional(),
+  reserves: addonReservesSchema.optional(),
   transactions: z.array(addonTransactionSchema).default([]),
   epgpTransactions: z.array(addonEpgpTransactionSchema).default([]),
   readiness: z.array(addonReadinessSchema).default([]),

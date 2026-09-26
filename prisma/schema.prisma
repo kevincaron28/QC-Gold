@@ -136,6 +136,8 @@ model Guild {
   dungeonAchievements DungeonAchievement[]
   warcraftLogsReports WarcraftLogsReport[]
   consumableChecks    ConsumableCheck[]
+  reserveList         ReserveList?
+  itemReserves        ItemReserve[]
   raidCores           RaidCore[]
   dungeonGroups       DungeonGroup[]
   polls               Poll[]
@@ -858,6 +860,32 @@ model ConsumableCheck {
 
   @@unique([guildId, character, realm])
   @@index([guildId, scannedAt])
+}
+
+// The soft-reserve list kept in the addon (/guilded reserve), copied here from the
+// companion's export. One list per guild; a newer export replaces it.
+model ReserveList {
+  guildId   String   @id
+  title     String   @default("")
+  perPlayer Int      @default(1)
+  open      Boolean  @default(false)
+  active    Boolean  @default(false)
+  keeper    String   @default("")
+  syncedAt  DateTime
+  guild     Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+}
+
+model ItemReserve {
+  id        String   @id @default(cuid())
+  guildId   String
+  character String
+  realm     String
+  itemId    Int
+  itemName  String
+  guild     Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@unique([guildId, character, realm, itemId])
+  @@index([guildId, itemId])
 }
 
 // A named raid roster. Members get priority at signups for raids made for it.

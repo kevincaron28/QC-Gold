@@ -2,6 +2,7 @@ import { SlashCommandBuilder, type ChatInputCommandInteraction } from "discord.j
 import { createLootService } from "../services/loot.js";
 import { notifications, notify } from "../services/notify.js";
 import { createWishlistService } from "../services/wishlist.js";
+import { describeReserves } from "../services/reserves.js";
 import { prisma } from "../database.js";
 import { hasPermission } from "../permissions.js";
 import { coreForRaid, effectiveRules } from "../services/core-rules.js";
@@ -30,7 +31,9 @@ export const lootCommand = new SlashCommandBuilder()
     .addIntegerOption((o) => o.setName("amount").setDescription("Bid amount").setMinValue(1).setRequired(true)))
   .addSubcommand((sub) => sub.setName("close").setDescription("Close an auction.")
     .addStringOption((o) => o.setName("auction").setDescription("Auction (start typing the item)").setAutocomplete(true).setRequired(true)))
-  .addSubcommand((sub) => sub.setName("history").setDescription("View awarded loot."));
+  .addSubcommand((sub) => sub.setName("history").setDescription("View awarded loot."))
+  .addSubcommand((sub) => sub.setName("reserves").setDescription("Who soft-reserved what (the list kept in the game addon).")
+    .addStringOption((o) => o.setName("item").setDescription("Only this item (part of its name), or one character's reserves").setMaxLength(100)));
 
 function officer(interaction: ChatInputCommandInteraction): boolean {
   return !!interaction.member && hasPermission(interaction.member as Parameters<typeof hasPermission>[0], "officer");
@@ -40,6 +43,10 @@ export async function executeLoot(interaction: ChatInputCommandInteraction): Pro
   const context = await requireGuildContext(interaction);
   if (!context) return;
   const subcommand = interaction.options.getSubcommand();
+  if (subcommand === "reserves") {
+    await interaction.reply({ content: await describeReserves(prisma, context.guildId, interaction.options.getString("item") ?? undefined), ephemeral: true });
+    return;
+  }
   if ((subcommand === "auction" || subcommand === "close" || subcommand === "award") && !officer(interaction)) {
     await interaction.reply({ content: "Only officers, Guild Masters, or administrators can manage auctions.", ephemeral: true });
     return;

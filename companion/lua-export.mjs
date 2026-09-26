@@ -232,6 +232,9 @@ export async function readAddonExport(path, realm) {
     });
   }
 
+  // Soft reserves (addon Modules/Reserve.lua): the whole list, replaced in Discord when newer.
+  const reserves = buildReserves(database.reserves, realm);
+
   // SavedVariables key order is arbitrary; the ISO timestamps sort correctly.
   const exportKeys = Object.keys(database.exports ?? {}).sort();
   const exportedAt = exportKeys.at(-1) ?? new Date().toISOString();
@@ -273,8 +276,36 @@ export async function readAddonExport(path, realm) {
         }))
       }
     } : {}),
+    ...(reserves ? { reserves: { ...reserves, at: reserves.at ?? exportedAt } } : {}),
     raids,
     loot,
     dungeonRuns
+  };
+}
+
+// The addon keeps reserves as entries[player] = { itemId, ... } and names[itemId] = "Name".
+// A cleared list (no keeper) is still sent, empty, so Discord forgets the old one.
+function buildReserves(saved, realm) {
+  if (!saved || typeof saved !== "object" || !saved.updatedAt) return null;
+  const active = Boolean(saved.host);
+  const entries = [];
+  if (active) {
+    for (const [player, ids] of Object.entries(saved.entries ?? {})) {
+      for (const id of Object.values(ids ?? {})) {
+        const itemId = Math.trunc(Number(id));
+        if (!Number.isFinite(itemId) || itemId <= 0) continue;
+        const name = saved.names?.[itemId] ?? saved.names?.[String(itemId)];
+        entries.push({ character: String(player), realm, itemId, itemName: String(name || `Item ${itemId}`).slice(0, 100) });
+      }
+    }
+  }
+  return {
+    at: String(saved.updatedAt),
+    by: active ? String(saved.host) : "",
+    title: active ? String(saved.title ?? "") : "",
+    limit: Math.max(1, Math.min(5, Math.trunc(Number(saved.limit)) || 1)),
+    open: active && saved.open === true,
+    active,
+    entries: entries.slice(0, 2000)
   };
 }

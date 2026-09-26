@@ -75,6 +75,7 @@ export async function executeImportApply(interaction: ChatInputCommandInteractio
   await interaction.reply({
     content: `Applied import \`${importId}\`: ${result.transactions.length} DKP transaction(s), `
       + (result.consumables ? `${result.consumables} consumable check(s), ` : "")
+      + (result.reserves.applied ? `soft-reserve list updated (${result.reserves.entries} reserve(s)), ` : "")
       + (result.discovery.discovered ? `${result.discovery.discovered} new character(s) discovered${autoLinked.length ? ` (linked automatically: ${autoLinked.map((row) => `${row.character} to ${row.member}`).join(", ")})` : ""}${result.discovery.discovered > autoLinked.length ? `, ${result.discovery.discovered - autoLinked.length} waiting for /character claim` : ""}, ` : "")
       + `${result.epgpTransactions.length} EPGP transaction(s), ${result.readinessSnapshots.length} `
       + `readiness snapshot(s), and ${result.attunements.length} attunement update(s) recorded. `

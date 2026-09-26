@@ -159,7 +159,10 @@ local function announce(text)
   sendChat("[Guilded] " .. text, groupChannel() or (IsInGuild and IsInGuild() and "GUILD" or nil))
 end
 
+-- Every change stamps the list (the companion exports it, and the newest copy wins in Discord).
 local function changed()
+  local s = state()
+  if s and ns.now then s.updatedAt = ns.now() end
   if ns.onReserveChange then pcall(ns.onReserveChange) end
 end
 

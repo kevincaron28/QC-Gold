@@ -8,7 +8,6 @@ import { importCommand, executeImport } from "./import.js";
 import { lootCommand } from "./loot.js";
 import { applicationCommand, applyCommand, executeApplication } from "./application.js";
 import { importApplyCommand, executeImportApply } from "./import-apply.js";
-import { importSoftresCommand, executeImportSoftres } from "./import-softres.js";
 import { epgpCommand } from "./epgp.js";
 import { readinessCommand, executeReadiness } from "./readiness.js";
 import { attunementCommand, executeAttunement } from "./attunement.js";
@@ -64,10 +63,9 @@ const mod = new MergedCommand("mod", "Moderation and guild applications (officer
   { command: applicationCommand, handler: executeApplication, as: "application" }
 ], { command: moderationCommand, handler: executeModeration });
 
-const importer = new MergedCommand("import", "Bring data into Discord: addon files (preview, then apply) and SoftRes reserves (officers).", [
+const importer = new MergedCommand("import", "Bring addon data into Discord: preview a file, then apply it (officers).", [
   { command: importCommand, handler: executeImport, as: "upload" },
-  { command: importApplyCommand, handler: executeImportApply, as: "apply" },
-  { command: importSoftresCommand, handler: executeImportSoftres, as: "softres" }
+  { command: importApplyCommand, handler: executeImportApply, as: "apply" }
 ]);
 
 const report = new MergedCommand("report", "Guild reports: activity, inactive members, health, exports and bot status.", [

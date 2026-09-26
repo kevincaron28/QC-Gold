@@ -30,7 +30,7 @@ versus member views. They are listed in the release checklist.
 3. ~~Warcraft Logs, next level~~ **built** (`/config wcl-guild`, `/wcl check`); needs a try on a real guild page and a raid that was run through the bot.
 4. ~~Chat tab for addon messages~~ **built** (3.2.0, `/guilded chat tab`); needs a look in the real game (opening a chat window is the untested part).
 5. ~~Loot response voting~~ **built** (in the addon, `/guilded council`); needs a try with a second player (popup, whisper answers).
-6. **Soft reserves in the addon** **built** (`/guilded reserve`); needs a try with a second player. **Imports:** ~~SoftRes~~ **built** (`/import softres`, from a real export). That's My BiS and Guild Roster Manager still need sample files from a real export.
+6. **Soft reserves in the addon** **built** (`/guilded reserve`, synced to Discord with `/loot reserves`); needs a try with a second player. **Imports:** That's My BiS and Guild Roster Manager still need sample files from a real export.
 7. **Guild calendar sync:** in-game events to Discord and back. Half built (the check command exists).
 8. **Recipes and cooldowns:** who can craft what, transmute cooldowns, shopping list.
 9. **Web dashboard** for standings, loot and raid history.

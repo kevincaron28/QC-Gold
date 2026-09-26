@@ -163,6 +163,16 @@ describe("Reserve.lua keeper side", () => {
     expect(holders(s, 19364)).toBe("");
   });
 
+  it("stamps the list on every change, so the newest copy wins in Discord", () => {
+    const s = withReserve("Boss", true);
+    s.run(`NS.now = function() STAMP = (STAMP or 0) + 1; return "t" .. STAMP end`);
+    cmd(s, "open");
+    const opened = s.run("return DB.reserves.updatedAt");
+    addon(s, "Ann", "ADD|1");
+    expect(opened).not.toBe("");
+    expect(s.run("return DB.reserves.updatedAt")).not.toBe(opened);
+  });
+
   it("clears the list and tells the guild", () => {
     const s = withReserve("Boss", true);
     cmd(s, "open");
