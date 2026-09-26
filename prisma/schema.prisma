@@ -138,6 +138,7 @@ model Guild {
   consumableChecks    ConsumableCheck[]
   reserveList         ReserveList?
   recipesKnown        RecipeKnown[]
+  coreItemValues      CoreItemValue[]
   professionCooldowns ProfessionCooldown[]
   itemReserves        ItemReserve[]
   raidCores           RaidCore[]
@@ -926,6 +927,24 @@ model ProfessionCooldown {
   @@index([guildId, readyAt])
 }
 
+// The set GP price of an item (EPGP priority loot). coreId "" is the guild-wide default; a
+// core's own price for the same item wins. itemKey is the lower-case item name, or "#id" for
+// a price given by item id only.
+model CoreItemValue {
+  id        String   @id @default(cuid())
+  guildId   String
+  coreId    String   @default("")
+  itemKey   String
+  itemId    Int?
+  itemName  String
+  gp        Int
+  updatedAt DateTime @updatedAt
+  guild     Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@unique([guildId, coreId, itemKey])
+  @@index([guildId, coreId])
+}
+
 // A named raid roster. Members get priority at signups for raids made for it.
 model RaidCore {
   id              String           @id @default(cuid())
@@ -940,8 +959,10 @@ model RaidCore {
   completionEp    Int?
   baseGp          Int?
   decayPercent    Float?
-  // "EPGP" or "COUNCIL"; empty follows the guild's /config loot-mode.
+  // "EPGP", "COUNCIL", "RESERVE" or "PRIORITY"; empty follows the guild's /config loot-mode.
   lootMode        String?
+  // Soft reserves per player for this core (RESERVE mode); empty = 1.
+  reservesPerPlayer Int?
   // true: this core keeps its own EP/GP, apart from the guild pool.
   separatePool    Boolean          @default(false)
   createdAt       DateTime         @default(now())

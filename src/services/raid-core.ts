@@ -44,6 +44,8 @@ export function createRaidCoreService(database: Db) {
     async remove(guildId: string, value: string) {
       const core = await byIdOrName(guildId, value);
       await database.raidCore.delete({ where: { id: core.id } });
+      // Prices are kept apart from the core (no foreign key: "" is the guild-wide list).
+      await database.coreItemValue.deleteMany({ where: { guildId, coreId: core.id } });
       return core;
     },
 

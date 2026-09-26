@@ -46,6 +46,7 @@ new `KIND`, never a changed one.
 | Bidding.lua | `bidding` | GuildedBid | In-game GP bidding on loot |
 | Recipes.lua | `recipes` | GuildedRcp | Recipes and profession cooldowns: who can craft what, shared with the guild |
 | Reserve.lua | `reserve` | GuildedRes | Soft reserves: reserve items for a raid, shared list, roll between reservers |
+| Loot.lua | (always on) | none | Which loot system this raid core uses, item prices, `/guilded drop`, `/guilded core` |
 | Council.lua | `council` | GuildedLC | Loot council: BiS / upgrade / off-spec answers, ranked for the officers |
 | Dungeon.lua | `dungeon` | GuildedDgn | Dungeon run tracking for the Dungeon Challenge |
 | Calendar.lua | `calendar` | (none) | `/guilded calendar check` |
@@ -94,6 +95,16 @@ id in `db.reserves` (`entries`, `names`, `host`, `open`, `limit`, `title`). `REQ
 the keeper to share again. Whispers `res [link]` / `unres [link]` cover players without the addon.
 Tooltip.lua adds "Reserved by ...", Council.lua ranks reservers first.
 
+## Loot.lua
+
+Loads what the bot knows per raid core from `db.lootRules` (Sync.lua adopts the companion's
+`GuildedLoot` global: `default`, `minimumBid`, guild-wide `values`, and `cores` with `mode`, `pool`,
+`reserves`, `baseGp`, `values` and, for an own pool, `players`). Item price keys are the lower-case item
+name (cleaned like tooltip keys) and `#itemId`. The core being run is `settings.activeCore` (set with
+`/guilded core`) or `GuildedNextRaid.core`; `settings.lootMode` overrides the system. `/guilded drop` picks
+the flow: bidding, council, reserves, or priority (`ns.council.startPriority`). Only the officer's
+addon needs the rules; raiders get everything they need in the message that opens the popup.
+
 ## Council.lua
 
 Loot council answers: `/guilded council start <item> [seconds]` opens it for the
@@ -101,7 +112,8 @@ raid (addon users get a popup with BiS / Upgrade / Off-spec / Pass, pugs whisper
 a word). Answers rank by tier, then PR, then time, and carry what the player
 wears in that slot. `award [player] [GP]` records the loot through Core's own
 commands (GP only when a price is given). Prefix `GuildedLC`: `OPEN`, `RESP`,
-`ACK`, `CLOSE`, `AWARD`.
+`ACK`, `CLOSE`, `AWARD`. EPGP priority uses the same window: `OPENP|id|seconds|price|item`, answers `want` or
+`pass`, ranked by PR only, awarded by itself at the close.
 
 ## Dungeon.lua
 

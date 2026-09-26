@@ -1,10 +1,11 @@
 import {
-  ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle,
+  ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, ModalBuilder, StringSelectMenuBuilder, TextInputBuilder, TextInputStyle,
   UserSelectMenuBuilder, type ChatInputCommandInteraction, type Message, type MessageComponentInteraction
 } from "discord.js";
 import type { RaidCore, RaidRole } from "@prisma/client";
 import { prisma } from "../database.js";
-import { describeRules, effectiveRules } from "../services/core-rules.js";
+import { asLootMode, describeRules, effectiveRules, LOOT_MODE_HELP, LOOT_MODE_LABEL, LOOT_MODES } from "../services/core-rules.js";
+import { createItemValueService, parseItemValues } from "../services/item-values.js";
 import { coreRosterEmbed, createRaidCoreService, syncCoreRoster } from "../services/raid-core.js";
 import { guildService } from "./context.js";
 
@@ -14,6 +15,7 @@ import { guildService } from "./context.js";
 // Everything is saved as you go; closing the message loses nothing.
 
 const coreService = createRaidCoreService(prisma);
+const itemValues = createItemValueService(prisma);
 const ROLE_LABEL: Record<RaidRole, string> = { TANK: "Tanks", HEALER: "Healers", DPS: "DPS" };
 
 const btn = (id: string, label: string, style: ButtonStyle = ButtonStyle.Secondary) =>
@@ -53,22 +55,33 @@ async function rosterStep(core: { id: string; name: string; description: string 
 
 async function rulesStep(coreId: string, guildId: string, note: string) {
   const core = await prisma.raidCore.findUniqueOrThrow({ where: { id: coreId } });
-  const rules = effectiveRules(await guildService.getSettings(guildId), core);
+  const settings = await guildService.getSettings(guildId);
+  const rules = effectiveRules(settings, core);
+  const guildMode = asLootMode(settings?.lootMode);
+  const priced = rules.lootMode === "PRIORITY" ? await itemValues.effective(guildId, core.id) : [];
   const embed = new EmbedBuilder().setColor(0xd4af37).setTitle(`⚜️ ${core.name} — step 3 of 3: rules`)
     .setDescription([
       "By default a core follows **the guild's rules** (EP values, loot, points), exactly like every other core. Change only what should differ.",
       "",
       describeRules(rules, core.name),
+      `\n**Loot system:** ${LOOT_MODE_HELP[rules.lootMode]}`,
+      rules.lootMode === "PRIORITY" ? `**Item prices:** ${priced.length} set${priced.length ? "" : " (none yet: press Item prices)"}. Prices are also managed with \`/core items\`.` : "",
       note ? `\n**Last action:** ${note}` : ""
-    ].join("\n"));
+    ].filter(Boolean).join("\n"));
+  const menu = new StringSelectMenuBuilder().setCustomId("corewiz:lootmode").setPlaceholder("How is loot decided in this core?").addOptions(
+    { label: `Follow the guild (${LOOT_MODE_LABEL[guildMode]})`.slice(0, 100), value: "DEFAULT", default: !core.lootMode },
+    ...LOOT_MODES.map((mode) => ({ label: LOOT_MODE_LABEL[mode].replace(/^./, (c) => c.toUpperCase()), description: LOOT_MODE_HELP[mode].slice(0, 100), value: mode, default: core.lootMode === mode })));
+  const buttons = [
+    btn("ep", "Change EP values"),
+    btn("pool", core.separatePool ? "Own point pool: ON" : "Own point pool: off", core.separatePool ? ButtonStyle.Success : ButtonStyle.Secondary)
+  ];
+  if (rules.lootMode === "PRIORITY") buttons.push(btn("prices", "Item prices", ButtonStyle.Primary));
+  if (rules.lootMode === "RESERVE") buttons.push(btn("reserves", `Reserves per player: ${rules.reservesPerPlayer}`));
   return {
     embeds: [embed],
     components: [
-      new ActionRowBuilder<ButtonBuilder>().addComponents(
-        btn("ep", "Change EP values"),
-        btn("pool", core.separatePool ? "Own point pool: ON" : "Own point pool: off", core.separatePool ? ButtonStyle.Success : ButtonStyle.Secondary),
-        btn("council", rules.lootMode === "COUNCIL" && core.lootMode ? "Loot council: ON" : "Loot council: off", core.lootMode === "COUNCIL" ? ButtonStyle.Success : ButtonStyle.Secondary)
-      ),
+      new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu),
+      new ActionRowBuilder<ButtonBuilder>().addComponents(...buttons),
       new ActionRowBuilder<ButtonBuilder>().addComponents(btn("back", "◀ Players"), btn("finish", "Finish ✔", ButtonStyle.Success))
     ]
   };
@@ -79,6 +92,12 @@ function nameModal() {
     new ActionRowBuilder<TextInputBuilder>().addComponents(new TextInputBuilder().setCustomId("name").setLabel("Name").setPlaceholder("Tuesday Molten Core").setStyle(TextInputStyle.Short).setMinLength(2).setMaxLength(50).setRequired(true)),
     new ActionRowBuilder<TextInputBuilder>().addComponents(new TextInputBuilder().setCustomId("description").setLabel("Description (optional)").setPlaceholder("Tuesdays 8pm, progression").setStyle(TextInputStyle.Short).setMaxLength(300).setRequired(false))
   );
+}
+
+export function pricesModal(core: Pick<RaidCore, "name">) {
+  return new ModalBuilder().setCustomId("corewiz:prices-modal").setTitle(`Item prices: ${core.name}`.slice(0, 45)).addComponents(
+    new ActionRowBuilder<TextInputBuilder>().addComponents(new TextInputBuilder().setCustomId("prices").setLabel("One 'item = GP price' per line")
+      .setPlaceholder("Sulfuras, Hand of Ragnaros = 250\nBindings of the Windseeker = 120").setStyle(TextInputStyle.Paragraph).setRequired(true).setMaxLength(4000)));
 }
 
 export function epModal(core: RaidCore) {
@@ -155,17 +174,39 @@ export async function runCoreWizard(interaction: ChatInputCommandInteraction): P
         await interaction.editReply(action === "rules" ? await rulesStep(coreId, guildId, "") : await rosterStep(core, guildId, ""));
         return;
       }
-      if (action === "pool" || action === "council") {
+      if (action === "pool") {
         await i.deferUpdate();
-        let note: string;
-        if (action === "pool") {
-          await prisma.raidCore.update({ where: { id: coreId }, data: { separatePool: !core.separatePool } });
-          note = !core.separatePool ? "This core now has its own point pool (from now on)." : "Back to the shared guild pool.";
-        } else {
-          await prisma.raidCore.update({ where: { id: coreId }, data: { lootMode: core.lootMode === "COUNCIL" ? null : "COUNCIL" } });
-          note = core.lootMode === "COUNCIL" ? "Loot follows the guild again." : "This core now decides loot by council (officers use /loot award).";
+        await prisma.raidCore.update({ where: { id: coreId }, data: { separatePool: !core.separatePool } });
+        await interaction.editReply(await rulesStep(coreId, guildId, !core.separatePool ? "This core now has its own point pool (from now on)." : "Back to the shared guild pool."));
+        return;
+      }
+      if (action === "lootmode" && i.isStringSelectMenu()) {
+        await i.deferUpdate();
+        const chosen = i.values[0] ?? "DEFAULT";
+        await prisma.raidCore.update({ where: { id: coreId }, data: { lootMode: chosen === "DEFAULT" ? null : asLootMode(chosen) } });
+        await interaction.editReply(await rulesStep(coreId, guildId, chosen === "DEFAULT" ? "Loot follows the guild again." : `Loot in this core: ${LOOT_MODE_LABEL[asLootMode(chosen)]}.`));
+        return;
+      }
+      if (action === "reserves") {
+        await i.deferUpdate();
+        const next = ((core.reservesPerPlayer ?? 1) % 5) + 1;
+        await prisma.raidCore.update({ where: { id: coreId }, data: { reservesPerPlayer: next } });
+        await interaction.editReply(await rulesStep(coreId, guildId, `Each player may reserve ${next} item${next === 1 ? "" : "s"}.`));
+        return;
+      }
+      if (action === "prices" && i.isButton()) {
+        await i.showModal(pricesModal(core));
+        const submitted = await i.awaitModalSubmit({ time: 10 * 60_000, filter: (m) => m.user.id === i.user.id }).catch(() => null);
+        if (!submitted) return;
+        try {
+          const parsed = parseItemValues(submitted.fields.getTextInputValue("prices"));
+          if (parsed.values.length === 0) throw new Error(parsed.problems[0] ?? "No prices found. Use one line per item: Sulfuras = 250");
+          const saved = await itemValues.setMany(guildId, coreId, parsed.values);
+          await submitted.deferUpdate();
+          await interaction.editReply(await rulesStep(coreId, guildId, `Saved ${saved} price(s).${parsed.problems.length ? ` Skipped: ${parsed.problems.slice(0, 2).join("; ")}` : ""}`));
+        } catch (error) {
+          await submitted.reply({ content: error instanceof Error ? error.message : "Could not save the prices.", ephemeral: true });
         }
-        await interaction.editReply(await rulesStep(coreId, guildId, note));
         return;
       }
       if (action === "ep" && i.isButton()) {

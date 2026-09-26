@@ -39,6 +39,8 @@ versus member views. They are listed in the release checklist.
 
 ## Also done
 
+- **Loot systems per raid core** (GP bids, loot council, soft reserves, EPGP priority with set item prices): chosen in `/core setup`, prices with `/core items`, run in game with `/guilded drop`. Needs a try with a second player (the priority popup and the automatic award are the untested parts).
+
 - **Ready page** (3.3.0, officers and group leaders): who in the raid is ready, in the window and as `/guilded ready`, with a ready check. Needs a look in a real raid group (party and raid units are the untested part).
 - **French option** (setup language choice, French server and posts). Left for a later pass: officers' own screens and replies, and Discord's slash-command description translations.
 

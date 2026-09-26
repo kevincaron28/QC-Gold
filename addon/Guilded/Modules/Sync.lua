@@ -213,6 +213,42 @@ local function receiveChunk(text, sender)
   incoming = nil
 end
 
+-- How each raid core decides loot, from the companion-written GuildedLoot (see Modules/Loot.lua).
+local function cleanValues(source)
+  local out = {}
+  if type(source) == "table" then
+    for key, gp in pairs(source) do
+      if type(key) == "string" and tonumber(gp) then out[key] = math.floor(tonumber(gp)) end
+    end
+  end
+  return out
+end
+
+local function adoptLootRules(file, updatedAt)
+  local rules = {
+    updatedAt = updatedAt, default = tostring(file.default or "EPGP"), minimumBid = tonumber(file.minimumBid) or 10,
+    values = cleanValues(file.values), cores = {}
+  }
+  for _, core in ipairs(file.cores or {}) do
+    if type(core) == "table" and type(core.name) == "string" then
+      local baseGp = tonumber(core.baseGp) or 0
+      local players = {}
+      for _, row in ipairs(core.players or {}) do
+        local name = ns.normalizeName(row.name)
+        if name then
+          local ep, gp = tonumber(row.ep) or 0, tonumber(row.gp) or 0
+          players[name] = { ep = ep, gp = gp, pr = priority(ep, gp, baseGp) }
+        end
+      end
+      table.insert(rules.cores, {
+        id = tostring(core.id or ""), name = core.name, mode = tostring(core.mode or "EPGP"), pool = core.pool == true,
+        reserves = tonumber(core.reserves) or 1, baseGp = baseGp, values = cleanValues(core.values), players = players
+      })
+    end
+  end
+  return rules
+end
+
 -- Adopt the companion-written Standings.lua if it is newer than the saved copy.
 local function adoptFileStandings()
   local file = GuildedStandings
@@ -239,7 +275,14 @@ local function adoptFileStandings()
     end
   end
   d.items = { updatedAt = file.updatedAt, list = items, from = "companion" }
+  if type(GuildedLoot) == "table" then d.lootRules = adoptLootRules(GuildedLoot, file.updatedAt) end
   return true
+end
+
+-- The loot systems and item prices per raid core (nil until the companion has sent them).
+function ns.getLootRules()
+  local d = db()
+  return d and d.lootRules or nil
 end
 
 -- What the item tooltip shows for an item key (see Tooltip.lua): { gp, n, wn, wish } or nil.

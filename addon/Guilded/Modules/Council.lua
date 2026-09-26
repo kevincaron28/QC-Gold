@@ -14,6 +14,10 @@
 --     /guilded loot command (and /guilded gp when a price is given), so it lands in
 --     the ledger and loot history like any other award.
 --
+-- The same window also runs EPGP priority loot (a core's loot system, see Loot.lua): every item
+-- has a set GP price, raiders answer "I want it" or Pass, and the highest PR among those who
+-- want it wins and pays that price. It is awarded by itself when time runs out.
+--
 -- Chat: one raid-chat line to open, one to announce the winner. Answers stay private.
 local addonName, ns = ...
 ns = ns or {}
@@ -34,12 +38,24 @@ local TIERS = {
   bis = { rank = 1, label = "BiS", chat = "BiS" },
   up = { rank = 2, label = "Upgrade", chat = "Upgrade" },
   os = { rank = 3, label = "Off-spec", chat = "Off-spec" },
+  want = { rank = 1, label = "I want it", chat = "Want" },
   pass = { rank = 9, label = "Pass", chat = "Pass" }
 }
-local TIER_ORDER = { "bis", "up", "os", "pass" }
-local WORDS = {
-  bis = "bis", upgrade = "up", up = "up", os = "os", offspec = "os", ["off-spec"] = "os", pass = "pass"
+-- Which answers a kind of session takes, in popup order.
+local KIND_TIERS = {
+  council = { "bis", "up", "os", "pass" },
+  priority = { "want", "pass" }
 }
+local WORDS = {
+  bis = "bis", upgrade = "up", up = "up", os = "os", offspec = "os", ["off-spec"] = "os", pass = "pass",
+  want = "want", need = "want", yes = "want", ["+"] = "want"
+}
+local function takes(kind, tier)
+  for _, allowed in ipairs(KIND_TIERS[kind or "council"] or KIND_TIERS.council) do
+    if allowed == tier then return true end
+  end
+  return false
+end
 council.TIERS = TIERS
 
 -- ---------------------------------------------------------------------
@@ -138,6 +154,8 @@ council.equippedFor = equippedFor
 -- ---------------------------------------------------------------------
 
 local function prFor(name)
+  -- A core with its own point pool ranks by that pool (Loot.lua).
+  if ns.loot and ns.loot.prFor then return ns.loot.prFor(name) end
   local standing = ns.getStanding and ns.getStanding(name)
   return standing and standing.pr or 0
 end
@@ -167,6 +185,11 @@ local function rankedResponses(session)
     end
   end
   table.sort(list, function(a, b)
+    if session.kind == "priority" then
+      -- EPGP priority: the highest PR among those who want it.
+      if a.pr ~= b.pr then return a.pr > b.pr end
+      return a.at < b.at
+    end
     -- Someone who soft-reserved the item comes before everyone else.
     if a.reserved ~= b.reserved then return a.reserved end
     local ra, rb = TIERS[a.tier].rank, TIERS[b.tier].rank
@@ -186,6 +209,8 @@ local function passCount(session)
   return n
 end
 
+local awardSession
+
 local function closeSession(id)
   local session = council.current
   if not session or session.id ~= id or not session.open then return end
@@ -195,6 +220,11 @@ local function closeSession(id)
   if #ranked == 0 then
     announce(string.format(L("Nobody wants %s."), session.item))
     council.current = nil
+  elseif session.kind == "priority" then
+    -- The set price goes to the highest PR: no decision left to make.
+    changed()
+    awardSession({})
+    return
   else
     ns.message(string.format("Council closed: %d want %s. Look at the list, then award: /guilded council award <player> [GP].",
       #ranked, plainItem(session.item)))
@@ -202,7 +232,9 @@ local function closeSession(id)
   changed()
 end
 
-local function openSession(args)
+-- opts: { kind = "priority", price = GP } for EPGP priority loot; nothing for a loot council.
+local function openSession(args, opts)
+  opts = opts or {}
   if not ns.isOfficer() then ns.message("Only officers can run the loot council."); return end
   if council.current then ns.message("The council is already looking at " .. council.current.item .. ". Award or cancel it first."); return end
   local channel = groupChannel()
@@ -218,10 +250,16 @@ local function openSession(args)
   local id = string.format("%d%03d", time(), math.random(0, 999))
   council.current = {
     id = id, item = item, seconds = seconds, endsAt = clock() + seconds,
-    responses = {}, open = true, channel = channel
+    responses = {}, open = true, channel = channel, kind = opts.kind or "council", price = opts.price
   }
-  sendAddon(string.format("OPEN|%s|%d|%s", id, seconds, item), channel)
-  announce(string.format(L("Loot council on %s: answer in the Guilded popup, or whisper me bis, upgrade, os or pass (%ds)."), item, seconds))
+  if opts.kind == "priority" then
+    sendAddon(string.format("OPENP|%s|%d|%d|%s", id, seconds, opts.price or 0, item), channel)
+    announce(string.format(L("%s costs %d GP. Want it? Answer in the Guilded popup, or whisper me want or pass. The highest PR gets it (%ds)."),
+      item, opts.price or 0, seconds))
+  else
+    sendAddon(string.format("OPEN|%s|%d|%s", id, seconds, item), channel)
+    announce(string.format(L("Loot council on %s: answer in the Guilded popup, or whisper me bis, upgrade, os or pass (%ds)."), item, seconds))
+  end
   if C_Timer and C_Timer.After then C_Timer.After(seconds, function() closeSession(id) end) end
   changed()
 end
@@ -230,7 +268,7 @@ end
 -- whisper, for players without the addon), or nil (simulated).
 local function addResponse(name, tier, gear, replyTo, reply)
   local session = council.current
-  if not session or not session.open or not name or not TIERS[tier] then return end
+  if not session or not session.open or not name or not TIERS[tier] or not takes(session.kind, tier) then return end
   session.responses[name] = { tier = tier, at = clock(), gear = gear ~= "" and gear or nil }
   if reply == "addon" then sendAddon("ACK|" .. session.id .. "|" .. tier, "WHISPER", replyTo)
   elseif reply == "whisper" then
@@ -240,7 +278,7 @@ local function addResponse(name, tier, gear, replyTo, reply)
 end
 council.addResponse = addResponse
 
-local function awardSession(args)
+awardSession = function(args)
   local session = council.current
   if not session then ns.message("No loot council to award."); return end
   if session.open then closeSession(session.id) end
@@ -252,13 +290,18 @@ local function awardSession(args)
     if not ranked[1] then ns.message("Say who gets it: /guilded council award <player> [GP]."); return end
     name = ranked[1].name
   end
-  local gp = math.floor(tonumber(args[2]) or 0)
+  -- Priority loot costs the set price unless the officer names another one.
+  local gp = math.floor(tonumber(args[2]) or session.price or 0)
   if gp < 0 or gp > MAX_GP then ns.message("That GP is out of range."); return end
   local item = plainItem(session.item)
   ns.runCommand("loot " .. name .. " " .. item .. " " .. gp)
-  if gp > 0 then ns.runCommand("gp " .. name .. " " .. gp .. " Council: " .. item) end
+  if gp > 0 then ns.runCommand("gp " .. name .. " " .. gp .. " " .. (session.kind == "priority" and "Priority: " or "Council: ") .. item) end
   sendAddon(string.format("AWARD|%s|%s", session.id, name), session.channel)
-  announce(string.format(L("%s goes to %s."), session.item, name))
+  if session.kind == "priority" then
+    announce(string.format(L("%s goes to %s for %d GP."), session.item, name, gp))
+  else
+    announce(string.format(L("%s goes to %s."), session.item, name))
+  end
   council.current = nil
   changed()
 end
@@ -278,7 +321,8 @@ function council.statusText()
   if not session then return "No loot council running." end
   local ranked = rankedResponses(session)
   local left = math.max(0, math.floor(session.endsAt - clock()))
-  local lines = { string.format("%s - %s", plainItem(session.item),
+  local lines = { string.format("%s%s - %s", plainItem(session.item),
+    session.kind == "priority" and string.format(" (%d GP, priority)", session.price or 0) or "",
     session.open and (left .. "s left") or "closed, waiting for Award") }
   for i = 1, math.min(10, #ranked) do
     local r = ranked[i]
@@ -286,7 +330,7 @@ function council.statusText()
     if r.reserved then table.insert(extra, "reserved") end
     if r.wish then table.insert(extra, "wishlist") end
     if r.gear then table.insert(extra, "wears " .. r.gear) end
-    table.insert(lines, string.format("%d. %s  %s  (PR %.2f)%s", i, r.name, TIERS[r.tier].label, r.pr,
+    table.insert(lines, string.format("%d. %s  %s  (PR %.2f)%s", i, r.name, session.kind == "priority" and "wants it" or TIERS[r.tier].label, r.pr,
       #extra > 0 and ("  - " .. table.concat(extra, ", ")) or ""))
   end
   if #ranked == 0 then table.insert(lines, "No answers yet.") end
@@ -295,12 +339,18 @@ function council.statusText()
   return table.concat(lines, "\n")
 end
 
+-- EPGP priority loot (called by Loot.lua): the item at its set price.
+function council.startPriority(item, price, seconds)
+  openSession({ item, tostring(seconds or DEFAULT_SECONDS) }, { kind = "priority", price = math.floor(tonumber(price) or 0) })
+end
+
 -- /guilded sim council: fake raiders answer the open item (test raids).
 ns.simulateCouncil = function()
   local session = council.current
   if not session or not session.open then ns.message("Open the loot council first (/guilded council start ...)."); return end
   local names = ns.SIM_NAMES or {}
   local pick = { "bis", "up", "os", "up", "pass" }
+  if session.kind == "priority" then pick = { "want", "want", "pass", "want", "want" } end
   for i = 1, math.min(#pick, #names) do
     addResponse(names[i], pick[i], i == 2 and "Old Sword (60)" or "", nil, nil)
   end
@@ -315,12 +365,29 @@ local function hidePopup()
   if popup then popup:Hide() end
 end
 
+-- Shows the buttons this kind of session takes, side by side.
+local function layoutButtons(kind)
+  local x = 22
+  for _, entry in ipairs(popup.buttons) do
+    if takes(kind, entry.tier) then
+      entry.button:ClearAllPoints()
+      entry.button:SetPoint("TOPLEFT", popup, "TOPLEFT", x, -78)
+      entry.button:Show()
+      x = x + 80
+    else
+      entry.button:Hide()
+    end
+  end
+end
+
 local function updatePopup()
   local incoming = council.incoming
   if not popup or not incoming then return end
   local left = math.max(0, math.floor(incoming.endsAt - clock()))
+  popup.title:SetText(incoming.kind == "priority" and L("Guilded - EPGP priority") or L("Guilded - loot council"))
   popup.item:SetText(incoming.item)
-  popup.info:SetText(string.format(L("%ds left"), left))
+  popup.info:SetText(string.format(L("%ds left"), left) .. (incoming.kind == "priority" and string.format(L("   -   costs %d GP"), incoming.price or 0) or ""))
+  layoutButtons(incoming.kind)
   popup.mine:SetText(incoming.mine and string.format(L("Your answer: %s"), L(TIERS[incoming.mine].label)) or "")
   if left <= 0 then hidePopup() end
 end
@@ -353,23 +420,23 @@ local function buildPopup()
       insets = { left = 11, right = 12, top = 12, bottom = 11 }
     })
   end
-  local title = popup:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-  title:SetPoint("TOP", popup, "TOP", 0, -14)
-  title:SetText(L("Guilded - loot council"))
+  popup.title = popup:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+  popup.title:SetPoint("TOP", popup, "TOP", 0, -14)
+  popup.title:SetText(L("Guilded - loot council"))
   popup.item = popup:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
   popup.item:SetPoint("TOP", popup, "TOP", 0, -34)
   popup.info = popup:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
   popup.info:SetPoint("TOP", popup, "TOP", 0, -54)
 
-  local x = 22
-  for _, tier in ipairs(TIER_ORDER) do
+  -- One button per answer; a session shows the ones it takes (see layoutButtons).
+  popup.buttons = {}
+  for _, tier in ipairs({ "bis", "up", "os", "want", "pass" }) do
     local button = CreateFrame("Button", nil, popup, "UIPanelButtonTemplate")
     button:SetWidth(76)
     button:SetHeight(22)
-    button:SetPoint("TOPLEFT", popup, "TOPLEFT", x, -78)
     button:SetText(L(TIERS[tier].label))
     button:SetScript("OnClick", function() respond(tier) end)
-    x = x + 80
+    table.insert(popup.buttons, { tier = tier, button = button })
   end
 
   popup.mine = popup:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
@@ -403,12 +470,18 @@ ns.commandHandlers = ns.commandHandlers or {}
 ns.commandHandlers["council"] = function(args)
   local action = string.lower(args[1] or "")
   table.remove(args, 1)
-  local officerActions = { start = true, close = true, award = true, cancel = true }
+  local officerActions = { start = true, priority = true, close = true, award = true, cancel = true }
   if officerActions[action] and not ns.isOfficer() then
     ns.message("Only officers can run the loot council.")
     return
   end
   if action == "start" then openSession(args)
+  elseif action == "priority" then
+    -- /guilded council priority <GP> <item> [seconds]
+    local price = tonumber(args[1])
+    if not price or price < 0 or #args < 2 then ns.message("Usage: /guilded council priority <GP> <item or link> [seconds]"); return end
+    table.remove(args, 1)
+    openSession(args, { kind = "priority", price = math.floor(price) })
   elseif action == "close" then
     if council.current then closeSession(council.current.id) end
   elseif action == "award" then awardSession(args)
@@ -418,7 +491,7 @@ ns.commandHandlers["council"] = function(args)
     -- A member answering from the keyboard, e.g. /guilded council bis
     if council.incoming then respond(WORDS[action]) else ns.message("No loot council is open for you.") end
   else
-    ns.message("/guilded council start <item> [seconds] | close | award [player] [GP] | cancel | status  -  members: bis | upgrade | os | pass")
+    ns.message("/guilded council start <item> [seconds] | priority <GP> <item> [seconds] | close | award [player] [GP] | cancel | status  -  members: bis | upgrade | os | want | pass")
   end
 end
 ns.commandHandlers["lc"] = ns.commandHandlers["council"]
@@ -454,7 +527,14 @@ local function onEvent(_, event, ...)
       if not ns.isOfficerName(name) then return end
       local id, seconds, item = string.match(text, "^OPEN|([^|]+)|(%d+)|(.+)$")
       if not id then return end
-      council.incoming = { id = id, item = item, endsAt = clock() + tonumber(seconds), officer = sender }
+      council.incoming = { id = id, item = item, endsAt = clock() + tonumber(seconds), officer = sender, kind = "council" }
+      showPopup()
+    elseif kind == "OPENP" then
+      -- EPGP priority: the price comes with the message.
+      if not ns.isOfficerName(name) then return end
+      local id, seconds, price, item = string.match(text, "^OPENP|([^|]+)|(%d+)|(%d+)|(.+)$")
+      if not id then return end
+      council.incoming = { id = id, item = item, endsAt = clock() + tonumber(seconds), officer = sender, kind = "priority", price = tonumber(price) }
       showPopup()
     elseif kind == "ACK" then
       local id, tier = string.match(text, "^ACK|([^|]+)|(%a+)$")

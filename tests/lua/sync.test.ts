@@ -125,4 +125,34 @@ describe("item tooltip data", () => {
     expect(s.run(`return NS.getItemInsight("some ring").gp`)).toBe("40");
     expect(s.run(`return tostring(NS.getItemInsight("nope"))`)).toBe("nil");
   });
+
+  it("keeps each raid core's loot system, prices and own-pool standings from the companion file", () => {
+    const s = withSync();
+    s.run(`
+      GuildedStandings = { updatedAt = "2026-09-27T00:00:00Z", baseGp = 0, players = {} }
+      GuildedLoot = {
+        default = "EPGP", minimumBid = 15, values = { ["ring"] = 20 },
+        cores = {
+          { id = "c1", name = "Tuesday MC", mode = "PRIORITY", pool = true, reserves = 2, baseGp = 10,
+            values = { ["sulfuras hand of ragnaros"] = 250, ["#19019"] = 250, ["bad"] = "x" },
+            players = { { name = "amy-Realm", ep = 300, gp = 90 } } },
+        }
+      }
+      fire_event("PLAYER_ENTERING_WORLD")
+    `);
+    expect(s.run(`return NS.getLootRules().default`)).toBe("EPGP");
+    expect(s.run(`return NS.getLootRules().minimumBid`)).toBe("15");
+    expect(s.run(`return NS.getLootRules().values.ring`)).toBe("20");
+    const core = `NS.getLootRules().cores[1]`;
+    expect(s.run(`return ${core}.name .. ":" .. ${core}.mode .. ":" .. tostring(${core}.pool) .. ":" .. ${core}.reserves`)).toBe("Tuesday MC:PRIORITY:true:2");
+    expect(s.run(`return ${core}.values["sulfuras hand of ragnaros"]`)).toBe("250");
+    expect(s.run(`return tostring(${core}.values.bad)`)).toBe("nil");
+    expect(s.run(`return string.format("%.2f", ${core}.players.Amy.pr)`)).toBe("3.00"); // 300 / (90 + 10)
+  });
+
+  it("has no loot rules when the file carries none", () => {
+    const s = withSync();
+    s.run(`GuildedStandings = { updatedAt = "2026-09-27T00:00:00Z", baseGp = 0, players = {} }; fire_event("PLAYER_ENTERING_WORLD")`);
+    expect(s.run(`return tostring(NS.getLootRules())`)).toBe("nil");
+  });
 });

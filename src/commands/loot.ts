@@ -5,11 +5,14 @@ import { createWishlistService } from "../services/wishlist.js";
 import { describeReserves } from "../services/reserves.js";
 import { prisma } from "../database.js";
 import { hasPermission } from "../permissions.js";
-import { coreForRaid, effectiveRules } from "../services/core-rules.js";
+import { coreForRaid, effectiveRules, LOOT_MODE_LABEL } from "../services/core-rules.js";
+import { createItemValueService } from "../services/item-values.js";
+import { describePriority, priorityFor } from "../services/loot-priority.js";
 import { guildService, requireGuildContext } from "./context.js";
 
 const lootService = createLootService(prisma);
 const wishlistService = createWishlistService(prisma);
+const itemValues = createItemValueService(prisma);
 
 export const lootCommand = new SlashCommandBuilder()
   .setName("loot").setDescription("Auction and track raid loot.")
@@ -31,6 +34,9 @@ export const lootCommand = new SlashCommandBuilder()
     .addIntegerOption((o) => o.setName("amount").setDescription("Bid amount").setMinValue(1).setRequired(true)))
   .addSubcommand((sub) => sub.setName("close").setDescription("Close an auction.")
     .addStringOption((o) => o.setName("auction").setDescription("Auction (start typing the item)").setAutocomplete(true).setRequired(true)))
+  .addSubcommand((sub) => sub.setName("priority").setDescription("EPGP priority: who gets an item (highest PR of those who wish for it) and its set price. Officers.")
+    .addStringOption((o) => o.setName("item").setDescription("Item (pick a known one, or type)").setAutocomplete(true).setRequired(true).setMaxLength(100))
+    .addStringOption((o) => o.setName("raid").setDescription("Raid, to use its core's roster, prices and pool (start typing its name)").setAutocomplete(true)))
   .addSubcommand((sub) => sub.setName("history").setDescription("View awarded loot."))
   .addSubcommand((sub) => sub.setName("reserves").setDescription("Who soft-reserved what (the list kept in the game addon).")
     .addStringOption((o) => o.setName("item").setDescription("Only this item (part of its name), or one character's reserves").setMaxLength(100)));
@@ -47,33 +53,54 @@ export async function executeLoot(interaction: ChatInputCommandInteraction): Pro
     await interaction.reply({ content: await describeReserves(prisma, context.guildId, interaction.options.getString("item") ?? undefined), ephemeral: true });
     return;
   }
-  if ((subcommand === "auction" || subcommand === "close" || subcommand === "award") && !officer(interaction)) {
+  if ((subcommand === "auction" || subcommand === "close" || subcommand === "award" || subcommand === "priority") && !officer(interaction)) {
     await interaction.reply({ content: "Only officers, Guild Masters, or administrators can manage auctions.", ephemeral: true });
     return;
   }
   // Loot council can be set for the whole guild (/setup config loot-mode) or for one
   // core (/core rules); a raid made for a core follows that core's mode.
   const guildSettings = await guildService.getSettings(context.guildId);
-  let raidForMode = subcommand === "auction" ? interaction.options.getString("raid") : null;
+  let raidForMode = subcommand === "auction" || subcommand === "award" || subcommand === "priority" ? interaction.options.getString("raid") : null;
   if (subcommand === "bid") {
     const auction = await prisma.auction.findFirst({ where: { id: interaction.options.getString("auction", true), guildId: context.guildId }, select: { raidId: true } });
     raidForMode = auction?.raidId ?? null;
   }
-  const councilMode = effectiveRules(guildSettings, await coreForRaid(prisma, context.guildId, raidForMode)).lootMode === "COUNCIL";
+  const raidCore = await coreForRaid(prisma, context.guildId, raidForMode);
+  const rules = effectiveRules(guildSettings, raidCore);
+  const lootMode = rules.lootMode;
+  if (subcommand === "priority") {
+    const itemName = interaction.options.getString("item", true);
+    const result = await priorityFor(prisma, context.guildId, itemName, { coreId: raidCore?.id ?? null, separatePool: rules.separatePool, baseGp: rules.baseGp });
+    await interaction.reply({ content: describePriority(itemName, raidCore?.name ?? null, result).slice(0, 1990), ephemeral: true });
+    return;
+  }
   if (subcommand === "award") {
     const user = interaction.options.getUser("player", true);
     const target = await guildService.ensureMember(context.guildId, user.id, user.username);
+    const itemName = interaction.options.getString("item", true);
+    // EPGP priority: an item without an explicit price costs its set price.
+    let gp = interaction.options.getInteger("gp");
+    let usedSetPrice = false;
+    if (gp === null && lootMode === "PRIORITY") {
+      const price = await itemValues.priceOf(context.guildId, raidCore?.id ?? null, { name: itemName });
+      if (price !== null) { gp = price; usedSetPrice = true; }
+    }
     const award = await lootService.awardDirect({
-      guildId: context.guildId, memberId: target.id, itemName: interaction.options.getString("item", true),
-      gp: interaction.options.getInteger("gp") ?? 0, raidId: interaction.options.getString("raid") ?? undefined,
+      guildId: context.guildId, memberId: target.id, itemName,
+      gp: gp ?? 0, raidId: interaction.options.getString("raid") ?? undefined,
       bossName: interaction.options.getString("boss") ?? undefined, awardedBy: interaction.user.id
     });
-    await interaction.reply({ content: `**${award.itemName}** awarded to ${user.username}${award.amount ? ` for ${award.amount} GP` : ""}.`, allowedMentions: { parse: [] } });
+    await interaction.reply({ content: `**${award.itemName}** awarded to ${user.username}${award.amount ? ` for ${award.amount} GP${usedSetPrice ? " (its set price)" : ""}` : ""}.`, allowedMentions: { parse: [] } });
     await notify(interaction.guild, notifications.lootAwarded(award.itemName, award.member.displayName, award.amount), "loot");
     return;
   }
-  if (councilMode && (subcommand === "auction" || subcommand === "bid")) {
-    await interaction.reply({ content: "This raid uses **loot council**: officers decide. In game, officers open the loot council (answer BiS, Upgrade, Off-spec or Pass in the popup) and award with `/loot award` or in the Council tab; add the item to your `/character wishlist` to state interest.", ephemeral: true });
+  if (lootMode !== "EPGP" && (subcommand === "auction" || subcommand === "bid")) {
+    const how: Record<string, string> = {
+      COUNCIL: "officers decide. In game, officers open the loot council (answer BiS, Upgrade, Off-spec or Pass in the popup) and award with `/loot award` or in the Council tab; add the item to your `/character wishlist` to state interest.",
+      RESERVE: "players reserve items before the raid (`/guilded reserve` in game, `/loot reserves` here) and the reservers of a dropped item roll for it. Officers record the award with `/loot award`.",
+      PRIORITY: "every item has a set GP price and goes to the highest PR of the players who want it (wishlist here, the popup in game). `/loot priority` shows who is next; `/loot award` charges the set price."
+    };
+    await interaction.reply({ content: `This raid uses **${LOOT_MODE_LABEL[lootMode]}**: ${how[lootMode]}`, ephemeral: true });
     return;
   }
   if (subcommand === "auction") {

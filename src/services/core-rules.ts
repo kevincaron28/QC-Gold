@@ -6,6 +6,24 @@ import type { GuildSettings, PrismaClient, RaidCore } from "@prisma/client";
 // A core may also keep its own point pool (its EP/GP are separate from the
 // guild pool and from other cores').
 
+// How a raid's loot is decided. A core picks one (or follows the guild's choice).
+//   EPGP      players bid GP, the highest bid wins
+//   COUNCIL   raiders say how much they want it (BiS / upgrade / off-spec), officers decide
+//   RESERVE   soft reserves: reservers roll for the item they reserved
+//   PRIORITY  every item has a set GP price; it goes to the highest PR of those who want it
+export type LootMode = "EPGP" | "COUNCIL" | "RESERVE" | "PRIORITY";
+export const LOOT_MODES: LootMode[] = ["EPGP", "COUNCIL", "RESERVE", "PRIORITY"];
+export const LOOT_MODE_LABEL: Record<LootMode, string> = {
+  EPGP: "GP bids", COUNCIL: "loot council", RESERVE: "soft reserves", PRIORITY: "EPGP priority (set prices)"
+};
+export const LOOT_MODE_HELP: Record<LootMode, string> = {
+  EPGP: "Players bid GP; the highest bid wins and pays it.",
+  COUNCIL: "Raiders answer BiS / upgrade / off-spec; officers decide. GP only if you give a price.",
+  RESERVE: "Players reserve items before the raid; the reservers of a dropped item roll for it.",
+  PRIORITY: "Every item has a set GP price. It goes to the highest PR of the players who want it, and they pay that price."
+};
+export const asLootMode = (value: string | null | undefined): LootMode => (LOOT_MODES as string[]).includes(value ?? "") ? (value as LootMode) : "EPGP";
+
 export interface EffectiveRules {
   attendanceEp: number;
   lateEp: number;
@@ -13,13 +31,15 @@ export interface EffectiveRules {
   completionEp: number;
   baseGp: number;
   decayPercent: number;
-  lootMode: "EPGP" | "COUNCIL";
+  lootMode: LootMode;
+  // Soft reserves each player may hold (RESERVE mode; the officer can still choose when opening the list).
+  reservesPerPlayer: number;
   separatePool: boolean;
   // Which values this core changed (the rest are the guild default).
   overridden: string[];
 }
 
-type CoreRules = Pick<RaidCore, "attendanceEp" | "lateEp" | "bossEp" | "completionEp" | "baseGp" | "decayPercent" | "lootMode" | "separatePool">;
+type CoreRules = Pick<RaidCore, "attendanceEp" | "lateEp" | "bossEp" | "completionEp" | "baseGp" | "decayPercent" | "lootMode" | "separatePool" | "reservesPerPlayer">;
 type GuildRules = Pick<GuildSettings, "attendanceDkp" | "lateAttendanceDkp" | "bossKillDkp" | "epCompletionBonus" | "baseGp" | "epgpDecayPercent" | "lootMode">;
 
 export function effectiveRules(guild: Partial<GuildRules> | null | undefined, core: Partial<CoreRules> | null | undefined): EffectiveRules {
@@ -35,11 +55,13 @@ export function effectiveRules(guild: Partial<GuildRules> | null | undefined, co
   const baseGp = pick("base GP", core?.baseGp, guild?.baseGp ?? 0);
   const decayPercent = pick("decay", core?.decayPercent, guild?.epgpDecayPercent ?? 0.1);
   const mode = pick("loot mode", core?.lootMode, guild?.lootMode ?? "EPGP");
+  const reservesPerPlayer = Math.max(1, Math.min(5, pick("reserves", core?.reservesPerPlayer, 1)));
   const separatePool = core?.separatePool === true;
   if (separatePool) overridden.push("separate pool");
   return {
     attendanceEp, lateEp, bossEp, completionEp, baseGp, decayPercent,
-    lootMode: mode === "COUNCIL" ? "COUNCIL" : "EPGP",
+    lootMode: asLootMode(mode),
+    reservesPerPlayer,
     separatePool,
     overridden
   };
@@ -53,7 +75,7 @@ export function describeRules(rules: EffectiveRules, coreName: string): string {
     `• Attendance ${rules.attendanceEp} EP (${mark("attendance EP")}) · late ${rules.lateEp} EP (${mark("late EP")})`,
     `• Per boss ${rules.bossEp} EP (${mark("boss EP")}) · full clear +${rules.completionEp} EP (${mark("full-clear EP")})`,
     `• Base GP ${rules.baseGp} (${mark("base GP")}) · decay ${Math.round(rules.decayPercent * 100)}% (${mark("decay")})`,
-    `• Loot: ${rules.lootMode === "COUNCIL" ? "loot council" : "GP bids"} (${mark("loot mode")})`,
+    `• Loot: ${LOOT_MODE_LABEL[rules.lootMode]} (${mark("loot mode")})${rules.lootMode === "RESERVE" ? ` · ${rules.reservesPerPlayer} reserve(s) per player (${mark("reserves")})` : ""}`,
     `• Points: ${rules.separatePool ? "this core has its **own point pool**" : "shared guild pool"}`
   ].join("\n");
 }

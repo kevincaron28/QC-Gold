@@ -16,6 +16,45 @@ function luaString(value) {
   return `"${String(value).replace(/\\/g, "\\\\").replace(/"/g, "\\\"").replace(/[\r\n]/g, " ")}"`;
 }
 
+// Set item prices as a Lua table body: ["item key"] = gp, plus ["#id"] = gp when the price has an item id.
+function valuesToLua(values, indent) {
+  const lines = [];
+  for (const value of values ?? []) {
+    const gp = Math.max(0, Math.trunc(Number(value.gp) || 0));
+    lines.push(`${indent}[${luaString(value.key)}] = ${gp},`);
+    if (value.id && value.key !== `#${value.id}`) lines.push(`${indent}[${luaString(`#${value.id}`)}] = ${gp},`);
+  }
+  return lines;
+}
+
+// How each raid core decides loot (see the addon's Modules/Loot.lua).
+function lootToLua(loot) {
+  if (!loot) return ["GuildedLoot = nil"];
+  return [
+    "GuildedLoot = {",
+    `  default = ${luaString(loot.default)},`,
+    `  minimumBid = ${Math.max(0, Math.trunc(loot.minimumBid ?? 10))},`,
+    "  values = {",
+    ...valuesToLua(loot.values, "    "),
+    "  },",
+    "  cores = {",
+    ...(loot.cores ?? []).flatMap((core) => [
+      "    {",
+      `      id = ${luaString(core.id)}, name = ${luaString(core.name)}, mode = ${luaString(core.mode)}, pool = ${core.separatePool ? "true" : "false"},`,
+      `      reserves = ${Math.max(1, Math.trunc(core.reserves ?? 1))}, baseGp = ${Math.max(0, Math.trunc(core.baseGp ?? 0))},`,
+      "      values = {",
+      ...valuesToLua(core.values, "        "),
+      "      },",
+      "      players = {",
+      ...(core.standings ?? []).map((row) => `        { name = ${luaString(row.character)}, ep = ${Math.trunc(row.ep)}, gp = ${Math.trunc(row.gp)} },`),
+      "      },",
+      "    },"
+    ]),
+    "  }",
+    "}"
+  ];
+}
+
 export function standingsToLua(data) {
   const rows = data.standings.map((row) =>
     `    { name = ${luaString(row.character)}, ep = ${Math.trunc(row.ep)}, gp = ${Math.trunc(row.gp)}, main = ${row.main ? "true" : "false"} },`
@@ -50,6 +89,9 @@ export function standingsToLua(data) {
       ...data.items.map((item) => `  [${luaString(item.key)}] = { gp = ${item.gp === null || item.gp === undefined ? "nil" : Math.trunc(item.gp)}, n = ${Math.trunc(item.awards ?? 0)}, wn = ${Math.trunc(item.wishTotal ?? 0)}, wish = { ${(item.wish ?? []).map((w) => `{ ${luaString(w.name)}, ${Math.trunc(w.priority)} }`).join(", ")} } },`),
       "}"
     ] : ["GuildedItems = nil"]),
+    "",
+    "-- How each raid core decides loot: the system, set item prices, own-pool standings.",
+    ...lootToLua(data.loot),
     "",
     "-- The next raid's signed-up players (main characters), for /guilded invite raid.",
     ...(data.nextRaid ? [

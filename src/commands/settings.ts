@@ -1,5 +1,6 @@
 import { prisma } from "../database.js";
 import { syncAllCoreRosters } from "../services/raid-core.js";
+import { asLootMode, LOOT_MODE_HELP, LOOT_MODE_LABEL, LOOT_MODES } from "../services/core-rules.js";
 import { updateDungeonLeaderboard } from "../services/dungeon-leaderboard.js";
 import { ChannelType, SlashCommandBuilder, type ChatInputCommandInteraction } from "discord.js";
 import { permissionRoles, hasPermission } from "../permissions.js";
@@ -78,9 +79,9 @@ export const configCommand = new SlashCommandBuilder()
   .addSubcommand((sub) => sub.setName("wcl-guild").setDescription("Warcraft Logs: find the guild's new reports by itself and check them against attendance.")
     .addStringOption((o) => o.setName("guild").setDescription("The guild's page link on warcraftlogs.com (.../guild/id/12345) or its number"))
     .addBooleanOption((o) => o.setName("off").setDescription("Stop looking for new reports")))
-  .addSubcommand((sub) => sub.setName("loot-mode").setDescription("How loot is decided: EPGP bids, or loot council (officers decide, bidding off).")
-    .addStringOption((o) => o.setName("mode").setDescription("Loot mode").setRequired(true).addChoices(
-      { name: "EPGP (GP bids decide)", value: "EPGP" }, { name: "Loot council (officers decide)", value: "COUNCIL" })))
+  .addSubcommand((sub) => sub.setName("loot-mode").setDescription("How loot is decided by default. A raid core can choose its own with /core rules or /core setup.")
+    .addStringOption((o) => o.setName("mode").setDescription("Loot system").setRequired(true).addChoices(
+      ...LOOT_MODES.map((mode) => ({ name: `${LOOT_MODE_LABEL[mode]}`, value: mode })))))
   .addSubcommand((sub) => sub.setName("merit").setDescription("Rank /epgp leaderboard by PR x 30-day attendance instead of raw PR.")
     .addBooleanOption((o) => o.setName("enabled").setDescription("Use merit ranking").setRequired(true)));
 
@@ -116,7 +117,7 @@ export async function executeConfig(interaction: ChatInputCommandInteraction): P
         `Raid logs: ${settings.raidLogChannelId ? `<#${settings.raidLogChannelId}>` : "notify channel"}`,
         `Loot and EP log: ${settings.lootChannelId ? `<#${settings.lootChannelId}>` : "notify channel"}`,
         `Auto-apply addon uploads: ${settings.autoApplyImports ? "on" : "off (officers run /import apply)"}`,
-        `Loot mode: ${settings.lootMode === "COUNCIL" ? "loot council" : "EPGP bids"}`,
+        `Loot system: ${LOOT_MODE_LABEL[asLootMode(settings.lootMode)]} (cores can differ: /core rules)`,
         `Raid roster channel: ${settings.coreChannelId ? `<#${settings.coreChannelId}>` : "not set"}`,
         `Readiness channel: ${settings.readinessChannelId ? `<#${settings.readinessChannelId}>` : "not set"}`,
         `Craft board: ${settings.craftChannelId ? `<#${settings.craftChannelId}>` : "officer log"}`,
@@ -323,12 +324,13 @@ export async function executeConfig(interaction: ChatInputCommandInteraction): P
   }
 
   if (subcommand === "loot-mode") {
-    const mode = interaction.options.getString("mode", true) === "COUNCIL" ? "COUNCIL" : "EPGP";
+    const mode = asLootMode(interaction.options.getString("mode", true));
     await guildService.updateSettings(context.guildId, { lootMode: mode });
     await interaction.reply({
-      content: mode === "COUNCIL"
-        ? "Loot council on: `/loot auction` and `/loot bid` are off; officers use `/loot award`. In game, an officer can also turn GP bidding off for everyone: `/guilded modules guild off bidding`."
-        : "Loot mode: EPGP bids. `/loot auction` and `/loot bid` work again.",
+      content: `Loot system for the guild: **${LOOT_MODE_LABEL[mode]}**. ${LOOT_MODE_HELP[mode]}`
+        + (mode === "EPGP" ? " `/loot auction` and `/loot bid` work." : " `/loot auction` and `/loot bid` are off; officers use `/loot award`.")
+        + (mode === "PRIORITY" ? " Set the prices with `/core items`." : "")
+        + "\nA raid core can use another system: `/core rules` or `/core setup`.",
       ephemeral: true
     });
     return;

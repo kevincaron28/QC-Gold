@@ -201,3 +201,84 @@ describe("Council.lua raider side", () => {
     expect(s.run("return tostring(NS.council.incoming)")).toBe("nil");
   });
 });
+
+describe("Council.lua EPGP priority", () => {
+  it("opens at a set price, with its own message and chat line", () => {
+    const s = withCouncil("RAID");
+    council(s, "priority 250 Big Sword 45");
+    expect(s.run("return NS.council.current.kind")).toBe("priority");
+    expect(s.run("return NS.council.current.price")).toBe("250");
+    expect(s.run("return tostring(SENT[1]:match('^ADDON:RAID:nil:OPENP|%d+|45|250|Big Sword$') ~= nil)")).toBe("true");
+    expect(s.run("return SENT[2]")).toContain("costs 250 GP");
+  });
+
+  it("wants it or passes only, and ranks by PR alone", () => {
+    const s = withCouncil("RAID");
+    council(s, "priority 250 Sword");
+    s.run(`NS.council.addResponse("Ann", "want")`);
+    s.run(`NS.council.addResponse("Cy", "want")`);
+    s.run(`NS.council.addResponse("Bob", "want")`);
+    s.run(`NS.council.addResponse("Dee", "bis")`); // a council answer: not taken
+    s.run(`NS.council.addResponse("Eve", "pass")`);
+    expect(order(s)).toBe("Bob:want,Ann:want,Cy:want");
+  });
+
+  it("uses the core's own pool for PR when the loot module says so", () => {
+    const s = withCouncil("RAID");
+    s.run(`NS.loot = { prFor = function(name) return ({ Ann = 9, Bob = 2 })[name] or 0 end }`);
+    council(s, "priority 100 Sword");
+    s.run(`NS.council.addResponse("Ann", "want")`);
+    s.run(`NS.council.addResponse("Bob", "want")`);
+    expect(order(s)).toBe("Ann:want,Bob:want");
+  });
+
+  it("awards the highest PR by itself when time is up, and charges the set price", () => {
+    const s = withCouncil("RAID");
+    council(s, "priority 250 Sword");
+    s.run(`NS.council.addResponse("Ann", "want")`);
+    s.run(`NS.council.addResponse("Bob", "want")`);
+    council(s, "close");
+    expect(s.run("return RAN[1]")).toBe("loot Bob Sword 250");
+    expect(s.run("return RAN[2]")).toBe("gp Bob 250 Priority: Sword");
+    expect(s.run("return tostring(NS.council.current)")).toBe("nil");
+    expect(s.run("return tostring(SENT[#SENT - 1]:match('AWARD|%d+|Bob$') ~= nil)")).toBe("true");
+    expect(s.run("return SENT[#SENT]")).toContain("Sword goes to Bob for 250 GP.");
+  });
+
+  it("does nothing when nobody wants it", () => {
+    const s = withCouncil("RAID");
+    council(s, "priority 250 Sword");
+    s.run(`NS.council.addResponse("Eve", "pass")`);
+    council(s, "close");
+    expect(s.run("return #RAN")).toBe("0");
+    expect(s.run("return tostring(NS.council.current)")).toBe("nil");
+  });
+
+  it("takes whispers from players without the addon", () => {
+    const s = withCouncil("RAID");
+    council(s, "priority 250 Sword");
+    whisper(s, "Ann-Realm", "want");
+    whisper(s, "Cy", "bis");
+    expect(order(s)).toBe("Ann:want");
+  });
+
+  it("needs a price, and officers only", () => {
+    const s = withCouncil("RAID");
+    council(s, "priority Sword");
+    expect(s.run("return tostring(NS.council.current)")).toBe("nil");
+    const m = withCouncil("RAID", false);
+    council(m, "priority 250 Sword");
+    expect(m.run("return tostring(NS.council.current)")).toBe("nil");
+  });
+
+  it("a priority popup opens for an officer's OPENP and the answer goes back", () => {
+    const s = withCouncil("RAID", false);
+    s.run(`NS.isOfficerName = function(n) return n == "Boss" end`);
+    s.run(`fire_event("CHAT_MSG_ADDON", "GuildedLC", "OPENP|55|45|250|Sword", "RAID", "Rando")`);
+    expect(s.run("return tostring(NS.council.incoming)")).toBe("nil");
+    s.run(`fire_event("CHAT_MSG_ADDON", "GuildedLC", "OPENP|55|45|250|Sword", "RAID", "Boss")`);
+    expect(s.run("return NS.council.incoming.kind .. ':' .. NS.council.incoming.price")).toBe("priority:250");
+    s.run(`NS.commandHandlers["council"]({ "want" })`);
+    expect(s.run("return SENT[1]")).toBe("ADDON:WHISPER:Boss:RESP|55|want|");
+  });
+});

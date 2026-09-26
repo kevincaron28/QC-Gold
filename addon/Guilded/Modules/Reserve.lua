@@ -302,7 +302,8 @@ local function openList(args)
   if not s then return end
   local limit = tonumber(args[1])
   local first = 1
-  if limit then first = 2 else limit = DEFAULT_LIMIT end
+  -- Without a number, the raid core's setting (Discord: /core setup) decides.
+  if limit then first = 2 else limit = ns.loot and ns.loot.reserveLimit and ns.loot.reserveLimit() or DEFAULT_LIMIT end
   limit = math.max(1, math.min(MAX_LIMIT, math.floor(limit)))
   local title = table.concat(args, " ", first)
   s.open, s.limit, s.title, s.host, s.hostSender = true, limit, title, ns.playerName(), nil

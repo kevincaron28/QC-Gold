@@ -44,7 +44,7 @@ export async function handleAutocomplete(interaction: AutocompleteInteraction): 
       choices = await ownCharacterChoices(prisma, member.id, query);
     } else if (command === "attunement" && focused.name === "name") {
       choices = await attunementSuggestions(prisma, guild.id, query);
-    } else if (command === "wishlist" && focused.name === "item") {
+    } else if ((command === "wishlist" || command === "loot") && focused.name === "item") {
       choices = await itemSuggestions(prisma, guild.id, query);
     } else if (command === "tag" && focused.name === "name") {
       choices = await tagSuggestions(prisma, guild.id, query);

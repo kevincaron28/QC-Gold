@@ -1022,6 +1022,7 @@ local function refreshHome(db, officer, me)
   if gameText ~= "" and gameText ~= "No games running." then table.insert(now, gameText) end
   local bidText = moduleOn("bidding") and ns.bidding and ns.bidding.statusText and ns.bidding.statusText() or ""
   if bidText ~= "" then table.insert(now, bidText) end
+  if ns.loot and ns.loot.describe and ns.getLootRules and ns.getLootRules() then table.insert(now, ns.loot.describe()) end
   local councilText = moduleOn("council") and ns.council and ns.council.current and ns.council.statusText() or ""
   if councilText ~= "" then table.insert(now, councilText) end
   ui.homeNow:SetText(table.concat(now, "\n"))

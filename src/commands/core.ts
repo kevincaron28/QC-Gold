@@ -4,7 +4,8 @@ import { prisma } from "../database.js";
 import { hasPermission } from "../permissions.js";
 import { runCoreWizard } from "./core-wizard.js";
 import { runCoreEditor } from "./core-editor.js";
-import { describeRules, effectiveRules } from "../services/core-rules.js";
+import { describeRules, effectiveRules, LOOT_MODE_LABEL, LOOT_MODES } from "../services/core-rules.js";
+import { executeCoreItems } from "./core-items.js";
 import { createRaidCoreService, removeCoreRosterMessage, syncCoreRoster } from "../services/raid-core.js";
 import { guildService, requireGuildContext } from "./context.js";
 
@@ -42,10 +43,19 @@ export const coreCommand = new SlashCommandBuilder()
     .addIntegerOption((o) => o.setName("base_gp").setDescription("Base GP for this core's PR").setMinValue(0))
     .addIntegerOption((o) => o.setName("decay").setDescription("Decay percent for this core's /epgp decay").setMinValue(0).setMaxValue(100))
     .addStringOption((o) => o.setName("loot_mode").setDescription("How this core's loot is decided").addChoices(
-      { name: "Follow the guild", value: "DEFAULT" }, { name: "GP bids", value: "EPGP" }, { name: "Loot council", value: "COUNCIL" }))
+      { name: "Follow the guild", value: "DEFAULT" }, ...LOOT_MODES.map((mode) => ({ name: LOOT_MODE_LABEL[mode], value: mode }))))
+    .addIntegerOption((o) => o.setName("reserves").setDescription("Soft reserves per player (soft reserves mode, 1 to 5)").setMinValue(1).setMaxValue(5))
     .addStringOption((o) => o.setName("pool").setDescription("Points: shared guild pool, or this core's own pool (applies to future points)").addChoices(
       { name: "Shared guild pool", value: "shared" }, { name: "Its own pool", value: "separate" }))
     .addBooleanOption((o) => o.setName("reset").setDescription("Go back to the guild defaults for every rule (points already in a pool stay there)")))
+  .addSubcommand((sub) => sub.setName("items").setDescription("Set GP prices for items (EPGP priority loot): for one core, or the whole guild (Raid Leaders).")
+    .addStringOption((o) => o.setName("action").setDescription("What to do").setRequired(true).addChoices(
+      { name: "List the prices", value: "list" }, { name: "Set one price", value: "set" }, { name: "Remove one price", value: "remove" },
+      { name: "Import a list from a file", value: "import" }, { name: "Remove all prices", value: "clear" }))
+    .addStringOption((o) => o.setName("core").setDescription("Raid core (default: the guild-wide prices every core uses)").setAutocomplete(true))
+    .addStringOption((o) => o.setName("item").setDescription("Item name or id (to set or remove)").setMaxLength(100))
+    .addIntegerOption((o) => o.setName("gp").setDescription("Price in GP (to set)").setMinValue(0).setMaxValue(100000))
+    .addAttachmentOption((o) => o.setName("file").setDescription("Text or CSV file, one 'item = price' per line (to import)")))
   .addSubcommand((sub) => sub.setName("show").setDescription("Show one core's roster.")
     .addStringOption(coreOption))
   .addSubcommand((sub) => sub.setName("list").setDescription("All raid cores and how many players each has."))
@@ -66,6 +76,12 @@ export async function executeCore(interaction: ChatInputCommandInteraction): Pro
   const guildId = context.guildId;
   const subcommand = interaction.options.getSubcommand();
   if (["setup", "edit", "create", "add", "remove", "post", "delete", "rules"].includes(subcommand)) requireRaidLeader(interaction);
+  if (subcommand === "items") {
+    // Anyone can look at the prices; changing them is for Raid Leaders.
+    if (interaction.options.getString("action", true) !== "list") requireRaidLeader(interaction);
+    await executeCoreItems(interaction, guildId);
+    return;
+  }
 
   if (subcommand === "setup") {
     await runCoreWizard(interaction);
@@ -108,12 +124,13 @@ export async function executeCore(interaction: ChatInputCommandInteraction): Pro
     const number = (name: string) => interaction.options.getInteger(name);
     const data: Record<string, number | string | boolean | null> = {};
     if (interaction.options.getBoolean("reset")) {
-      Object.assign(data, { attendanceEp: null, lateEp: null, bossEp: null, completionEp: null, baseGp: null, decayPercent: null, lootMode: null });
+      Object.assign(data, { attendanceEp: null, lateEp: null, bossEp: null, completionEp: null, baseGp: null, decayPercent: null, lootMode: null, reservesPerPlayer: null });
     } else {
       for (const [option, field] of [["attendance", "attendanceEp"], ["late", "lateEp"], ["boss", "bossEp"], ["clear", "completionEp"], ["base_gp", "baseGp"]] as const) {
         if (number(option) !== null) data[field] = number(option);
       }
       if (number("decay") !== null) data["decayPercent"] = (number("decay") ?? 0) / 100;
+      if (number("reserves") !== null) data["reservesPerPlayer"] = number("reserves");
       const mode = interaction.options.getString("loot_mode");
       if (mode) data["lootMode"] = mode === "DEFAULT" ? null : mode;
     }

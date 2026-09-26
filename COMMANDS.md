@@ -89,6 +89,47 @@ one for the winner.
 | `/guilded bid cancel` | Cancel, nothing recorded |
 | `/guilded bid status` | Current bids |
 
+### Loot systems per raid core
+
+Each raid core decides how its loot is given out (a core that says nothing follows the guild's
+choice, `/setup config loot-mode`). Pick it in `/core setup` (step 3, the loot system menu) or with
+`/core rules core:<name> loot_mode:<system>`.
+
+| System | How it works |
+| --- | --- |
+| **GP bids** | Players bid GP; the highest bid wins and pays it. |
+| **Loot council** | Raiders answer BiS / upgrade / off-spec; officers decide. GP only if you name a price. |
+| **Soft reserves** | Players reserve items before the raid; when it drops, the reservers roll for it. Reserves per player are set per core (`/core rules reserves:2`, or the button in `/core setup`). |
+| **EPGP priority** | Every item has a **set GP price**. It goes to the **highest PR of the players who want it** and they pay the price. |
+
+**EPGP priority prices.** Set them per core (the core's price wins), or for the whole guild (every core uses it unless it has its own):
+
+| Command | What it does |
+| --- | --- |
+| `/core items action:set core:<core> item:<name or id> gp:<price>` | One price. Leave `core` out for the guild-wide list |
+| `/core items action:import core:<core> file:<file>` | A text or CSV file, one `item = price` per line (`Sulfuras, Hand of Ragnaros = 250`, `Bindings;120`, `19019 = 90`) |
+| `/core items action:list` / `remove` / `clear` | Look at, remove one, or empty a list. Anyone can list; changing is for Raid Leaders |
+| **Item prices** button in `/core setup` | Paste a list into a form |
+| `/loot priority item:<item> [raid:<raid>]` (officers) | Who is next for an item: the wishlist members of the raid's core, highest PR first (that core's pool when it has its own), with the price |
+| `/loot award item player [gp]` | In priority raids, leaving out `gp` charges the item's set price |
+
+`/loot auction` and `/loot bid` only work for GP bids cores; the other systems tell you how they work.
+
+**In game** the officer's addon knows each core's system, prices and own-pool standings from the
+companion (they arrive with the standings). Which core is being run: the raid the bot expects next,
+or `/guilded core <name>` (`auto` goes back). Then one command for every system:
+
+| Command | What it does |
+| --- | --- |
+| `/guilded drop <item link> [seconds]` | An item dropped: starts it the way this core does it. GP bids: opens bidding at the guild's minimum. Loot council: opens the council. Soft reserves: rolls between the reservers (or a free roll when nobody reserved it). EPGP priority: opens "I want it / Pass" at the set price |
+| `/guilded drop mode [system\|auto]` | Show the loot system, or override it for tonight |
+| `/guilded core [name\|auto]` | Show or pick the raid core you are running |
+| `/guilded council priority <GP> <item> [seconds]` | EPGP priority with a price you give (for an item with no set price) |
+
+In EPGP priority raiders get a popup (or whisper `want` / `pass`); when the time is up the highest
+PR among those who want it gets the item and is charged the set price by itself. PR uses the core's own
+point pool when it has one. Nothing else to press: cancel before the timer ends with `/guilded council cancel`.
+
 ### Recipes and cooldowns
 
 Open each of your professions once and Guilded reads every recipe you know (and what it

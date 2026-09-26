@@ -88,11 +88,11 @@ export function createEpgpService(database: PrismaClient) {
 
     // One row per linked character, carrying its member's EP/GP/PR, so the
     // addon can look standings up by the character name it sees in game.
-    async getGuildStandings(guildId: string, baseGp = 0) {
+    async getGuildStandings(guildId: string, baseGp = 0, coreId: string | null = null) {
       const [sums, characters] = await Promise.all([
         database.epgpTransaction.groupBy({
           by: ["memberId"],
-          where: { guildId, coreId: null },
+          where: { guildId, coreId },
           _sum: { epAmount: true, gpAmount: true }
         }),
         database.character.findMany({
