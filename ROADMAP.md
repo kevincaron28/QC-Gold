@@ -31,10 +31,10 @@ versus member views. They are listed in the release checklist.
 4. **Chat tab for addon messages:** an optional "Guilded" chat tab so bid results and status lines stay out of raid chat.
 5. **Loot response voting** (BiS / upgrade / off-spec) for loot council guilds.
 6. **Imports** from SoftRes, That's My BiS and Guild Roster Manager. Needs sample files from a real export.
-6. **Guild calendar sync:** in-game events to Discord and back. Half built (the check command exists).
-7. **Recipes and cooldowns:** who can craft what, transmute cooldowns, shopping list.
+7. **Guild calendar sync:** in-game events to Discord and back. Half built (the check command exists).
+8. **Recipes and cooldowns:** who can craft what, transmute cooldowns, shopping list.
 9. **Web dashboard** for standings, loot and raid history.
-9. **Hosting:** the free Oracle Cloud setup is written ([docs/DEPLOY_ORACLE.md](docs/DEPLOY_ORACLE.md)); a hosted
+10. **Hosting:** the free Oracle Cloud setup is written ([docs/DEPLOY_ORACLE.md](docs/DEPLOY_ORACLE.md)); a hosted
    multi-guild bot is a bigger step and only worth it if other guilds ask.
 
 ## Decided against
